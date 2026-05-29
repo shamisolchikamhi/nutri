@@ -1,0 +1,206 @@
+**MVP Feature List**
+
+**1. User Profile and Goal Setup**
+- Current weight
+- Height
+- Target weight
+- Age
+- Sex
+- Activity level
+- Body fat % `optional`
+- Diet preference `high protein, low calorie, low carb, vegan, halal, etc.`
+- Budget per week or month
+- Meal frequency `2, 3, 4, 5 meals per day`
+- Retailer preference `all groceries` or selected stores
+
+**2. Goal Engine**
+- Estimate maintenance calories
+- Calculate daily calorie target
+- Calculate daily calorie deficit
+- Estimate time to target weight
+- Show expected weekly loss range
+- Estimate macros:
+  - protein target
+  - carbs target
+  - fat target
+- Show progress toward goal
+
+**3. Meal Tracker**
+- Log breakfast, lunch, dinner, and snacks
+- Track calories eaten
+- Track protein, carbs, and fat
+- Track water intake
+- Track daily adherence to goal
+- Save frequent meals
+- Show streaks and weekly summaries
+
+**4. Activity Tracker**
+- Manual entry for workouts
+- Dummy fitness tracker data for MVP:
+  - steps
+  - active calories
+  - workout duration
+  - sleep hours
+- Estimated calories burned
+- Net calorie balance per day
+
+**5. Recipe Discovery**
+- Show recipes based on goal:
+  - high protein
+  - low calorie
+  - muscle gain
+  - fat loss
+  - budget meals
+- Filter recipes by:
+  - prep time
+  - difficulty
+  - servings
+  - calories per serving
+  - protein per serving
+- Show recipe ingredients clearly
+- Show substitutions when ingredients are unavailable
+
+**6. Grocery Basket Builder**
+- Convert recipe ingredients into a shopping basket
+- Combine ingredients from multiple recipes into one basket
+- Deduplicate shared ingredients
+- Calculate total basket cost
+- Calculate cost per serving
+- Show number of servings per recipe
+- Show total servings for the basket
+- Let user switch between:
+  - cheapest basket
+  - healthiest basket
+  - highest protein basket
+  - lowest calorie basket
+  - budget basket
+
+**7. Multi-Retailer Product Layer**
+- Support groceries from multiple retailers, not just Woolworths
+- Normalize products across stores
+- Match similar items across retailers
+- Compare prices across retailers
+- Compare pack sizes
+- Compare nutrition labels
+- Support store-specific availability
+
+**8. Specials and Savings**
+- Highlight specials from all supported retailers
+- Mark discounted items clearly
+- Show regular price vs special price
+- Show savings amount
+- Show savings percentage
+- Rank special items higher when they fit the user’s goal
+- Show “best value” suggestions
+- Allow the user to toggle:
+  - show only specials
+  - show specials first
+  - ignore specials
+
+**9. Healthy Snack Recommendations**
+- Recommend healthy snacks based on user goals
+- Pull snack suggestions from retailer inventory
+- Show snack nutrition:
+  - calories
+  - protein
+  - sugar
+  - fat
+- Show snack cost
+- Show snack specials
+- Show snack portion size
+- Suggest snacks that fit remaining daily calories
+
+**10. Nutrition Breakdown**
+- Total calories for each recipe
+- Calories per serving
+- Protein per serving
+- Carb per serving
+- Fat per serving
+- Fiber where available
+- Sugar where available
+- Basket-level nutrition totals
+- Daily nutrition vs target progress
+
+**11. Shopping List Output**
+- Generate a clean shopping list from selected recipes
+- Group items by retailer
+- Group items by category:
+  - protein
+  - dairy
+  - pantry
+  - fruit and veg
+  - snacks
+- Mark substitute items
+- Mark special items
+- Mark essential items vs optional items
+
+**12. Cost Tracking**
+- Total cost of suggested basket
+- Cost per recipe
+- Cost per serving
+- Weekly basket cost estimate
+- Budget vs actual comparison
+- Cheapest retailer for each item where possible
+
+**13. Dashboard**
+- Today’s calories eaten
+- Calories remaining
+- Protein remaining
+- Net calorie balance
+- Progress to goal weight
+- Suggested next meal
+- Suggested snack
+- Current basket cost
+- Savings from specials
+
+**14. Notifications**
+- Meal reminder
+- Water reminder
+- Weigh-in reminder
+- “You are over calorie target” alert
+- “Specials updated” alert
+- “Basket can be cheaper” alert
+
+**15. Search and Filters**
+- Search products
+- Search recipes
+- Filter by goal
+- Filter by diet
+- Filter by retailer
+- Filter by special offer
+- Filter by price range
+- Filter by calories or protein
+
+**16. Saved Items**
+- Save favorite recipes
+- Save favorite snacks
+- Save favorite baskets
+- Save preferred retailers
+- Save repeat shopping lists
+
+**17. Basic Admin/Operations Layer**
+- Add or remove retailers
+- Manage product mappings
+- Update specials feed
+- Flag unavailable products
+- Log stale or broken recipe sources
+- Track data refresh times
+
+**Recommended MVP Scope**
+- Start with 2 to 3 retailers
+- Add more retailers later
+- Start with public product pages and specials
+- Start with recipe pages that clearly expose ingredient lists and servings
+
+**What makes the MVP useful**
+- It does not just recommend meals
+- It shows whether the meals are actually affordable
+- It shows how many servings the basket makes
+- It shows how much the basket costs
+- It highlights specials across stores
+- It helps the user stay on track for body goals
+
+If you want, I can turn this into:
+1. a screen-by-screen app flow,
+2. a database schema,
+3. or a technical architecture for the MVP.

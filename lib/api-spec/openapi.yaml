@@ -1,22 +1,38 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: NutriBasket API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: profile
+    description: User profile and goal management
+  - name: meals
+    description: Meal logging
+  - name: activity
+    description: Activity tracking
+  - name: recipes
+    description: Recipe discovery
+  - name: products
+    description: Grocery products and retailers
+  - name: basket
+    description: Grocery basket management
+  - name: specials
+    description: Retailer specials and savings
+  - name: dashboard
+    description: Dashboard summaries and insights
+  - name: saved
+    description: Saved items (recipes, baskets, snacks)
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +40,1626 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ---- Profile ----
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get user profile and goals
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: No profile set up yet
+    put:
+      operationId: upsertProfile
+      tags: [profile]
+      summary: Create or update user profile and goals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileInput"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /profile/goal-summary:
+    get:
+      operationId: getGoalSummary
+      tags: [profile]
+      summary: Get calculated goal metrics (TDEE, calories, macros, timeline)
+      responses:
+        "200":
+          description: Goal summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoalSummary"
+
+  # ---- Daily Log / Meals ----
+  /logs/daily:
+    get:
+      operationId: listDailyLogs
+      tags: [meals]
+      summary: List daily logs (with date filter)
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of daily logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyLog"
+
+  /logs/daily/{date}:
+    get:
+      operationId: getDailyLog
+      tags: [meals]
+      summary: Get a single day's log
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Daily log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyLog"
+    put:
+      operationId: upsertDailyLog
+      tags: [meals]
+      summary: Update water intake, weight, or notes for a day
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DailyLogInput"
+      responses:
+        "200":
+          description: Updated daily log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyLog"
+
+  /logs/daily/{date}/meals:
+    get:
+      operationId: getMealEntries
+      tags: [meals]
+      summary: Get all meal entries for a day
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Meal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MealEntry"
+    post:
+      operationId: addMealEntry
+      tags: [meals]
+      summary: Add a meal entry to a day
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealEntryInput"
+      responses:
+        "201":
+          description: Created meal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealEntry"
+
+  /logs/daily/{date}/meals/{id}:
+    delete:
+      operationId: deleteMealEntry
+      tags: [meals]
+      summary: Remove a meal entry
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /logs/weekly-summary:
+    get:
+      operationId: getWeeklySummary
+      tags: [meals]
+      summary: Get a weekly adherence and nutrition summary
+      responses:
+        "200":
+          description: Weekly summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklySummary"
+
+  # ---- Activity ----
+  /logs/activity:
+    get:
+      operationId: listActivityLogs
+      tags: [activity]
+      summary: List activity logs
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Activity logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityLog"
+    post:
+      operationId: createActivityLog
+      tags: [activity]
+      summary: Log activity for a day
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityLogInput"
+      responses:
+        "201":
+          description: Created activity log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityLog"
+
+  /logs/activity/{id}:
+    put:
+      operationId: updateActivityLog
+      tags: [activity]
+      summary: Update an activity log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityLogInput"
+      responses:
+        "200":
+          description: Updated activity log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityLog"
+    delete:
+      operationId: deleteActivityLog
+      tags: [activity]
+      summary: Delete an activity log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ---- Recipes ----
+  /recipes:
+    get:
+      operationId: listRecipes
+      tags: [recipes]
+      summary: List/search recipes with filters
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: goal
+          in: query
+          schema:
+            type: string
+            enum: [high_protein, low_calorie, muscle_gain, fat_loss, budget, vegan, low_carb]
+        - name: maxPrepTime
+          in: query
+          schema:
+            type: integer
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [easy, medium, hard]
+        - name: maxCaloriesPerServing
+          in: query
+          schema:
+            type: integer
+        - name: minProteinPerServing
+          in: query
+          schema:
+            type: integer
+        - name: maxCost
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recipe"
+
+  /recipes/{id}:
+    get:
+      operationId: getRecipe
+      tags: [recipes]
+      summary: Get a single recipe with full ingredient details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recipe detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipeDetail"
+        "404":
+          description: Not found
+
+  /recipes/recommended:
+    get:
+      operationId: getRecommendedRecipes
+      tags: [recipes]
+      summary: Get recipes recommended for the user's current goal
+      responses:
+        "200":
+          description: Recommended recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recipe"
+
+  # ---- Products ----
+  /retailers:
+    get:
+      operationId: listRetailers
+      tags: [products]
+      summary: List supported retailers
+      responses:
+        "200":
+          description: Retailers list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Retailer"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: Search and list products across retailers
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+        - name: retailerId
+          in: query
+          schema:
+            type: integer
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: onSpecial
+          in: query
+          schema:
+            type: boolean
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a single product with full details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}/compare:
+    get:
+      operationId: compareProduct
+      tags: [products]
+      summary: Get the same/similar product across all retailers for price comparison
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cross-retailer comparison
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductComparison"
+
+  # ---- Basket ----
+  /baskets:
+    get:
+      operationId: listBaskets
+      tags: [basket]
+      summary: List user's saved baskets
+      responses:
+        "200":
+          description: Baskets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Basket"
+    post:
+      operationId: createBasket
+      tags: [basket]
+      summary: Create a new basket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BasketInput"
+      responses:
+        "201":
+          description: Created basket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Basket"
+
+  /baskets/{id}:
+    get:
+      operationId: getBasket
+      tags: [basket]
+      summary: Get a basket with all items and nutrition/cost totals
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Basket detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasketDetail"
+    put:
+      operationId: updateBasket
+      tags: [basket]
+      summary: Update basket name or mode
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BasketInput"
+      responses:
+        "200":
+          description: Updated basket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Basket"
+    delete:
+      operationId: deleteBasket
+      tags: [basket]
+      summary: Delete a basket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /baskets/{id}/items:
+    post:
+      operationId: addBasketItem
+      tags: [basket]
+      summary: Add an item to a basket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BasketItemInput"
+      responses:
+        "201":
+          description: Added basket item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasketItem"
+
+  /baskets/{id}/items/{itemId}:
+    put:
+      operationId: updateBasketItem
+      tags: [basket]
+      summary: Update basket item quantity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BasketItemInput"
+      responses:
+        "200":
+          description: Updated basket item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasketItem"
+    delete:
+      operationId: deleteBasketItem
+      tags: [basket]
+      summary: Remove an item from a basket
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /baskets/from-recipes:
+    post:
+      operationId: createBasketFromRecipes
+      tags: [basket]
+      summary: Build a basket from one or more recipes (deduplicates ingredients)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BasketFromRecipesInput"
+      responses:
+        "201":
+          description: Created basket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BasketDetail"
+
+  /baskets/{id}/shopping-list:
+    get:
+      operationId: getShoppingList
+      tags: [basket]
+      summary: Generate a formatted shopping list from a basket (grouped by retailer and category)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shopping list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingList"
+
+  # ---- Specials ----
+  /specials:
+    get:
+      operationId: listSpecials
+      tags: [specials]
+      summary: List current specials from all retailers
+      parameters:
+        - name: retailerId
+          in: query
+          schema:
+            type: integer
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: goalFit
+          in: query
+          description: Filter to specials that fit a specific goal
+          schema:
+            type: string
+            enum: [high_protein, low_calorie, muscle_gain, fat_loss, budget, vegan, low_carb]
+      responses:
+        "200":
+          description: Specials
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Special"
+
+  /specials/best-value:
+    get:
+      operationId: getBestValueSpecials
+      tags: [specials]
+      summary: Get best value specials ranked by nutrition/cost ratio for user's goal
+      responses:
+        "200":
+          description: Best value specials
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Special"
+
+  # ---- Dashboard ----
+  /dashboard/today:
+    get:
+      operationId: getDashboardToday
+      tags: [dashboard]
+      summary: Today's dashboard summary — calories, macros, net balance, basket cost, goal progress
+      responses:
+        "200":
+          description: Today's dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardToday"
+
+  /dashboard/snack-suggestions:
+    get:
+      operationId: getSnackSuggestions
+      tags: [dashboard]
+      summary: Get healthy snack suggestions that fit remaining daily calories
+      responses:
+        "200":
+          description: Snack suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SnackSuggestion"
+
+  /dashboard/meal-suggestion:
+    get:
+      operationId: getMealSuggestion
+      tags: [dashboard]
+      summary: Get next meal suggestion based on remaining calories and macros
+      responses:
+        "200":
+          description: Meal suggestion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+
+  /dashboard/progress:
+    get:
+      operationId: getProgressSummary
+      tags: [dashboard]
+      summary: Get weight progress toward goal with weekly trend data
+      responses:
+        "200":
+          description: Progress data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressSummary"
+
+  # ---- Saved Items ----
+  /saved/recipes:
+    get:
+      operationId: listSavedRecipes
+      tags: [saved]
+      summary: List saved/favourite recipes
+      responses:
+        "200":
+          description: Saved recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recipe"
+    post:
+      operationId: saveRecipe
+      tags: [saved]
+      summary: Save a recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveItemInput"
+      responses:
+        "201":
+          description: Saved
+
+  /saved/recipes/{recipeId}:
+    delete:
+      operationId: unsaveRecipe
+      tags: [saved]
+      summary: Remove a recipe from saved
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /saved/snacks:
+    get:
+      operationId: listSavedSnacks
+      tags: [saved]
+      summary: List saved snacks
+      responses:
+        "200":
+          description: Saved snacks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SnackSuggestion"
+    post:
+      operationId: saveSnack
+      tags: [saved]
+      summary: Save a snack
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveItemInput"
+      responses:
+        "201":
+          description: Saved
+
+  /saved/snacks/{productId}:
+    delete:
+      operationId: unsaveSnack
+      tags: [saved]
+      summary: Remove a snack from saved
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    # ---- Profile ----
+    UserProfile:
+      type: object
+      required: [id, currentWeightKg, heightCm, targetWeightKg, ageYears, sex, activityLevel, dietPreference, budgetWeekly, mealFrequency]
+      properties:
+        id:
+          type: integer
+        currentWeightKg:
+          type: number
+        heightCm:
+          type: number
+        targetWeightKg:
+          type: number
+        ageYears:
+          type: integer
+        sex:
+          type: string
+          enum: [male, female, other]
+        activityLevel:
+          type: string
+          enum: [sedentary, lightly_active, moderately_active, very_active, extra_active]
+        bodyFatPercent:
+          type: ["number", "null"]
+        dietPreference:
+          type: string
+          enum: [standard, high_protein, low_calorie, low_carb, vegan, halal, vegetarian]
+        budgetWeekly:
+          type: number
+        mealFrequency:
+          type: integer
+        retailerPreferences:
+          type: array
+          items:
+            type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserProfileInput:
+      type: object
+      required: [currentWeightKg, heightCm, targetWeightKg, ageYears, sex, activityLevel, dietPreference, budgetWeekly, mealFrequency]
+      properties:
+        currentWeightKg:
+          type: number
+        heightCm:
+          type: number
+        targetWeightKg:
+          type: number
+        ageYears:
+          type: integer
+        sex:
+          type: string
+          enum: [male, female, other]
+        activityLevel:
+          type: string
+          enum: [sedentary, lightly_active, moderately_active, very_active, extra_active]
+        bodyFatPercent:
+          type: ["number", "null"]
+        dietPreference:
+          type: string
+          enum: [standard, high_protein, low_calorie, low_carb, vegan, halal, vegetarian]
+        budgetWeekly:
+          type: number
+        mealFrequency:
+          type: integer
+        retailerPreferences:
+          type: array
+          items:
+            type: integer
+
+    GoalSummary:
+      type: object
+      required: [maintenanceCalories, dailyCalorieTarget, dailyDeficit, estimatedWeeksToGoal, expectedWeeklyLossKg, proteinTargetG, carbsTargetG, fatTargetG, currentWeightKg, targetWeightKg, progressPercent]
+      properties:
+        maintenanceCalories:
+          type: integer
+        dailyCalorieTarget:
+          type: integer
+        dailyDeficit:
+          type: integer
+        estimatedWeeksToGoal:
+          type: number
+        expectedWeeklyLossKg:
+          type: number
+        proteinTargetG:
+          type: integer
+        carbsTargetG:
+          type: integer
+        fatTargetG:
+          type: integer
+        currentWeightKg:
+          type: number
+        targetWeightKg:
+          type: number
+        progressPercent:
+          type: number
+
+    # ---- Daily Log ----
+    DailyLog:
+      type: object
+      required: [date, totalCalories, totalProteinG, totalCarbsG, totalFatG, waterMl, calorieTarget, proteinTarget, carbsTarget, fatTarget, adherencePercent, streak]
+      properties:
+        date:
+          type: string
+          format: date
+        totalCalories:
+          type: integer
+        totalProteinG:
+          type: number
+        totalCarbsG:
+          type: number
+        totalFatG:
+          type: number
+        waterMl:
+          type: integer
+        calorieTarget:
+          type: integer
+        proteinTarget:
+          type: integer
+        carbsTarget:
+          type: integer
+        fatTarget:
+          type: integer
+        adherencePercent:
+          type: number
+        streak:
+          type: integer
+        weightKg:
+          type: ["number", "null"]
+        notes:
+          type: ["string", "null"]
+
+    DailyLogInput:
+      type: object
+      properties:
+        waterMl:
+          type: integer
+        weightKg:
+          type: ["number", "null"]
+        notes:
+          type: ["string", "null"]
+
+    MealEntry:
+      type: object
+      required: [id, date, mealType, name, calories, proteinG, carbsG, fatG, servings]
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        mealType:
+          type: string
+          enum: [breakfast, lunch, dinner, snack]
+        name:
+          type: string
+        calories:
+          type: integer
+        proteinG:
+          type: number
+        carbsG:
+          type: number
+        fatG:
+          type: number
+        servings:
+          type: number
+        recipeId:
+          type: ["integer", "null"]
+        productId:
+          type: ["integer", "null"]
+        isFavourite:
+          type: boolean
+
+    MealEntryInput:
+      type: object
+      required: [mealType, name, calories, proteinG, carbsG, fatG, servings]
+      properties:
+        mealType:
+          type: string
+          enum: [breakfast, lunch, dinner, snack]
+        name:
+          type: string
+        calories:
+          type: integer
+        proteinG:
+          type: number
+        carbsG:
+          type: number
+        fatG:
+          type: number
+        servings:
+          type: number
+        recipeId:
+          type: ["integer", "null"]
+        productId:
+          type: ["integer", "null"]
+        isFavourite:
+          type: boolean
+
+    WeeklySummary:
+      type: object
+      required: [weekStart, weekEnd, avgDailyCalories, avgDailyProteinG, avgDailyWaterMl, daysOnTarget, totalCaloriesConsumed, streak, days]
+      properties:
+        weekStart:
+          type: string
+          format: date
+        weekEnd:
+          type: string
+          format: date
+        avgDailyCalories:
+          type: integer
+        avgDailyProteinG:
+          type: number
+        avgDailyWaterMl:
+          type: integer
+        daysOnTarget:
+          type: integer
+        totalCaloriesConsumed:
+          type: integer
+        streak:
+          type: integer
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyLog"
+
+    # ---- Activity ----
+    ActivityLog:
+      type: object
+      required: [id, date, steps, activeCalories, workoutDurationMin, sleepHours, estimatedCaloriesBurned, netCalorieBalance]
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        steps:
+          type: integer
+        activeCalories:
+          type: integer
+        workoutDurationMin:
+          type: integer
+        workoutType:
+          type: ["string", "null"]
+        sleepHours:
+          type: number
+        estimatedCaloriesBurned:
+          type: integer
+        netCalorieBalance:
+          type: integer
+        notes:
+          type: ["string", "null"]
+
+    ActivityLogInput:
+      type: object
+      required: [date, steps, activeCalories, workoutDurationMin, sleepHours]
+      properties:
+        date:
+          type: string
+          format: date
+        steps:
+          type: integer
+        activeCalories:
+          type: integer
+        workoutDurationMin:
+          type: integer
+        workoutType:
+          type: ["string", "null"]
+        sleepHours:
+          type: number
+        notes:
+          type: ["string", "null"]
+
+    # ---- Recipes ----
+    Recipe:
+      type: object
+      required: [id, name, prepTimeMin, servings, caloriesPerServing, proteinPerServingG, carbsPerServingG, fatPerServingG, difficulty, tags, estimatedCost, imageUrl]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        prepTimeMin:
+          type: integer
+        cookTimeMin:
+          type: integer
+        servings:
+          type: integer
+        caloriesPerServing:
+          type: integer
+        proteinPerServingG:
+          type: number
+        carbsPerServingG:
+          type: number
+        fatPerServingG:
+          type: number
+        fiberPerServingG:
+          type: ["number", "null"]
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        tags:
+          type: array
+          items:
+            type: string
+        estimatedCost:
+          type: number
+        imageUrl:
+          type: string
+        isSaved:
+          type: boolean
+
+    RecipeDetail:
+      type: object
+      required: [id, name, prepTimeMin, servings, caloriesPerServing, proteinPerServingG, carbsPerServingG, fatPerServingG, difficulty, tags, estimatedCost, imageUrl, ingredients, instructions]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        prepTimeMin:
+          type: integer
+        cookTimeMin:
+          type: integer
+        servings:
+          type: integer
+        caloriesPerServing:
+          type: integer
+        proteinPerServingG:
+          type: number
+        carbsPerServingG:
+          type: number
+        fatPerServingG:
+          type: number
+        fiberPerServingG:
+          type: ["number", "null"]
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        tags:
+          type: array
+          items:
+            type: string
+        estimatedCost:
+          type: number
+        imageUrl:
+          type: string
+        isSaved:
+          type: boolean
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeIngredient"
+        instructions:
+          type: array
+          items:
+            type: string
+
+    RecipeIngredient:
+      type: object
+      required: [id, name, quantity, unit, calories, proteinG, carbsG, fatG, estimatedCost]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        calories:
+          type: integer
+        proteinG:
+          type: number
+        carbsG:
+          type: number
+        fatG:
+          type: number
+        estimatedCost:
+          type: number
+        productId:
+          type: ["integer", "null"]
+        substitutes:
+          type: array
+          items:
+            type: string
+
+    # ---- Products ----
+    Retailer:
+      type: object
+      required: [id, name, logoUrl, isActive]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logoUrl:
+          type: string
+        isActive:
+          type: boolean
+
+    Product:
+      type: object
+      required: [id, name, retailerId, retailerName, category, priceAud, packSize, packUnit, caloriesPer100g, proteinPer100g, carbsPer100g, fatPer100g, isOnSpecial, imageUrl]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        brand:
+          type: ["string", "null"]
+        retailerId:
+          type: integer
+        retailerName:
+          type: string
+        category:
+          type: string
+          enum: [protein, dairy, pantry, fruit_veg, snacks, drinks, grains, condiments, frozen, other]
+        priceAud:
+          type: number
+        regularPriceAud:
+          type: ["number", "null"]
+        packSize:
+          type: number
+        packUnit:
+          type: string
+        caloriesPer100g:
+          type: integer
+        proteinPer100g:
+          type: number
+        carbsPer100g:
+          type: number
+        fatPer100g:
+          type: number
+        fiberPer100g:
+          type: ["number", "null"]
+        sugarPer100g:
+          type: ["number", "null"]
+        isOnSpecial:
+          type: boolean
+        savingsPercent:
+          type: ["number", "null"]
+        savingsAud:
+          type: ["number", "null"]
+        imageUrl:
+          type: string
+
+    ProductComparison:
+      type: object
+      required: [product, pricePerUnit, isCheapest, isBestValue]
+      properties:
+        product:
+          $ref: "#/components/schemas/Product"
+        pricePerUnit:
+          type: number
+        isCheapest:
+          type: boolean
+        isBestValue:
+          type: boolean
+
+    # ---- Basket ----
+    Basket:
+      type: object
+      required: [id, name, mode, itemCount, totalCost, totalServings, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        mode:
+          type: string
+          enum: [cheapest, healthiest, highest_protein, lowest_calorie, budget]
+        itemCount:
+          type: integer
+        totalCost:
+          type: number
+        totalServings:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    BasketInput:
+      type: object
+      required: [name, mode]
+      properties:
+        name:
+          type: string
+        mode:
+          type: string
+          enum: [cheapest, healthiest, highest_protein, lowest_calorie, budget]
+
+    BasketDetail:
+      type: object
+      required: [id, name, mode, items, totalCost, totalCalories, totalProteinG, totalCarbsG, totalFatG, totalServings, costPerServing, savingsFromSpecials, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        mode:
+          type: string
+          enum: [cheapest, healthiest, highest_protein, lowest_calorie, budget]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BasketItem"
+        totalCost:
+          type: number
+        totalCalories:
+          type: integer
+        totalProteinG:
+          type: number
+        totalCarbsG:
+          type: number
+        totalFatG:
+          type: number
+        totalServings:
+          type: integer
+        costPerServing:
+          type: number
+        savingsFromSpecials:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    BasketItem:
+      type: object
+      required: [id, basketId, productId, productName, retailerName, quantity, unitCost, totalCost, isOnSpecial, category]
+      properties:
+        id:
+          type: integer
+        basketId:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        retailerName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        unitCost:
+          type: number
+        totalCost:
+          type: number
+        isOnSpecial:
+          type: boolean
+        category:
+          type: string
+        isSubstitute:
+          type: boolean
+        isEssential:
+          type: boolean
+
+    BasketItemInput:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+        quantity:
+          type: number
+        unit:
+          type: string
+        isSubstitute:
+          type: boolean
+        isEssential:
+          type: boolean
+
+    BasketFromRecipesInput:
+      type: object
+      required: [recipeIds, mode]
+      properties:
+        recipeIds:
+          type: array
+          items:
+            type: integer
+        name:
+          type: string
+        mode:
+          type: string
+          enum: [cheapest, healthiest, highest_protein, lowest_calorie, budget]
+
+    ShoppingList:
+      type: object
+      required: [basketId, groups, totalCost, savingsFromSpecials]
+      properties:
+        basketId:
+          type: integer
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShoppingListGroup"
+        totalCost:
+          type: number
+        savingsFromSpecials:
+          type: number
+
+    ShoppingListGroup:
+      type: object
+      required: [groupType, groupLabel, items]
+      properties:
+        groupType:
+          type: string
+          enum: [retailer, category]
+        groupLabel:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BasketItem"
+
+    # ---- Specials ----
+    Special:
+      type: object
+      required: [id, productId, productName, retailerId, retailerName, regularPriceAud, specialPriceAud, savingsAud, savingsPercent, category, validUntil, goalFit]
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        productName:
+          type: string
+        retailerId:
+          type: integer
+        retailerName:
+          type: string
+        regularPriceAud:
+          type: number
+        specialPriceAud:
+          type: number
+        savingsAud:
+          type: number
+        savingsPercent:
+          type: number
+        category:
+          type: string
+        imageUrl:
+          type: string
+        goalFit:
+          type: array
+          items:
+            type: string
+        validUntil:
+          type: ["string", "null"]
+          format: date
+
+    # ---- Dashboard ----
+    DashboardToday:
+      type: object
+      required: [date, caloriesEaten, caloriesRemaining, calorieTarget, proteinEatenG, proteinRemainingG, proteinTargetG, carbsEatenG, fatEatenG, waterMl, netCalorieBalance, activeCaloriesBurned, goalProgressPercent, basketCost, savingsFromSpecials, streak]
+      properties:
+        date:
+          type: string
+          format: date
+        caloriesEaten:
+          type: integer
+        caloriesRemaining:
+          type: integer
+        calorieTarget:
+          type: integer
+        proteinEatenG:
+          type: number
+        proteinRemainingG:
+          type: number
+        proteinTargetG:
+          type: number
+        carbsEatenG:
+          type: number
+        fatEatenG:
+          type: number
+        waterMl:
+          type: integer
+        netCalorieBalance:
+          type: integer
+        activeCaloriesBurned:
+          type: integer
+        goalProgressPercent:
+          type: number
+        basketCost:
+          type: ["number", "null"]
+        savingsFromSpecials:
+          type: number
+        streak:
+          type: integer
+        currentWeightKg:
+          type: ["number", "null"]
+
+    SnackSuggestion:
+      type: object
+      required: [productId, name, retailerName, priceAud, caloriesPerServing, proteinPerServingG, sugarPerServingG, fatPerServingG, servingSize, servingUnit, isOnSpecial]
+      properties:
+        productId:
+          type: integer
+        name:
+          type: string
+        retailerName:
+          type: string
+        priceAud:
+          type: number
+        caloriesPerServing:
+          type: integer
+        proteinPerServingG:
+          type: number
+        sugarPerServingG:
+          type: number
+        fatPerServingG:
+          type: number
+        servingSize:
+          type: number
+        servingUnit:
+          type: string
+        isOnSpecial:
+          type: boolean
+        savingsPercent:
+          type: ["number", "null"]
+        imageUrl:
+          type: string
+        isSaved:
+          type: boolean
+
+    ProgressSummary:
+      type: object
+      required: [currentWeightKg, targetWeightKg, startWeightKg, kgLost, kgToGo, progressPercent, estimatedWeeksRemaining, weeklyTrend]
+      properties:
+        currentWeightKg:
+          type: number
+        targetWeightKg:
+          type: number
+        startWeightKg:
+          type: number
+        kgLost:
+          type: number
+        kgToGo:
+          type: number
+        progressPercent:
+          type: number
+        estimatedWeeksRemaining:
+          type: number
+        weeklyTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/WeightEntry"
+
+    WeightEntry:
+      type: object
+      required: [date, weightKg]
+      properties:
+        date:
+          type: string
+          format: date
+        weightKg:
+          type: number
+
+    # ---- Saved Items ----
+    SaveItemInput:
+      type: object
+      required: [itemId]
+      properties:
+        itemId:
+          type: integer
