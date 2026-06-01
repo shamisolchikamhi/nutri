@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign } from "lucide-react";
+import { formatMoney } from "@/lib/market";
 
 const GOALS = [
   { value: "all", label: "All Goals" },
@@ -159,7 +160,7 @@ export default function RecipesPage() {
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Flame className="h-3 w-3" />{recipe.caloriesPerServing} kcal</span>
                   <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{(recipe.prepTimeMin ?? 0) + (recipe.cookTimeMin ?? 0)} min</span>
-                  <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />${recipe.estimatedCost}</span>
+                  <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{formatMoney(recipe.estimatedCost)}</span>
                   <Badge variant="outline" className="text-xs py-0 capitalize">{recipe.difficulty}</Badge>
                 </div>
                 <div className="flex gap-3 text-xs">

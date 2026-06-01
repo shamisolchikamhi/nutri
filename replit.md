@@ -1,6 +1,6 @@
-# [Project name]
+# NutriBasket
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+NutriBasket helps people hit nutrition and body goals with meal tracking, goal-aware recipes, and market-aware grocery baskets that reflect real retailer prices, availability, and specials.
 
 ## Run & Operate
 
@@ -30,7 +30,19 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Multi-market nutrition and grocery planning: markets such as South Africa, Australia, the UK, and the US should be configuration, not hardcoded product behavior.
+- User profile and goal setup: body stats, activity, diet preferences, budget, meal frequency, and retailer preferences.
+- Goal engine: maintenance calories, calorie target, deficit, macros, weekly loss range, and timeline to goal.
+- Meal/activity tracking: calories, macros, water, weight entries, dummy activity data, streaks, and weekly summaries.
+- Recipe discovery and basket building: recommend recipes by goal, turn ingredients into deduplicated shopping baskets, calculate cost per serving, and compare basket modes.
+- Multi-retailer product layer: normalize products across stores, compare pack sizes, prices, nutrition labels, availability, and specials.
+
+## Market Model
+
+- Treat market, currency, locale, retailers, nutrition-label conventions, measurement defaults, and product ingestion rules as market-specific configuration.
+- Do not hardcode a single country, currency symbol, or retailer set in user-facing copy. Use market-aware formatting/config for display and market-scoped retailer data for catalog behavior.
+- Current frontend display defaults live in `artifacts/nutrition-app/src/lib/market.ts`. The active market can be driven by `VITE_DEFAULT_MARKET` or local storage.
+- Retailers carry a `marketCode` so product and specials integrations can be scoped by market over time.
 
 ## User preferences
 

@@ -9,6 +9,11 @@ function parseId(raw: unknown): number {
   return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
 }
 
+function parseMarketCode(raw: unknown): string | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === "string" && value.trim() ? value.toUpperCase() : null;
+}
+
 async function buildProductResponse(product: typeof productsTable.$inferSelect) {
   const retailers = await db
     .select()
@@ -39,13 +44,31 @@ async function buildProductResponse(product: typeof productsTable.$inferSelect) 
 }
 
 router.get("/retailers", async (_req, res): Promise<void> => {
-  const retailers = await db.select().from(retailersTable).where(eq(retailersTable.isActive, true));
+  const marketCode = parseMarketCode(_req.query.marketCode);
+  let retailers = await db.select().from(retailersTable).where(eq(retailersTable.isActive, true));
+
+  if (marketCode) {
+    retailers = retailers.filter((retailer) => retailer.marketCode === marketCode);
+  }
+
   res.json(retailers);
 });
 
 router.get("/products", async (req, res): Promise<void> => {
   const params = ListProductsQueryParams.safeParse(req.query);
+  const marketCode = parseMarketCode(req.query.marketCode);
   let products = await db.select().from(productsTable);
+
+  if (marketCode) {
+    const marketRetailers = await db
+      .select()
+      .from(retailersTable)
+      .where(eq(retailersTable.marketCode, marketCode));
+    const marketRetailerIds = marketRetailers.map((retailer) => retailer.id);
+    products = marketRetailerIds.length > 0
+      ? products.filter((product) => marketRetailerIds.includes(product.retailerId))
+      : [];
+  }
 
   if (params.success) {
     const { query, retailerId, category, onSpecial, maxPrice } = params.data;

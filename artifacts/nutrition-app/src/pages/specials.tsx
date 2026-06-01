@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tag, TrendingDown } from "lucide-react";
+import { formatMoney } from "@/lib/market";
 
 export default function SpecialsPage() {
   const [retailerId, setRetailerId] = useState("all");
@@ -99,10 +100,10 @@ export default function SpecialsPage() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{special.retailerName}</p>
                     <div className="flex items-baseline gap-2 mt-2">
-                      <span className="text-xl font-bold text-primary">${special.specialPriceAud}</span>
-                      <span className="text-sm text-muted-foreground line-through">${special.regularPriceAud}</span>
+                      <span className="text-xl font-bold text-primary">{formatMoney(special.specialPriceAud)}</span>
+                      <span className="text-sm text-muted-foreground line-through">{formatMoney(special.regularPriceAud)}</span>
                     </div>
-                    <p className="text-xs text-emerald-600 font-medium">Save ${special.savingsAud}</p>
+                    <p className="text-xs text-emerald-600 font-medium">Save {formatMoney(special.savingsAud)}</p>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {special.goalFit.slice(0, 2).map((g) => (
                         <Badge key={g} variant="outline" className="text-xs py-0 capitalize">{g.replace("_", " ")}</Badge>

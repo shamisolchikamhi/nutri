@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, Plus, Trash2, ChevronRight } from "lucide-react";
+import { formatMoney } from "@/lib/market";
 
 export default function BasketPage() {
   const [, setLocation] = useLocation();
@@ -103,7 +104,7 @@ export default function BasketPage() {
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span>{basket.itemCount} items</span>
                       <span>·</span>
-                      <span className="font-medium text-primary">${basket.totalCost}</span>
+                      <span className="font-medium text-primary">{formatMoney(basket.totalCost)}</span>
                       <Badge variant="outline" className="text-xs capitalize py-0">{basket.mode.replace("_", " ")}</Badge>
                     </div>
                   </div>
@@ -128,7 +129,7 @@ export default function BasketPage() {
         <CardContent className="p-4">
           <p className="text-sm font-medium text-emerald-800 mb-1">💡 Pro Tips</p>
           <ul className="text-xs text-emerald-700 space-y-1">
-            <li>• Use "Cheapest Overall" to compare prices across Woolworths, Coles & ALDI</li>
+            <li>• Use "Cheapest Overall" to compare prices across supported retailers in your market</li>
             <li>• Create a basket from a recipe to automatically add all ingredients</li>
             <li>• "Specials Only" mode highlights best value buys this week</li>
           </ul>

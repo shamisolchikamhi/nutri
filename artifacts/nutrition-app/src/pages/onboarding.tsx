@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { formatMoney, getBudgetLabel } from "@/lib/market";
 
 const STEPS = ["Welcome", "Body Stats", "Diet & Activity", "Done"];
 
@@ -196,7 +197,7 @@ export default function OnboardingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label>Weekly budget (AUD)</Label>
+                    <Label>{getBudgetLabel()}</Label>
                     <Input type="number" placeholder="150" value={form.budgetWeekly} onChange={(e) => set("budgetWeekly", e.target.value)} />
                   </div>
                   <div className="space-y-1">
@@ -231,7 +232,7 @@ export default function OnboardingPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Weekly Budget</span>
-                    <span className="font-medium">${form.budgetWeekly}</span>
+                    <span className="font-medium">{formatMoney(parseFloat(form.budgetWeekly) || 0)}</span>
                   </div>
                 </div>
                 <Button className="w-full text-base py-5" onClick={() => setLocation("/dashboard")}>

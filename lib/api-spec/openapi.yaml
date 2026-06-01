@@ -409,6 +409,12 @@ paths:
       operationId: listRetailers
       tags: [products]
       summary: List supported retailers
+      parameters:
+        - name: marketCode
+          in: query
+          description: Optional ISO 3166-1 alpha-2 market code used to scope retailers.
+          schema:
+            type: string
       responses:
         "200":
           description: Retailers list
@@ -445,6 +451,11 @@ paths:
           in: query
           schema:
             type: number
+        - name: marketCode
+          in: query
+          description: Optional ISO 3166-1 alpha-2 market code used to scope the product catalog.
+          schema:
+            type: string
       responses:
         "200":
           description: Products
@@ -1288,12 +1299,15 @@ components:
     # ---- Products ----
     Retailer:
       type: object
-      required: [id, name, logoUrl, isActive]
+      required: [id, name, marketCode, logoUrl, isActive]
       properties:
         id:
           type: integer
         name:
           type: string
+        marketCode:
+          type: string
+          description: ISO 3166-1 alpha-2 market code for the retailer, e.g. ZA, AU, GB, US.
         logoUrl:
           type: string
         isActive:

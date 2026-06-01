@@ -75,8 +75,10 @@
   - lowest calorie basket
   - budget basket
 
-**7. Multi-Retailer Product Layer**
-- Support groceries from multiple retailers, not just Woolworths
+**7. Multi-Market, Multi-Retailer Product Layer**
+- Support groceries from multiple retailers in each launch market
+- Treat market, currency, retailer set, product source, nutrition label conventions, and units as configurable per market
+- Start with one beachhead market, then add additional markets without redesigning the product model
 - Normalize products across stores
 - Match similar items across retailers
 - Compare prices across retailers

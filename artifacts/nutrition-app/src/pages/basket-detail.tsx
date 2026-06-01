@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Tag } from "lucide-react";
 import { useState } from "react";
+import { formatMoney } from "@/lib/market";
 
 export default function BasketDetailPage() {
   const [, params] = useRoute("/basket/:id");
@@ -84,7 +85,7 @@ export default function BasketDetailPage() {
         <CardContent className="p-4">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-3xl font-bold">${basket.totalCost}</p>
+              <p className="text-3xl font-bold">{formatMoney(basket.totalCost)}</p>
               <p className="text-primary-foreground/80 text-xs">Total Cost</p>
             </div>
             <div>
@@ -92,7 +93,7 @@ export default function BasketDetailPage() {
               <p className="text-primary-foreground/80 text-xs">Items</p>
             </div>
             <div>
-              <p className="text-3xl font-bold text-amber-200">${basket.savingsFromSpecials}</p>
+              <p className="text-3xl font-bold text-amber-200">{formatMoney(basket.savingsFromSpecials)}</p>
               <p className="text-primary-foreground/80 text-xs">Saved</p>
             </div>
           </div>
@@ -146,7 +147,7 @@ export default function BasketDetailPage() {
                 <SelectContent>
                   {(products ?? []).map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name} — ${p.priceAud} ({p.retailerName})
+                      {p.name} - {formatMoney(p.priceAud)} ({p.retailerName})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -170,7 +171,7 @@ export default function BasketDetailPage() {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{item.retailerName}</span>
                         <span>·</span>
-                        <span className="font-medium text-primary">${item.totalCost}</span>
+                        <span className="font-medium text-primary">{formatMoney(item.totalCost)}</span>
                         {item.isOnSpecial && <Badge variant="secondary" className="py-0 text-xs">SPECIAL</Badge>}
                       </div>
                     </div>
@@ -207,7 +208,7 @@ export default function BasketDetailPage() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-sm text-muted-foreground">Grouped by category</p>
-            <p className="text-sm font-semibold">Total: ${shoppingList.totalCost}</p>
+            <p className="text-sm font-semibold">Total: {formatMoney(shoppingList.totalCost)}</p>
           </div>
           {shoppingList.groups.map((group) => (
             <div key={group.groupLabel}>
@@ -221,7 +222,7 @@ export default function BasketDetailPage() {
                       <span className="text-xs text-muted-foreground">×{item.quantity}</span>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">${item.totalCost}</p>
+                      <p className="text-sm font-medium">{formatMoney(item.totalCost)}</p>
                       <p className="text-xs text-muted-foreground">{item.retailerName}</p>
                     </div>
                   </div>
@@ -232,7 +233,7 @@ export default function BasketDetailPage() {
           {shoppingList.savingsFromSpecials > 0 && (
             <Card className="bg-emerald-50 border-emerald-200">
               <CardContent className="p-3 text-sm text-emerald-800">
-                🎉 Saving <strong>${shoppingList.savingsFromSpecials}</strong> from specials this week!
+                Saving <strong>{formatMoney(shoppingList.savingsFromSpecials)}</strong> from specials this week!
               </CardContent>
             </Card>
           )}

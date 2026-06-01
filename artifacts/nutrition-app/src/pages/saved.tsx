@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bookmark, BookmarkX, Flame, Clock, DollarSign, ChefHat } from "lucide-react";
 import { useState } from "react";
+import { formatMoney } from "@/lib/market";
 
 export default function SavedPage() {
   const [, setLocation] = useLocation();
@@ -87,7 +88,7 @@ export default function SavedPage() {
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Flame className="h-3 w-3" />{recipe.caloriesPerServing} kcal</span>
                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{(recipe.prepTimeMin ?? 0) + (recipe.cookTimeMin ?? 0)} min</span>
-                        <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />${recipe.estimatedCost}</span>
+                        <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{formatMoney(recipe.estimatedCost)}</span>
                       </div>
                       <div className="flex gap-1 mt-1.5">
                         {recipe.tags.slice(0, 2).map((tag) => (
@@ -136,7 +137,7 @@ export default function SavedPage() {
                     <p className="font-medium text-xs leading-tight line-clamp-2">{snack.name}</p>
                     <p className="text-xs text-muted-foreground">{snack.retailerName}</p>
                     <div className="flex justify-between mt-1.5">
-                      <span className="font-bold text-primary text-sm">${snack.priceAud}</span>
+                      <span className="font-bold text-primary text-sm">{formatMoney(snack.priceAud)}</span>
                       <span className="text-xs text-muted-foreground">{snack.caloriesPerServing} kcal</span>
                     </div>
                   </CardContent>

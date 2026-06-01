@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Flame, Droplets, Zap, Target, TrendingDown, ShoppingCart, Tag, Clock } from "lucide-react";
+import { formatMoney } from "@/lib/market";
 
 function MacroRing({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
   const pct = Math.min(100, (value / Math.max(max, 1)) * 100);
@@ -153,8 +154,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Basket Cost</p>
-              <p className="font-semibold">{today?.basketCost != null ? `$${today.basketCost}` : "—"}</p>
-              <p className="text-xs text-muted-foreground">Saved ${today?.savingsFromSpecials ?? 0}</p>
+              <p className="font-semibold">{today?.basketCost != null ? formatMoney(today.basketCost) : "—"}</p>
+              <p className="text-xs text-muted-foreground">Saved {formatMoney(today?.savingsFromSpecials)}</p>
             </div>
           </CardContent>
         </Card>
@@ -204,7 +205,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Flame className="h-3 w-3" />{mealSuggestion.caloriesPerServing} kcal</span>
                   <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{(mealSuggestion.prepTimeMin ?? 0) + (mealSuggestion.cookTimeMin ?? 0)} min</span>
-                  <span>${mealSuggestion.estimatedCost}</span>
+                  <span>{formatMoney(mealSuggestion.estimatedCost)}</span>
                 </div>
               </div>
             </div>
@@ -232,7 +233,7 @@ export default function DashboardPage() {
                 />
                 <p className="text-xs font-medium leading-tight line-clamp-2">{snack.name}</p>
                 <p className="text-xs text-muted-foreground">{snack.caloriesPerServing} kcal</p>
-                <p className="text-xs font-semibold text-primary">${snack.priceAud}</p>
+                <p className="text-xs font-semibold text-primary">{formatMoney(snack.priceAud)}</p>
                 {snack.isOnSpecial && (
                   <Badge variant="secondary" className="text-xs py-0">SPECIAL</Badge>
                 )}

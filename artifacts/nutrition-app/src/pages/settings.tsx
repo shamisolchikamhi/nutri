@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Scale, Target, ShoppingBag, Save, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MARKETS, type MarketCode, getBudgetLabel, getActiveMarket, setActiveMarket } from "@/lib/market";
 
 const DIETS = [
   { value: "standard", label: "Standard" },
@@ -40,6 +41,7 @@ export default function SettingsPage() {
   const qc = useQueryClient();
   const { data: profile, isLoading } = useGetProfile();
   const { data: retailers } = useListRetailers();
+  const [marketCode, setMarketCode] = useState<MarketCode>(getActiveMarket().code);
 
   const [form, setForm] = useState({
     sex: "male",
@@ -89,6 +91,7 @@ export default function SettingsPage() {
         retailerPreferences: form.retailerPreferences,
       }),
     onSuccess: () => {
+      setActiveMarket(marketCode);
       qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
       qc.invalidateQueries({ queryKey: getGetGoalSummaryQueryKey() });
       toast({ title: "Settings saved!", description: "Your profile has been updated." });
@@ -214,7 +217,21 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
-            <Label>Weekly Budget (AUD)</Label>
+            <Label>Home Market</Label>
+            <Select value={marketCode} onValueChange={(v) => setMarketCode(v as MarketCode)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.values(MARKETS).map((market) => (
+                  <SelectItem key={market.code} value={market.code}>
+                    {market.name} ({market.currencyCode})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Controls currency display and future market-scoped grocery recommendations</p>
+          </div>
+          <div className="space-y-1">
+            <Label>{getBudgetLabel(MARKETS[marketCode])}</Label>
             <Input type="number" value={form.budgetWeekly} onChange={(e) => set("budgetWeekly", e.target.value)} />
           </div>
           <div className="space-y-1">

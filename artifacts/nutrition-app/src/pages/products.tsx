@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, Tag, BarChart2 } from "lucide-react";
+import { formatMoney } from "@/lib/market";
 
 const CATEGORIES = [
   { value: "all", label: "All Categories" },
@@ -106,9 +107,9 @@ export default function ProductsPage() {
                 <p className="font-medium text-xs leading-tight mb-1 line-clamp-2">{product.name}</p>
                 <p className="text-xs text-muted-foreground mb-2">{product.retailerName}</p>
                 <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-base font-bold text-primary">${product.priceAud}</span>
+                  <span className="text-base font-bold text-primary">{formatMoney(product.priceAud)}</span>
                   {product.isOnSpecial && product.regularPriceAud && (
-                    <span className="text-xs text-muted-foreground line-through">${product.regularPriceAud}</span>
+                    <span className="text-xs text-muted-foreground line-through">{formatMoney(product.regularPriceAud)}</span>
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground space-y-0.5">
@@ -154,8 +155,8 @@ export default function ProductsPage() {
                       <p className="text-xs text-muted-foreground">{item.product.retailerName}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold">${item.product.priceAud}</p>
-                      <p className="text-xs text-muted-foreground">${item.pricePerUnit}/unit</p>
+                      <p className="font-bold">{formatMoney(item.product.priceAud)}</p>
+                      <p className="text-xs text-muted-foreground">{formatMoney(item.pricePerUnit)}/unit</p>
                     </div>
                   </div>
                   <div className="flex gap-2 mt-1">

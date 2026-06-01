@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, ShoppingCart, ArrowLeft, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatMoney } from "@/lib/market";
 
 export default function RecipeDetailPage() {
   const [, params] = useRoute("/recipes/:id");
@@ -108,7 +109,7 @@ export default function RecipeDetailPage() {
           { icon: <Clock className="h-4 w-4" />, label: "Time", val: `${totalTime}m` },
           { icon: <Flame className="h-4 w-4" />, label: "Calories", val: `${recipe.caloriesPerServing}` },
           { icon: <Users className="h-4 w-4" />, label: "Serves", val: String(recipe.servings) },
-          { icon: <span className="text-sm">$</span>, label: "Cost", val: `$${recipe.estimatedCost}` },
+          { icon: <ShoppingCart className="h-4 w-4" />, label: "Cost", val: formatMoney(recipe.estimatedCost) },
         ].map((s) => (
           <div key={s.label} className="bg-muted/50 rounded-xl p-3 text-center">
             <div className="flex justify-center text-muted-foreground mb-1">{s.icon}</div>
@@ -150,7 +151,7 @@ export default function RecipeDetailPage() {
                   <span className="text-sm">{ing.name}</span>
                   <div className="text-right">
                     <span className="text-sm font-medium">{ing.quantity} {ing.unit}</span>
-                    <span className="text-xs text-muted-foreground ml-2">${ing.estimatedCost}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{formatMoney(ing.estimatedCost)}</span>
                   </div>
                 </div>
               ))}
