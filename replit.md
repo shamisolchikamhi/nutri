@@ -9,6 +9,9 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --limit=80` — fetch a real product/nutrition fixture without writing to the DB
+- `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --limit=80 --write` — seed scraped product/nutrition data into the DB
+- `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --from=scripts/out/open-food-facts-ZA.json --write` — seed from a cached scrape fixture
 - Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
@@ -50,7 +53,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Open Food Facts provides real product/nutrition metadata but not retailer shelf prices; the first scraper uses deterministic test prices until retailer-specific price feeds/scrapers are connected.
 
 ## Pointers
 
