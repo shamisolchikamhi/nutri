@@ -38,7 +38,7 @@ export default function BasketDetailPage() {
 
   const addMutation = useMutation({
     mutationFn: (productId: number) =>
-      addBasketItem(id, { productId, quantity: 1, unit: "unit" }),
+      addBasketItem(id, { productId, quantity: 1, unit: "pack" }),
     onSuccess: () => { inv(); setAddingProductId(null); },
   });
 
@@ -171,6 +171,12 @@ export default function BasketDetailPage() {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{item.retailerName}</span>
                         <span>·</span>
+                        {(item as any).packSize && (
+                          <>
+                            <span>{(item as any).packSize}{(item as any).packUnit} pack</span>
+                            <span>·</span>
+                          </>
+                        )}
                         <span className="font-medium text-primary">{formatMoney(item.totalCost)}</span>
                         {item.isOnSpecial && <Badge variant="secondary" className="py-0 text-xs">SPECIAL</Badge>}
                       </div>
@@ -182,7 +188,7 @@ export default function BasketDetailPage() {
                       >
                         <Minus className="h-3 w-3" />
                       </button>
-                      <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                      <span className="w-14 text-center text-sm font-medium">{item.quantity} pack{item.quantity === 1 ? "" : "s"}</span>
                       <button
                         className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
                         onClick={() => updateMutation.mutate({ itemId: item.id, productId: item.productId, quantity: item.quantity + 1 })}
@@ -219,7 +225,7 @@ export default function BasketDetailPage() {
                     <div className="flex items-center gap-2">
                       <div className="h-4 w-4 rounded border border-muted-foreground/30" />
                       <span className="text-sm">{item.productName}</span>
-                      <span className="text-xs text-muted-foreground">×{item.quantity}</span>
+                      <span className="text-xs text-muted-foreground">×{item.quantity} pack{item.quantity === 1 ? "" : "s"}</span>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatMoney(item.totalCost)}</p>

@@ -1,5 +1,5 @@
 import { useRoute, useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useGetRecipe,
   saveRecipe,
@@ -16,6 +16,23 @@ import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, ShoppingCart, ArrowLeft
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/market";
 
+type RelatedRecipe = {
+  id: number;
+  name: string;
+  estimatedCost: number;
+  caloriesPerServing: number;
+  proteinPerServingG: number;
+  mealTypeLabel?: string;
+  sharedIngredients: string[];
+  savedBoost: boolean;
+};
+
+async function apiJson<T>(path: string): Promise<T> {
+  const response = await fetch(`/api${path}`);
+  if (!response.ok) throw new Error(`Request failed with ${response.status}`);
+  return response.json() as Promise<T>;
+}
+
 export default function RecipeDetailPage() {
   const [, params] = useRoute("/recipes/:id");
   const [, setLocation] = useLocation();
@@ -24,6 +41,11 @@ export default function RecipeDetailPage() {
   const id = parseInt(params?.id ?? "0");
 
   const { data: recipe, isLoading } = useGetRecipe(id);
+  const { data: relatedRecipes } = useQuery({
+    queryKey: ["related-recipes", id],
+    queryFn: () => apiJson<RelatedRecipe[]>(`/recipes/${id}/related`),
+    enabled: id > 0,
+  });
 
   const saveMutation = useMutation({
     mutationFn: () => saveRecipe({ itemId: id }),
@@ -173,6 +195,40 @@ export default function RecipeDetailPage() {
                 </li>
               ))}
             </ol>
+          </CardContent>
+        </Card>
+      )}
+
+      {relatedRecipes && relatedRecipes.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <h2 className="font-semibold mb-3">More recipes from similar ingredients</h2>
+            <div className="space-y-2">
+              {relatedRecipes.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setLocation(`/recipes/${item.id}`)}
+                  className="w-full text-left rounded-lg border p-3 hover:border-primary/40 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex gap-1.5 flex-wrap mb-1">
+                        {item.mealTypeLabel && <Badge variant="outline">{item.mealTypeLabel}</Badge>}
+                        {item.savedBoost && <Badge variant="secondary">Saved</Badge>}
+                      </div>
+                      <p className="font-medium">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Shares {item.sharedIngredients.join(", ")}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-muted-foreground">
+                      <p>{formatMoney(item.estimatedCost)}</p>
+                      <p>{item.proteinPerServingG}g protein</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

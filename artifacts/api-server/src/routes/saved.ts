@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   db,
   savedRecipesTable,
@@ -13,11 +13,25 @@ import { SaveRecipeBody, UnsaveRecipeParams, SaveSnackBody } from "@workspace/ap
 
 const router: IRouter = Router();
 
+let recipesSchemaReady: Promise<void> | null = null;
+
+function ensureRecipesSchema() {
+  recipesSchemaReady ??= db.execute(sql`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS meal_type text NOT NULL DEFAULT 'lunch_dinner'`).then(
+    () => undefined,
+    (error) => {
+      recipesSchemaReady = null;
+      throw error;
+    },
+  );
+  return recipesSchemaReady;
+}
+
 function parseId(raw: unknown): number {
   return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
 }
 
 router.get("/saved/recipes", async (_req, res): Promise<void> => {
+  await ensureRecipesSchema();
   const saved = await db.select().from(savedRecipesTable);
   const savedIds = new Set(saved.map((s) => s.recipeId));
 

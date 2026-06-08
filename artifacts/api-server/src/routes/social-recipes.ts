@@ -14,6 +14,7 @@ import {
 const router: IRouter = Router();
 
 let socialRecipeSourcesSchemaReady: Promise<void> | null = null;
+let recipesSchemaReady: Promise<void> | null = null;
 
 type Platform = "tiktok" | "instagram" | "facebook" | "other";
 
@@ -96,6 +97,17 @@ function ensureSocialRecipeSourcesSchema() {
   });
 
   return socialRecipeSourcesSchemaReady;
+}
+
+function ensureRecipesSchema() {
+  recipesSchemaReady ??= db.execute(sql`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS meal_type text NOT NULL DEFAULT 'lunch_dinner'`).then(
+    () => undefined,
+    (error) => {
+      recipesSchemaReady = null;
+      throw error;
+    },
+  );
+  return recipesSchemaReady;
 }
 
 const UNIT_WORDS = new Set([
@@ -220,6 +232,13 @@ function detectPlatform(url: string): Platform {
 
 function normalizeToken(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function inferMealTypeFromText(value: string) {
+  const text = normalizeToken(value);
+  if (/\b(oats?|porridge|breakfast|granola|pancakes?|smoothie|yogh?urt|toast|eggs?)\b/.test(text)) return "breakfast";
+  if (/\b(snack|bar|balls?|bites?|nuts?|fruit|chips?|dip|hummus)\b/.test(text)) return "snack";
+  return "lunch_dinner";
 }
 
 function tokenize(value: string) {
@@ -623,15 +642,28 @@ function estimateGenericNutrition(ingredient: ParsedIngredient) {
 }
 
 function basketQuantityFor(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
+  const needed = ingredientAmountInPackUnit(ingredient, product);
+  return Math.max(1, Math.ceil(needed / Math.max(product.packSize, 0.001)));
+}
+
+function ingredientAmountInPackUnit(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
   if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "kg") {
-    const kg = ingredient.unit === "kg" ? ingredient.quantity : ingredient.quantity / 1000;
-    return Math.max(1, Math.ceil(kg / Math.max(product.packSize, 0.001)));
+    return ingredient.unit === "kg" ? ingredient.quantity : ingredient.quantity / 1000;
+  }
+  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "g") {
+    return ingredient.unit === "kg" ? ingredient.quantity * 1000 : ingredient.quantity;
   }
   if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "l") {
-    const litres = ingredient.unit === "l" ? ingredient.quantity : ingredient.quantity / 1000;
-    return Math.max(1, Math.ceil(litres / Math.max(product.packSize, 0.001)));
+    return ingredient.unit === "l" ? ingredient.quantity : ingredient.quantity / 1000;
   }
-  return Math.max(1, Math.ceil(ingredient.quantity));
+  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "ml") {
+    return ingredient.unit === "l" ? ingredient.quantity * 1000 : ingredient.quantity;
+  }
+  if ((product.packUnit === "g" || product.packUnit === "kg") && !["unit", "each"].includes(ingredient.unit)) {
+    const grams = estimateIngredientGrams(ingredient);
+    return product.packUnit === "kg" ? grams / 1000 : grams;
+  }
+  return ingredient.quantity;
 }
 
 async function getMarketProducts(marketCode: string) {
@@ -694,8 +726,6 @@ async function matchIngredients(ingredients: ParsedIngredient[], marketCode: str
     const packs = basketQuantityFor(ingredient, best);
     return {
       ...ingredient,
-      quantity: packs,
-      unit: "unit",
       productId: best.id,
       productName: best.name,
       retailerName: retailerNames.get(best.retailerId) ?? "Unknown",
@@ -736,6 +766,7 @@ router.get("/social-recipes", async (_req, res): Promise<void> => {
 
 router.post("/social-recipes", async (req, res): Promise<void> => {
   await ensureSocialRecipeSourcesSchema();
+  await ensureRecipesSchema();
   const sourceUrl = getString(req.body?.sourceUrl);
   const mediaDataUrls = Array.isArray(req.body?.mediaDataUrls)
     ? req.body.mediaDataUrls
@@ -831,6 +862,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
   const totalFat = matchedIngredients.reduce((sum, ingredient) => sum + ingredient.fatG, 0);
   const estimatedCost = matchedIngredients.reduce((sum, ingredient) => sum + ingredient.estimatedCost, 0);
   const hasUnmatched = matchedIngredients.some((ingredient) => !ingredient.productId);
+  const mealType = inferMealTypeFromText(`${title} ${caption} ${ingredientsText}`);
 
   const [recipe] = await db
     .insert(recipesTable)
@@ -846,6 +878,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
       fatPerServingG: Math.round(totalFat / servings * 10) / 10,
       fiberPerServingG: null,
       difficulty: "easy",
+      mealType,
       tags: ["social", platform, hasUnmatched ? "needs_review" : "basket_ready"],
       estimatedCost: Math.round(estimatedCost * 100) / 100,
       imageUrl: thumbnailUrl,
@@ -920,23 +953,32 @@ router.post("/social-recipes/:id/basket", async (req, res): Promise<void> => {
     })
     .returning();
 
-  const ingredientMap = new Map<number, { productId: number; quantity: number; unit: string }>();
+  const ingredientMap = new Map<number, { productId: number; needed: number; product: typeof productsTable.$inferSelect }>();
   for (const ingredient of matched) {
     if (!ingredient.productId) continue;
+    const product = (await db.select().from(productsTable).where(eq(productsTable.id, ingredient.productId)).limit(1))[0];
+    if (!product) continue;
+    const needed = ingredientAmountInPackUnit({
+      raw: ingredient.name,
+      name: ingredient.name,
+      quantity: ingredient.quantity,
+      unit: ingredient.unit,
+    }, product);
     const existing = ingredientMap.get(ingredient.productId);
     if (existing) {
-      existing.quantity += ingredient.quantity;
+      existing.needed += needed;
     } else {
       ingredientMap.set(ingredient.productId, {
         productId: ingredient.productId,
-        quantity: ingredient.quantity,
-        unit: ingredient.unit,
+        needed,
+        product,
       });
     }
   }
 
   for (const item of ingredientMap.values()) {
-    await db.insert(basketItemsTable).values({ basketId: basket.id, ...item });
+    const quantity = Math.max(1, Math.ceil(item.needed / Math.max(item.product.packSize, 0.001)));
+    await db.insert(basketItemsTable).values({ basketId: basket.id, productId: item.productId, quantity, unit: "pack" });
   }
 
   res.status(201).json({

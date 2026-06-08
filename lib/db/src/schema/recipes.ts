@@ -15,6 +15,7 @@ export const recipesTable = pgTable("recipes", {
   fatPerServingG: real("fat_per_serving_g").notNull(),
   fiberPerServingG: real("fiber_per_serving_g"),
   difficulty: text("difficulty").notNull().default("easy"), // easy | medium | hard
+  mealType: text("meal_type").notNull().default("lunch_dinner"), // breakfast | lunch_dinner | snack
   tags: text("tags").array().notNull().default([]),
   estimatedCost: real("estimated_cost").notNull().default(0),
   imageUrl: text("image_url").notNull().default(""),

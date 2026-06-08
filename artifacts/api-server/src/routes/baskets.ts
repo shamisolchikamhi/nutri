@@ -35,6 +35,31 @@ async function getRetailerName(id: number): Promise<string> {
   return r[0]?.name ?? "Unknown";
 }
 
+function productPackGrams(product: typeof productsTable.$inferSelect) {
+  if (product.packUnit === "kg") return product.packSize * 1000;
+  if (product.packUnit === "g") return product.packSize;
+  if (product.packUnit === "l") return product.packSize * 1000;
+  if (product.packUnit === "ml") return product.packSize;
+  return Math.max(1, product.packSize) * 100;
+}
+
+function ingredientAmountInPackUnit(ingredient: typeof recipeIngredientsTable.$inferSelect, product: typeof productsTable.$inferSelect) {
+  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "kg") {
+    return ingredient.unit === "kg" ? ingredient.quantity : ingredient.quantity / 1000;
+  }
+  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "g") {
+    return ingredient.unit === "kg" ? ingredient.quantity * 1000 : ingredient.quantity;
+  }
+  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "l") {
+    return ingredient.unit === "l" ? ingredient.quantity : ingredient.quantity / 1000;
+  }
+  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "ml") {
+    return ingredient.unit === "l" ? ingredient.quantity * 1000 : ingredient.quantity;
+  }
+  if (ingredient.unit === "unit") return ingredient.quantity;
+  return ingredient.quantity;
+}
+
 async function buildBasketItemResponse(item: typeof basketItemsTable.$inferSelect) {
   const products = await db
     .select()
@@ -56,6 +81,8 @@ async function buildBasketItemResponse(item: typeof basketItemsTable.$inferSelec
     unit: item.unit,
     unitCost: product.priceAud,
     totalCost: Math.round(product.priceAud * item.quantity * 100) / 100,
+    packSize: product.packSize,
+    packUnit: product.packUnit,
     isOnSpecial: product.isOnSpecial,
     category: product.category,
     isSubstitute: item.isSubstitute,
@@ -95,7 +122,7 @@ async function buildBasketDetail(id: number) {
     totalCost += item.totalCost;
     const product = productMap.get(item.productId);
     if (product) {
-      const servingG = (item.quantity * product.packSize * 100);
+      const servingG = item.quantity * productPackGrams(product);
       totalCalories += Math.round((product.caloriesPer100g * servingG) / 100);
       totalProteinG += (product.proteinPer100g * servingG) / 100;
       totalCarbsG += (product.carbsPer100g * servingG) / 100;
@@ -288,8 +315,8 @@ router.post("/baskets/from-recipes", async (req, res): Promise<void> => {
     .values({ name: name ?? "Recipe Basket", mode: mode ?? "cheapest" })
     .returning();
 
-  // Gather all ingredients from all recipes, deduplicate by productId
-  const ingredientMap = new Map<number, { productId: number; quantity: number; unit: string }>();
+  // Gather all ingredients from all recipes, deduplicate by productId and buy whole shop packs.
+  const ingredientMap = new Map<number, { productId: number; needed: number; product: typeof productsTable.$inferSelect }>();
   for (const recipeId of recipeIds) {
     const ingredients = await db
       .select()
@@ -298,14 +325,17 @@ router.post("/baskets/from-recipes", async (req, res): Promise<void> => {
 
     for (const ing of ingredients) {
       if (ing.productId) {
+        const product = (await db.select().from(productsTable).where(eq(productsTable.id, ing.productId)).limit(1))[0];
+        if (!product) continue;
+        const needed = ingredientAmountInPackUnit(ing, product);
         const existing = ingredientMap.get(ing.productId);
         if (existing) {
-          existing.quantity += ing.quantity;
+          existing.needed += needed;
         } else {
           ingredientMap.set(ing.productId, {
             productId: ing.productId,
-            quantity: ing.quantity,
-            unit: ing.unit,
+            needed,
+            product,
           });
         }
       }
@@ -313,7 +343,8 @@ router.post("/baskets/from-recipes", async (req, res): Promise<void> => {
   }
 
   for (const item of ingredientMap.values()) {
-    await db.insert(basketItemsTable).values({ basketId: basket.id, ...item });
+    const quantity = Math.max(1, Math.ceil(item.needed / Math.max(item.product.packSize, 0.001)));
+    await db.insert(basketItemsTable).values({ basketId: basket.id, productId: item.productId, quantity, unit: "pack" });
   }
 
   const detail = await buildBasketDetail(basket.id);

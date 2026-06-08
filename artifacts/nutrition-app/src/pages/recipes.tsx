@@ -37,6 +37,13 @@ const DIFFICULTY = [
   { value: "hard", label: "Hard" },
 ];
 
+const MEAL_CATEGORIES = [
+  { value: "all", label: "All Meals" },
+  { value: "breakfast", label: "Breakfast" },
+  { value: "lunch_dinner", label: "Lunch/Dinner" },
+  { value: "snack", label: "Snack" },
+];
+
 type SocialRecipe = {
   id: number;
   platform: string;
@@ -188,6 +195,7 @@ export default function RecipesPage() {
   const [query, setQuery] = useState("");
   const [goal, setGoal] = useState("all");
   const [difficulty, setDifficulty] = useState("all");
+  const [mealCategory, setMealCategory] = useState("all");
   const [viewMode, setViewMode] = useState<"all" | "recommended" | "social">("all");
   const [socialForm, setSocialForm] = useState({
     sourceUrl: "",
@@ -218,7 +226,10 @@ export default function RecipesPage() {
     enabled: viewMode === "social",
   });
 
-  const displayRecipes = viewMode === "recommended" ? recommended : recipes;
+  const displayRecipes = (viewMode === "recommended" ? recommended : recipes)?.filter((recipe) => {
+    if (mealCategory === "all") return true;
+    return ((recipe as any).mealType ?? "lunch_dinner") === mealCategory || recipe.tags?.includes(mealCategory);
+  });
   const loading = viewMode === "recommended" ? recLoading : isLoading;
 
   const saveMutation = useMutation({
@@ -343,6 +354,20 @@ export default function RecipesPage() {
             <Link2 className="h-3.5 w-3.5 mr-1" /> Social
           </Button>
         </div>
+        {viewMode !== "social" && (
+          <div className="flex gap-2 flex-wrap">
+            {MEAL_CATEGORIES.map((category) => (
+              <Button
+                key={category.value}
+                variant={mealCategory === category.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setMealCategory(category.value)}
+              >
+                {category.label}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recipe Grid */}
@@ -574,6 +599,9 @@ export default function RecipesPage() {
               </div>
               <CardContent className="p-3 space-y-2">
                 <div className="flex flex-wrap gap-1">
+                  {(recipe as any).mealTypeLabel && (
+                    <Badge variant="outline" className="text-xs py-0">{(recipe as any).mealTypeLabel}</Badge>
+                  )}
                   {recipe.tags.slice(0, 3).map((tag) => (
                     <Badge key={tag} variant="secondary" className="text-xs py-0">{tag.replace("_", " ")}</Badge>
                   ))}

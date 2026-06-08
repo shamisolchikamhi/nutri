@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import {
   db,
   dailyLogsTable,
@@ -17,6 +17,19 @@ import {
 import { calcGoalMetrics } from "./profile";
 
 const router: IRouter = Router();
+
+let recipesSchemaReady: Promise<void> | null = null;
+
+function ensureRecipesSchema() {
+  recipesSchemaReady ??= db.execute(sql`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS meal_type text NOT NULL DEFAULT 'lunch_dinner'`).then(
+    () => undefined,
+    (error) => {
+      recipesSchemaReady = null;
+      throw error;
+    },
+  );
+  return recipesSchemaReady;
+}
 
 router.get("/dashboard/today", async (_req, res): Promise<void> => {
   const today = new Date().toISOString().split("T")[0];
@@ -171,6 +184,7 @@ router.get("/dashboard/snack-suggestions", async (_req, res): Promise<void> => {
 });
 
 router.get("/dashboard/meal-suggestion", async (_req, res): Promise<void> => {
+  await ensureRecipesSchema();
   const today = new Date().toISOString().split("T")[0];
   const meals = await db.select().from(mealEntriesTable).where(eq(mealEntriesTable.date, today));
   const caloriesEaten = meals.reduce((s, m) => s + m.calories, 0);
