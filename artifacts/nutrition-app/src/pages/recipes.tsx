@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useListRecipes,
   useGetRecommendedRecipes,
@@ -12,10 +12,12 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign } from "lucide-react";
+import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign, Link2, ShoppingCart, ExternalLink } from "lucide-react";
 import { formatMoney } from "@/lib/market";
 
 const GOALS = [
@@ -34,13 +36,60 @@ const DIFFICULTY = [
   { value: "hard", label: "Hard" },
 ];
 
+type SocialRecipe = {
+  id: number;
+  platform: string;
+  sourceUrl: string;
+  creatorHandle: string | null;
+  title: string;
+  caption: string;
+  marketCode: string;
+  status: string;
+  importedRecipeId: number | null;
+  matchedCount: number;
+  unmatchedIngredients: string[];
+  recipe: {
+    id: number;
+    name: string;
+    estimatedCost: number;
+    caloriesPerServing: number;
+    proteinPerServingG: number;
+    servings: number;
+  } | null;
+};
+
+async function apiJson<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error ?? `Request failed with ${response.status}`);
+  }
+  return response.json() as Promise<T>;
+}
+
 export default function RecipesPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [goal, setGoal] = useState("all");
   const [difficulty, setDifficulty] = useState("all");
-  const [showRecommended, setShowRecommended] = useState(false);
+  const [viewMode, setViewMode] = useState<"all" | "recommended" | "social">("all");
+  const [socialForm, setSocialForm] = useState({
+    sourceUrl: "",
+    platform: "auto",
+    title: "",
+    creatorHandle: "",
+    ingredientsText: "",
+    caption: "",
+    servings: "2",
+    marketCode: "ZA",
+  });
 
   const { data: recipes, isLoading } = useListRecipes(
     {
@@ -48,12 +97,17 @@ export default function RecipesPage() {
       goal: goal !== "all" ? (goal as any) : undefined,
       difficulty: difficulty !== "all" ? (difficulty as any) : undefined,
     },
-    { query: { enabled: !showRecommended } as any }
+    { query: { enabled: viewMode === "all" } as any }
   );
-  const { data: recommended, isLoading: recLoading } = useGetRecommendedRecipes({ query: { enabled: showRecommended } as any });
+  const { data: recommended, isLoading: recLoading } = useGetRecommendedRecipes({ query: { enabled: viewMode === "recommended" } as any });
+  const { data: socialRecipes, isLoading: socialLoading, refetch: refetchSocialRecipes } = useQuery({
+    queryKey: ["social-recipes"],
+    queryFn: () => apiJson<SocialRecipe[]>("/social-recipes"),
+    enabled: viewMode === "social",
+  });
 
-  const displayRecipes = showRecommended ? recommended : recipes;
-  const loading = showRecommended ? recLoading : isLoading;
+  const displayRecipes = viewMode === "recommended" ? recommended : recipes;
+  const loading = viewMode === "recommended" ? recLoading : isLoading;
 
   const saveMutation = useMutation({
     mutationFn: (recipeId: number) => saveRecipe({ itemId: recipeId }),
@@ -70,6 +124,46 @@ export default function RecipesPage() {
       qc.invalidateQueries({ queryKey: getListRecipesQueryKey() });
     },
   });
+
+  const importSocialMutation = useMutation({
+    mutationFn: () =>
+      apiJson<SocialRecipe>("/social-recipes", {
+        method: "POST",
+        body: JSON.stringify({
+          ...socialForm,
+          platform: socialForm.platform === "auto" ? undefined : socialForm.platform,
+          servings: parseInt(socialForm.servings) || 2,
+        }),
+      }),
+    onSuccess: () => {
+      setSocialForm({
+        sourceUrl: "",
+        platform: "auto",
+        title: "",
+        creatorHandle: "",
+        ingredientsText: "",
+        caption: "",
+        servings: "2",
+        marketCode: "ZA",
+      });
+      refetchSocialRecipes();
+      qc.invalidateQueries({ queryKey: getListRecipesQueryKey() });
+    },
+  });
+
+  const basketMutation = useMutation({
+    mutationFn: (socialRecipeId: number) =>
+      apiJson<{ basketId: number; unmatchedIngredients: string[] }>(`/social-recipes/${socialRecipeId}/basket`, {
+        method: "POST",
+        body: JSON.stringify({ mode: "cheapest" }),
+      }),
+    onSuccess: (basket) => setLocation(`/basket/${basket.basketId}`),
+  });
+
+  const importedSocialRecipes = socialRecipes ?? [];
+  const socialBusy = socialLoading;
+  const updateSocialForm = (key: keyof typeof socialForm, value: string) =>
+    setSocialForm((form) => ({ ...form, [key]: value }));
 
   return (
     <div className="space-y-5">
@@ -100,22 +194,183 @@ export default function RecipesPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
-            variant={!showRecommended ? "default" : "outline"}
+            variant={viewMode === "all" ? "default" : "outline"}
             size="sm"
-            onClick={() => setShowRecommended(false)}
+            onClick={() => setViewMode("all")}
           >All Recipes</Button>
           <Button
-            variant={showRecommended ? "default" : "outline"}
+            variant={viewMode === "recommended" ? "default" : "outline"}
             size="sm"
-            onClick={() => setShowRecommended(true)}
+            onClick={() => setViewMode("recommended")}
           >Recommended</Button>
+          <Button
+            variant={viewMode === "social" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("social")}
+          >
+            <Link2 className="h-3.5 w-3.5 mr-1" /> Social
+          </Button>
         </div>
       </div>
 
       {/* Recipe Grid */}
-      {loading ? (
+      {viewMode === "social" ? (
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div>
+                <h2 className="font-semibold">Import social recipe</h2>
+                <p className="text-sm text-muted-foreground">Paste a public recipe link and the ingredients shown in the post.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1 md:col-span-2">
+                  <Label>Post URL</Label>
+                  <Input
+                    placeholder="https://www.tiktok.com/@creator/video/..."
+                    value={socialForm.sourceUrl}
+                    onChange={(e) => updateSocialForm("sourceUrl", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Title</Label>
+                  <Input
+                    placeholder="High protein chicken bowl"
+                    value={socialForm.title}
+                    onChange={(e) => updateSocialForm("title", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Creator</Label>
+                  <Input
+                    placeholder="@creator"
+                    value={socialForm.creatorHandle}
+                    onChange={(e) => updateSocialForm("creatorHandle", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Platform</Label>
+                  <Select value={socialForm.platform} onValueChange={(value) => updateSocialForm("platform", value)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto detect</SelectItem>
+                      <SelectItem value="tiktok">TikTok</SelectItem>
+                      <SelectItem value="instagram">Instagram</SelectItem>
+                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Servings</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={socialForm.servings}
+                    onChange={(e) => updateSocialForm("servings", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <Label>Ingredients</Label>
+                  <Textarea
+                    placeholder={"1 cup oats\n2 bananas\n200g yoghurt\n1 tbsp peanut butter"}
+                    value={socialForm.ingredientsText}
+                    onChange={(e) => updateSocialForm("ingredientsText", e.target.value)}
+                    className="min-h-28"
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <Label>Caption or notes</Label>
+                  <Textarea
+                    placeholder="Optional caption, method, or notes from the post"
+                    value={socialForm.caption}
+                    onChange={(e) => updateSocialForm("caption", e.target.value)}
+                    className="min-h-20"
+                  />
+                </div>
+              </div>
+              {importSocialMutation.error && (
+                <p className="text-sm text-destructive">{(importSocialMutation.error as Error).message}</p>
+              )}
+              <Button
+                onClick={() => importSocialMutation.mutate()}
+                disabled={importSocialMutation.isPending || !socialForm.sourceUrl || (!socialForm.ingredientsText && !socialForm.caption)}
+              >
+                {importSocialMutation.isPending ? "Matching ingredients..." : "Import and match local products"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {socialBusy ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1,2].map(i => <Skeleton key={i} className="h-44 rounded-xl" />)}
+            </div>
+          ) : importedSocialRecipes.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Link2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              <p>No social recipes imported yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {importedSocialRecipes.map((item) => (
+                <Card key={item.id}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="secondary" className="capitalize">{item.platform}</Badge>
+                          <Badge variant={item.status === "needs_review" ? "outline" : "default"} className="capitalize">
+                            {item.status.replace("_", " ")}
+                          </Badge>
+                        </div>
+                        <h3 className="font-semibold leading-tight">{item.title}</h3>
+                        {item.creatorHandle && <p className="text-xs text-muted-foreground">{item.creatorHandle}</p>}
+                      </div>
+                      <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                      <div className="rounded-lg bg-muted/50 p-2">
+                        <p className="font-bold">{item.matchedCount}</p>
+                        <p className="text-xs text-muted-foreground">matched</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/50 p-2">
+                        <p className="font-bold">{item.unmatchedIngredients.length}</p>
+                        <p className="text-xs text-muted-foreground">review</p>
+                      </div>
+                      <div className="rounded-lg bg-muted/50 p-2">
+                        <p className="font-bold">{item.recipe ? formatMoney(item.recipe.estimatedCost) : "-"}</p>
+                        <p className="text-xs text-muted-foreground">basket est.</p>
+                      </div>
+                    </div>
+                    {item.unmatchedIngredients.length > 0 && (
+                      <p className="text-xs text-amber-700">
+                        Needs match: {item.unmatchedIngredients.slice(0, 4).join(", ")}
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      {item.importedRecipeId && (
+                        <Button variant="outline" size="sm" onClick={() => setLocation(`/recipes/${item.importedRecipeId}`)}>
+                          View recipe
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => basketMutation.mutate(item.id)}
+                        disabled={basketMutation.isPending || item.matchedCount === 0}
+                      >
+                        <ShoppingCart className="h-3.5 w-3.5 mr-1" /> Create basket
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-64 rounded-xl" />)}
         </div>

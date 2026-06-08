@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, real, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -43,3 +43,25 @@ export const recipeIngredientsTable = pgTable("recipe_ingredients", {
 export const insertRecipeIngredientSchema = createInsertSchema(recipeIngredientsTable).omit({ id: true });
 export type InsertRecipeIngredient = z.infer<typeof insertRecipeIngredientSchema>;
 export type RecipeIngredient = typeof recipeIngredientsTable.$inferSelect;
+
+export const socialRecipeSourcesTable = pgTable("social_recipe_sources", {
+  id: serial("id").primaryKey(),
+  platform: text("platform").notNull(), // tiktok | instagram | facebook | other
+  sourceUrl: text("source_url").notNull(),
+  creatorHandle: text("creator_handle"),
+  title: text("title").notNull(),
+  caption: text("caption").notNull().default(""),
+  ingredientsText: text("ingredients_text").notNull().default(""),
+  thumbnailUrl: text("thumbnail_url").notNull().default(""),
+  marketCode: text("market_code").notNull().default("ZA"),
+  importedRecipeId: integer("imported_recipe_id"),
+  status: text("status").notNull().default("imported"), // imported | needs_review | rejected
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertSocialRecipeSourceSchema = createInsertSchema(socialRecipeSourcesTable).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSocialRecipeSource = z.infer<typeof insertSocialRecipeSourceSchema>;
+export type SocialRecipeSource = typeof socialRecipeSourcesTable.$inferSelect;

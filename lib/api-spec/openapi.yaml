@@ -27,6 +27,8 @@ tags:
     description: Dashboard summaries and insights
   - name: saved
     description: Saved items (recipes, baskets, snacks)
+  - name: social-recipes
+    description: Social recipe imports and local product matching
 paths:
   /healthz:
     get:
@@ -402,6 +404,70 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Recipe"
+
+  # ---- Social Recipes ----
+  /social-recipes:
+    get:
+      operationId: listSocialRecipes
+      tags: [social-recipes]
+      summary: List social recipe imports and local product match status
+      responses:
+        "200":
+          description: Social recipe imports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SocialRecipe"
+    post:
+      operationId: importSocialRecipe
+      tags: [social-recipes]
+      summary: Import a social recipe from a public link and match available ingredients to local products
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SocialRecipeInput"
+      responses:
+        "201":
+          description: Imported social recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialRecipe"
+
+  /social-recipes/{id}/basket:
+    post:
+      operationId: createBasketFromSocialRecipe
+      tags: [social-recipes]
+      summary: Create a grocery basket from matched local-store ingredients for a social recipe
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Basket created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [basketId, basketName, itemCount, unmatchedIngredients]
+                properties:
+                  basketId:
+                    type: integer
+                  basketName:
+                    type: string
+                  itemCount:
+                    type: integer
+                  unmatchedIngredients:
+                    type: array
+                    items:
+                      type: string
 
   # ---- Products ----
   /retailers:
@@ -1295,6 +1361,63 @@ components:
           type: array
           items:
             type: string
+
+    SocialRecipeInput:
+      type: object
+      required: [sourceUrl]
+      properties:
+        platform:
+          type: string
+          enum: [tiktok, instagram, facebook, other]
+        sourceUrl:
+          type: string
+        creatorHandle:
+          type: string
+        title:
+          type: string
+        caption:
+          type: string
+        ingredientsText:
+          type: string
+        servings:
+          type: integer
+        marketCode:
+          type: string
+        thumbnailUrl:
+          type: string
+
+    SocialRecipe:
+      type: object
+      required: [id, platform, sourceUrl, title, marketCode, status, matchedCount, unmatchedIngredients]
+      properties:
+        id:
+          type: integer
+        platform:
+          type: string
+        sourceUrl:
+          type: string
+        creatorHandle:
+          type: ["string", "null"]
+        title:
+          type: string
+        caption:
+          type: string
+        marketCode:
+          type: string
+        status:
+          type: string
+        importedRecipeId:
+          type: ["integer", "null"]
+        matchedCount:
+          type: integer
+        unmatchedIngredients:
+          type: array
+          items:
+            type: string
+        recipe:
+          anyOf:
+            - $ref: "#/components/schemas/Recipe"
+            - type: "null"
 
     # ---- Products ----
     Retailer:

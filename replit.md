@@ -38,6 +38,7 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 - Goal engine: maintenance calories, calorie target, deficit, macros, weekly loss range, and timeline to goal.
 - Meal/activity tracking: calories, macros, water, weight entries, dummy activity data, streaks, and weekly summaries.
 - Recipe discovery and basket building: recommend recipes by goal, turn ingredients into deduplicated shopping baskets, calculate cost per serving, and compare basket modes.
+- Social recipe import: paste public TikTok, Instagram, or Facebook recipe links plus available ingredient text, store creator/source attribution, match ingredients to local-market products, and create baskets from matched items.
 - Multi-retailer product layer: normalize products across stores, compare pack sizes, prices, nutrition labels, availability, and specials.
 
 ## Market Model
@@ -54,6 +55,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 ## Gotchas
 
 - Open Food Facts provides real product/nutrition metadata but not retailer shelf prices; the first scraper uses deterministic test prices until retailer-specific price feeds/scrapers are connected.
+- Social recipe import adds `social_recipe_sources`; run the DB push before testing it against a fresh database.
 
 ## Pointers
 
