@@ -41,6 +41,7 @@ export default function OnboardingPage() {
     targetWeightKg: "",
     heightCm: "",
     dietPreference: "standard",
+    dietPreferences: ["standard"],
     activityLevel: "moderately_active",
     budgetWeekly: "150",
     mealFrequency: "3",
@@ -55,7 +56,7 @@ export default function OnboardingPage() {
         currentWeightKg: parseFloat(form.currentWeightKg) || 75,
         targetWeightKg: parseFloat(form.targetWeightKg) || 70,
         heightCm: parseFloat(form.heightCm) || 170,
-        dietPreference: form.dietPreference as any,
+        dietPreference: (form.dietPreferences[0] ?? form.dietPreference) as any,
         activityLevel: form.activityLevel as any,
         budgetWeekly: parseFloat(form.budgetWeekly) || 150,
         mealFrequency: parseInt(form.mealFrequency) || 3,
@@ -68,6 +69,24 @@ export default function OnboardingPage() {
   });
 
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  const toggleDietPreference = (value: string) => {
+    setForm((f) => {
+      if (value === "standard") {
+        return { ...f, dietPreference: "standard", dietPreferences: ["standard"] };
+      }
+
+      const withoutStandard = f.dietPreferences.filter((preference) => preference !== "standard");
+      const selected = withoutStandard.includes(value)
+        ? withoutStandard.filter((preference) => preference !== value)
+        : [...withoutStandard, value];
+      const dietPreferences = selected.length > 0 ? selected : ["standard"];
+      return {
+        ...f,
+        dietPreference: dietPreferences[0],
+        dietPreferences,
+      };
+    });
+  };
   const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
@@ -164,10 +183,10 @@ export default function OnboardingPage() {
                     {DIETS.map((d) => (
                       <button
                         key={d.value}
-                        onClick={() => set("dietPreference", d.value)}
+                        onClick={() => toggleDietPreference(d.value)}
                         className={cn(
                           "p-3 rounded-xl border-2 text-left text-sm transition-all",
-                          form.dietPreference === d.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
+                          form.dietPreferences.includes(d.value) ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
                         )}
                       >
                         <div className="text-lg mb-0.5">{d.emoji}</div>
@@ -224,7 +243,9 @@ export default function OnboardingPage() {
                 <div className="bg-primary/10 rounded-xl p-4 text-left space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Diet</span>
-                    <span className="font-medium capitalize">{form.dietPreference.replace("_", " ")}</span>
+                    <span className="font-medium capitalize text-right">
+                      {form.dietPreferences.map((preference) => preference.replace("_", " ")).join(", ")}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Activity</span>

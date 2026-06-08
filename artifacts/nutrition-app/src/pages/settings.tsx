@@ -51,6 +51,7 @@ export default function SettingsPage() {
     heightCm: "",
     bodyFatPercent: "",
     dietPreference: "standard",
+    dietPreferences: ["standard"],
     activityLevel: "moderately_active",
     budgetWeekly: "",
     mealFrequency: "3",
@@ -67,6 +68,7 @@ export default function SettingsPage() {
         heightCm: String(profile.heightCm),
         bodyFatPercent: profile.bodyFatPercent != null ? String(profile.bodyFatPercent) : "",
         dietPreference: profile.dietPreference,
+        dietPreferences: [profile.dietPreference],
         activityLevel: profile.activityLevel,
         budgetWeekly: String(profile.budgetWeekly),
         mealFrequency: String(profile.mealFrequency),
@@ -84,7 +86,7 @@ export default function SettingsPage() {
         targetWeightKg: parseFloat(form.targetWeightKg),
         heightCm: parseFloat(form.heightCm),
         bodyFatPercent: form.bodyFatPercent ? parseFloat(form.bodyFatPercent) : null,
-        dietPreference: form.dietPreference as any,
+        dietPreference: (form.dietPreferences[0] ?? form.dietPreference) as any,
         activityLevel: form.activityLevel as any,
         budgetWeekly: parseFloat(form.budgetWeekly),
         mealFrequency: parseInt(form.mealFrequency),
@@ -99,6 +101,24 @@ export default function SettingsPage() {
   });
 
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  const toggleDietPreference = (value: string) => {
+    setForm((f) => {
+      if (value === "standard") {
+        return { ...f, dietPreference: "standard", dietPreferences: ["standard"] };
+      }
+
+      const withoutStandard = f.dietPreferences.filter((preference) => preference !== "standard");
+      const selected = withoutStandard.includes(value)
+        ? withoutStandard.filter((preference) => preference !== value)
+        : [...withoutStandard, value];
+      const dietPreferences = selected.length > 0 ? selected : ["standard"];
+      return {
+        ...f,
+        dietPreference: dietPreferences[0],
+        dietPreferences,
+      };
+    });
+  };
 
   const toggleRetailer = (id: number) => {
     setForm((f) => ({
@@ -183,10 +203,10 @@ export default function SettingsPage() {
               {DIETS.map((d) => (
                 <button
                   key={d.value}
-                  onClick={() => set("dietPreference", d.value)}
+                  onClick={() => toggleDietPreference(d.value)}
                   className={cn(
                     "py-2 rounded-lg border-2 text-sm font-medium transition-all",
-                    form.dietPreference === d.value ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/20"
+                    form.dietPreferences.includes(d.value) ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/20"
                   )}
                 >
                   {d.label}
