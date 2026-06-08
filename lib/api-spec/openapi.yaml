@@ -1385,6 +1385,8 @@ components:
           type: string
         thumbnailUrl:
           type: string
+        autoExtract:
+          type: boolean
 
     SocialRecipe:
       type: object

@@ -13,6 +13,8 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --limit=80 --write` — seed scraped product/nutrition data into the DB
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --from=scripts/out/open-food-facts-ZA.json --write` — seed from a cached scrape fixture
 - Required env: `DATABASE_URL` — Postgres connection string
+- Optional env: `OPENAI_API_KEY` — enables URL-only AI extraction for social recipes
+- Optional env: `OPENAI_MODEL` — overrides the social recipe extraction model; defaults to `gpt-4o-mini`
 
 ## Stack
 
@@ -38,7 +40,7 @@ _Populate as you build — non-obvious choices a reader couldn't infer from the 
 - Goal engine: maintenance calories, calorie target, deficit, macros, weekly loss range, and timeline to goal.
 - Meal/activity tracking: calories, macros, water, weight entries, dummy activity data, streaks, and weekly summaries.
 - Recipe discovery and basket building: recommend recipes by goal, turn ingredients into deduplicated shopping baskets, calculate cost per serving, and compare basket modes.
-- Social recipe import: paste public TikTok, Instagram, or Facebook recipe links plus available ingredient text, store creator/source attribution, match ingredients to local-market products, and create baskets from matched items.
+- Social recipe import: paste public TikTok, Instagram, or Facebook recipe links, let AI extract available recipe details when public text is accessible, store creator/source attribution, match ingredients to local-market products, and create baskets from matched items.
 - Multi-retailer product layer: normalize products across stores, compare pack sizes, prices, nutrition labels, availability, and specials.
 
 ## Market Model

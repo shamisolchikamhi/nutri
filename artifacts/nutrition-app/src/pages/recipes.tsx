@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -90,6 +91,7 @@ export default function RecipesPage() {
     servings: "2",
     marketCode: "ZA",
   });
+  const [createBasketAfterImport, setCreateBasketAfterImport] = useState(true);
 
   const { data: recipes, isLoading } = useListRecipes(
     {
@@ -134,8 +136,8 @@ export default function RecipesPage() {
           platform: socialForm.platform === "auto" ? undefined : socialForm.platform,
           servings: parseInt(socialForm.servings) || 2,
         }),
-      }),
-    onSuccess: () => {
+    }),
+    onSuccess: async (created) => {
       setSocialForm({
         sourceUrl: "",
         platform: "auto",
@@ -148,6 +150,17 @@ export default function RecipesPage() {
       });
       refetchSocialRecipes();
       qc.invalidateQueries({ queryKey: getListRecipesQueryKey() });
+      if (createBasketAfterImport && created.matchedCount > 0) {
+        try {
+          const basket = await apiJson<{ basketId: number }>(`/social-recipes/${created.id}/basket`, {
+            method: "POST",
+            body: JSON.stringify({ mode: "cheapest" }),
+          });
+          setLocation(`/basket/${basket.basketId}`);
+        } catch {
+          refetchSocialRecipes();
+        }
+      }
     },
   });
 
@@ -222,7 +235,7 @@ export default function RecipesPage() {
             <CardContent className="p-4 space-y-3">
               <div>
                 <h2 className="font-semibold">Import social recipe</h2>
-                <p className="text-sm text-muted-foreground">Paste a public recipe link and the ingredients shown in the post.</p>
+                <p className="text-sm text-muted-foreground">Paste a public recipe link. AI will extract the recipe when the post exposes enough public text.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1 md:col-span-2">
@@ -274,7 +287,7 @@ export default function RecipesPage() {
                 <div className="space-y-1 md:col-span-2">
                   <Label>Ingredients</Label>
                   <Textarea
-                    placeholder={"1 cup oats\n2 bananas\n200g yoghurt\n1 tbsp peanut butter"}
+                    placeholder={"Optional hint if the post is hard to read:\n1 cup oats\n2 bananas\n200g yoghurt\n1 tbsp peanut butter"}
                     value={socialForm.ingredientsText}
                     onChange={(e) => updateSocialForm("ingredientsText", e.target.value)}
                     className="min-h-28"
@@ -290,14 +303,21 @@ export default function RecipesPage() {
                   />
                 </div>
               </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={createBasketAfterImport}
+                  onCheckedChange={(checked) => setCreateBasketAfterImport(checked === true)}
+                />
+                Create a grocery basket from matched local-store ingredients
+              </label>
               {importSocialMutation.error && (
                 <p className="text-sm text-destructive">{(importSocialMutation.error as Error).message}</p>
               )}
               <Button
                 onClick={() => importSocialMutation.mutate()}
-                disabled={importSocialMutation.isPending || !socialForm.sourceUrl || (!socialForm.ingredientsText && !socialForm.caption)}
+                disabled={importSocialMutation.isPending || !socialForm.sourceUrl}
               >
-                {importSocialMutation.isPending ? "Matching ingredients..." : "Import and match local products"}
+                {importSocialMutation.isPending ? "Analyzing recipe..." : "Analyze URL and match local products"}
               </Button>
             </CardContent>
           </Card>

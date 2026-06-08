@@ -34,6 +34,23 @@ type MatchedIngredient = ParsedIngredient & {
   fatG: number;
 };
 
+type ExtractedRecipe = {
+  title: string;
+  creatorHandle: string | null;
+  caption: string;
+  ingredients: ParsedIngredient[];
+  instructions: string[];
+  servings: number;
+  thumbnailUrl: string;
+};
+
+type PublicUrlContext = {
+  title: string;
+  description: string;
+  imageUrl: string;
+  text: string;
+};
+
 const UNIT_WORDS = new Set([
   "g",
   "gram",
@@ -88,6 +105,11 @@ function getString(value: unknown): string {
 function getNumber(value: unknown, fallback: number): number {
   const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function getOptionalString(value: unknown): string | null {
+  const text = getString(value);
+  return text ? text : null;
 }
 
 function parsePlatform(value: unknown): Platform {
@@ -170,6 +192,195 @@ function parseIngredients(text: string): ParsedIngredient[] {
     .map(parseIngredientLine)
     .filter((ingredient): ingredient is ParsedIngredient => Boolean(ingredient))
     .slice(0, 30);
+}
+
+function stripHtml(value: string) {
+  return value
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, "\"")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractMeta(html: string, property: string) {
+  const escaped = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`, "i");
+  return html.match(pattern)?.[1]?.trim() ?? "";
+}
+
+async function fetchPublicUrlContext(sourceUrl: string): Promise<PublicUrlContext> {
+  try {
+    const response = await fetch(sourceUrl, {
+      headers: {
+        "User-Agent": "NutriBasket/0.1 recipe importer",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      return { title: "", description: "", imageUrl: "", text: "" };
+    }
+
+    const html = await response.text();
+    const title = extractMeta(html, "og:title") || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || "";
+    const description = extractMeta(html, "og:description") || extractMeta(html, "description");
+    const imageUrl = extractMeta(html, "og:image");
+    return {
+      title: stripHtml(title).slice(0, 180),
+      description: stripHtml(description).slice(0, 1000),
+      imageUrl,
+      text: stripHtml(html).slice(0, 12_000),
+    };
+  } catch {
+    return { title: "", description: "", imageUrl: "", text: "" };
+  }
+}
+
+function outputTextFromResponse(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const direct = (data as { output_text?: unknown }).output_text;
+  if (typeof direct === "string") return direct;
+
+  const output = (data as { output?: unknown }).output;
+  if (!Array.isArray(output)) return "";
+  const chunks: string[] = [];
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = (item as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (!part || typeof part !== "object") continue;
+      const text = (part as { text?: unknown }).text;
+      if (typeof text === "string") chunks.push(text);
+    }
+  }
+  return chunks.join("\n");
+}
+
+function coerceExtractedIngredient(value: unknown): ParsedIngredient | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = getString((value as Record<string, unknown>).raw);
+  const name = cleanIngredientName(getString((value as Record<string, unknown>).name));
+  const unit = getString((value as Record<string, unknown>).unit) || "unit";
+  const quantity = getNumber((value as Record<string, unknown>).quantity, 1);
+  if (!name || tokenize(name).length === 0) return null;
+  return {
+    raw: raw || `${quantity} ${unit} ${name}`.trim(),
+    name,
+    quantity: Math.max(0.01, quantity),
+    unit: unit.toLowerCase(),
+  };
+}
+
+function coerceExtractedRecipe(value: unknown): ExtractedRecipe | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const ingredients = Array.isArray(record.ingredients)
+    ? record.ingredients.map(coerceExtractedIngredient).filter((item): item is ParsedIngredient => Boolean(item))
+    : [];
+  if (ingredients.length === 0) return null;
+
+  return {
+    title: getString(record.title) || "Social recipe",
+    creatorHandle: getOptionalString(record.creatorHandle),
+    caption: getString(record.caption),
+    ingredients,
+    instructions: Array.isArray(record.instructions)
+      ? record.instructions.map(getString).filter(Boolean).slice(0, 12)
+      : [],
+    servings: Math.max(1, Math.round(getNumber(record.servings, 2))),
+    thumbnailUrl: getString(record.thumbnailUrl),
+  };
+}
+
+async function extractRecipeWithAi(input: {
+  sourceUrl: string;
+  platform: Platform;
+  title: string;
+  caption: string;
+  ingredientsText: string;
+  creatorHandle: string;
+  servings: number;
+  thumbnailUrl: string;
+  context: PublicUrlContext;
+}): Promise<ExtractedRecipe | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+      input: [
+        {
+          role: "system",
+          content:
+            "Extract a grocery-basket-ready recipe from social media recipe context. " +
+            "Only use information present in the URL metadata, caption, provided notes, or visible page text. " +
+            "Return concise ingredient names that can be matched to grocery products. Do not invent ingredients.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify(input),
+        },
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "social_recipe_extraction",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["title", "creatorHandle", "caption", "ingredients", "instructions", "servings", "thumbnailUrl"],
+            properties: {
+              title: { type: "string" },
+              creatorHandle: { type: ["string", "null"] },
+              caption: { type: "string" },
+              servings: { type: "integer", minimum: 1 },
+              thumbnailUrl: { type: "string" },
+              ingredients: {
+                type: "array",
+                minItems: 1,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["raw", "name", "quantity", "unit"],
+                  properties: {
+                    raw: { type: "string" },
+                    name: { type: "string" },
+                    quantity: { type: "number" },
+                    unit: { type: "string" },
+                  },
+                },
+              },
+              instructions: {
+                type: "array",
+                items: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`AI recipe extraction failed with ${response.status}`);
+  }
+
+  const text = outputTextFromResponse(await response.json());
+  if (!text) return null;
+  return coerceExtractedRecipe(JSON.parse(text));
 }
 
 function estimateGrams(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
@@ -298,18 +509,72 @@ router.get("/social-recipes", async (_req, res): Promise<void> => {
 
 router.post("/social-recipes", async (req, res): Promise<void> => {
   const sourceUrl = getString(req.body?.sourceUrl);
-  const ingredientsText = getString(req.body?.ingredientsText);
-  const caption = getString(req.body?.caption);
-  const title = getString(req.body?.title) || "Social recipe";
+  let ingredientsText = getString(req.body?.ingredientsText);
+  let caption = getString(req.body?.caption);
+  let title = getString(req.body?.title);
+  let creatorHandle = getString(req.body?.creatorHandle);
+  let thumbnailUrl = getString(req.body?.thumbnailUrl);
+  let extractedInstructions: string[] = [];
   const marketCode = (getString(req.body?.marketCode) || "ZA").toUpperCase();
   const platform = parsePlatform(req.body?.platform) !== "other" ? parsePlatform(req.body?.platform) : detectPlatform(sourceUrl);
+  let servings = Math.max(1, Math.round(getNumber(req.body?.servings, 2)));
 
   if (!sourceUrl) {
     res.status(400).json({ error: "sourceUrl is required" });
     return;
   }
+
+  let aiExtractionUsed = false;
+  let aiExtractionBlocked = false;
+  const shouldUseAi = req.body?.autoExtract !== false && (!ingredientsText || !title || !caption);
+  if (shouldUseAi) {
+    const context = await fetchPublicUrlContext(sourceUrl);
+    try {
+      const extracted = await extractRecipeWithAi({
+        sourceUrl,
+        platform,
+        title,
+        caption,
+        ingredientsText,
+        creatorHandle,
+        servings,
+        thumbnailUrl,
+        context,
+      });
+      if (extracted) {
+        aiExtractionUsed = true;
+        title ||= extracted.title || context.title;
+        creatorHandle ||= extracted.creatorHandle ?? "";
+        caption ||= extracted.caption || context.description;
+        thumbnailUrl ||= extracted.thumbnailUrl || context.imageUrl;
+        servings = Math.max(1, Math.round(getNumber(req.body?.servings, extracted.servings)));
+        extractedInstructions = extracted.instructions;
+        if (!ingredientsText) {
+          ingredientsText = extracted.ingredients
+            .map((ingredient) => ingredient.raw || `${ingredient.quantity} ${ingredient.unit} ${ingredient.name}`)
+            .join("\n");
+        }
+      } else if (!process.env.OPENAI_API_KEY) {
+        aiExtractionBlocked = true;
+        title ||= context.title;
+        caption ||= context.description;
+        thumbnailUrl ||= context.imageUrl;
+      }
+    } catch (error) {
+      if (!ingredientsText && !caption) {
+        res.status(502).json({ error: error instanceof Error ? error.message : "AI recipe extraction failed" });
+        return;
+      }
+    }
+  }
+
+  if (!title) title = "Social recipe";
   if (!ingredientsText && !caption) {
-    res.status(400).json({ error: "ingredientsText or caption is required" });
+    res.status(400).json({
+      error: aiExtractionBlocked
+        ? "OPENAI_API_KEY is required to import from URL only. Add an API key or paste the recipe ingredients."
+        : "No recipe ingredients were found. Paste ingredient text or try a public post with visible recipe details.",
+    });
     return;
   }
 
@@ -320,7 +585,6 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
   }
 
   const matchedIngredients = await matchIngredients(parsedIngredients, marketCode);
-  const servings = Math.max(1, Math.round(getNumber(req.body?.servings, 2)));
   const totalCalories = matchedIngredients.reduce((sum, ingredient) => sum + ingredient.calories, 0);
   const totalProtein = matchedIngredients.reduce((sum, ingredient) => sum + ingredient.proteinG, 0);
   const totalCarbs = matchedIngredients.reduce((sum, ingredient) => sum + ingredient.carbsG, 0);
@@ -344,8 +608,8 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
       difficulty: "easy",
       tags: ["social", platform, hasUnmatched ? "needs_review" : "basket_ready"],
       estimatedCost: Math.round(estimatedCost * 100) / 100,
-      imageUrl: getString(req.body?.thumbnailUrl),
-      instructions: caption ? caption.split(/\r?\n/).filter(Boolean).slice(0, 8) : [],
+      imageUrl: thumbnailUrl,
+      instructions: extractedInstructions.length > 0 ? extractedInstructions : caption ? caption.split(/\r?\n/).filter(Boolean).slice(0, 8) : [],
     })
     .returning();
 
@@ -370,11 +634,11 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
     .values({
       platform,
       sourceUrl,
-      creatorHandle: getString(req.body?.creatorHandle) || null,
+      creatorHandle: creatorHandle || null,
       title,
       caption,
       ingredientsText,
-      thumbnailUrl: getString(req.body?.thumbnailUrl),
+      thumbnailUrl,
       marketCode,
       importedRecipeId: recipe.id,
       status: hasUnmatched ? "needs_review" : "imported",
@@ -384,6 +648,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
   res.status(201).json({
     ...(await buildSocialRecipeResponse(source)),
     matches: matchedIngredients,
+    aiExtractionUsed,
   });
 });
 
