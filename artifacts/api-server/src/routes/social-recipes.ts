@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   db,
   basketsTable,
@@ -12,6 +12,8 @@ import {
 } from "@workspace/db";
 
 const router: IRouter = Router();
+
+let socialRecipeSourcesSchemaReady: Promise<void> | null = null;
 
 type Platform = "tiktok" | "instagram" | "facebook" | "other";
 
@@ -50,6 +52,44 @@ type PublicUrlContext = {
   imageUrl: string;
   text: string;
 };
+
+function ensureSocialRecipeSourcesSchema() {
+  socialRecipeSourcesSchemaReady ??= (async () => {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS social_recipe_sources (
+        id serial PRIMARY KEY,
+        platform text NOT NULL,
+        source_url text NOT NULL,
+        creator_handle text,
+        title text NOT NULL,
+        caption text NOT NULL DEFAULT '',
+        ingredients_text text NOT NULL DEFAULT '',
+        thumbnail_url text NOT NULL DEFAULT '',
+        market_code text NOT NULL DEFAULT 'ZA',
+        imported_recipe_id integer,
+        status text NOT NULL DEFAULT 'imported',
+        created_at timestamp with time zone NOT NULL DEFAULT now()
+      )
+    `);
+
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS platform text NOT NULL DEFAULT 'other'`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS source_url text NOT NULL DEFAULT ''`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS creator_handle text`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT 'Social recipe'`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS caption text NOT NULL DEFAULT ''`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS ingredients_text text NOT NULL DEFAULT ''`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS thumbnail_url text NOT NULL DEFAULT ''`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS market_code text NOT NULL DEFAULT 'ZA'`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS imported_recipe_id integer`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'imported'`);
+    await db.execute(sql`ALTER TABLE social_recipe_sources ADD COLUMN IF NOT EXISTS created_at timestamp with time zone NOT NULL DEFAULT now()`);
+  })().catch((error) => {
+    socialRecipeSourcesSchemaReady = null;
+    throw error;
+  });
+
+  return socialRecipeSourcesSchemaReady;
+}
 
 const UNIT_WORDS = new Set([
   "g",
@@ -502,12 +542,14 @@ async function buildSocialRecipeResponse(source: typeof socialRecipeSourcesTable
 }
 
 router.get("/social-recipes", async (_req, res): Promise<void> => {
+  await ensureSocialRecipeSourcesSchema();
   const sources = await db.select().from(socialRecipeSourcesTable);
   const result = await Promise.all(sources.map(buildSocialRecipeResponse));
   res.json(result);
 });
 
 router.post("/social-recipes", async (req, res): Promise<void> => {
+  await ensureSocialRecipeSourcesSchema();
   const sourceUrl = getString(req.body?.sourceUrl);
   let ingredientsText = getString(req.body?.ingredientsText);
   let caption = getString(req.body?.caption);
@@ -654,6 +696,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
 });
 
 router.post("/social-recipes/:id/basket", async (req, res): Promise<void> => {
+  await ensureSocialRecipeSourcesSchema();
   const id = parseId(req.params.id);
   const sources = await db.select().from(socialRecipeSourcesTable).where(eq(socialRecipeSourcesTable.id, id)).limit(1);
   const source = sources[0];
