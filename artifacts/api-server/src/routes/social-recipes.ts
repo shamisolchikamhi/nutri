@@ -138,6 +138,16 @@ const STOP_WORDS = new Set([
   "of",
 ]);
 
+const NON_INGREDIENT_PATTERNS = [
+  /\bingredients?\s+(not\s+)?(specified|provided|available|listed|shown|visible|found)\b/i,
+  /\b(no|without)\s+ingredients?\b/i,
+  /\bunknown\s+ingredients?\b/i,
+  /\bnot\s+(specified|provided|available|listed|shown|visible|found)\b/i,
+  /\btiktok\s+make\s+your\s+day\b/i,
+  /\blog\s+in\s+to\s+follow\b/i,
+  /\bwatch\s+more\s+videos\b/i,
+];
+
 function getString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -214,6 +224,7 @@ function cleanIngredientName(value: string) {
 function parseIngredientLine(rawLine: string): ParsedIngredient | null {
   const raw = rawLine.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, "").trim();
   if (!raw || raw.length < 3) return null;
+  if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(raw))) return null;
 
   const match = raw.match(/^((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:[.,]\d+)?))?\s*([a-zA-Z]+)?\s+(.+)$/);
   const quantity = match?.[1] ? parseQuantity(match[1]) : 1;
@@ -222,6 +233,7 @@ function parseIngredientLine(rawLine: string): ParsedIngredient | null {
   const nameSource = unit === "unit" ? raw.replace(/^(\d+(?:[.,]\d+)?|\d+\/\d+)\s+/, "") : match?.[3] ?? raw;
   const name = cleanIngredientName(nameSource);
 
+  if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(name))) return null;
   if (!name || tokenize(name).length === 0) return null;
   return { raw, name, quantity, unit };
 }
@@ -308,6 +320,7 @@ function coerceExtractedIngredient(value: unknown): ParsedIngredient | null {
   const name = cleanIngredientName(getString((value as Record<string, unknown>).name));
   const unit = getString((value as Record<string, unknown>).unit) || "unit";
   const quantity = getNumber((value as Record<string, unknown>).quantity, 1);
+  if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(raw) || pattern.test(name))) return null;
   if (!name || tokenize(name).length === 0) return null;
   return {
     raw: raw || `${quantity} ${unit} ${name}`.trim(),
@@ -368,7 +381,8 @@ async function extractRecipeWithAi(input: {
             content:
               "Extract a grocery-basket-ready recipe from social media recipe context. " +
               "Only use information present in the URL metadata, caption, provided notes, or visible page text. " +
-              "Return concise ingredient names that can be matched to grocery products. Do not invent ingredients.",
+              "Return concise ingredient names that can be matched to grocery products. " +
+              "Do not invent ingredients. If no ingredient details are visible, return an empty ingredients array.",
           },
           {
             role: "user",
@@ -392,7 +406,7 @@ async function extractRecipeWithAi(input: {
                 thumbnailUrl: { type: "string" },
                 ingredients: {
                   type: "array",
-                  minItems: 1,
+                  minItems: 0,
                   items: {
                     type: "object",
                     additionalProperties: false,
@@ -632,7 +646,9 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
 
   const parsedIngredients = parseIngredients(ingredientsText || caption);
   if (parsedIngredients.length === 0) {
-    res.status(400).json({ error: "No usable ingredients were found" });
+    res.status(400).json({
+      error: "No real ingredients were visible in that post. TikTok often hides captions and video text from public scraping, so paste the caption or ingredient list to create the basket.",
+    });
     return;
   }
 
