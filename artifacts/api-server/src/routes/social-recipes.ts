@@ -53,6 +53,13 @@ type PublicUrlContext = {
   text: string;
 };
 
+type NutritionEstimate = {
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatPer100g: number;
+};
+
 function ensureSocialRecipeSourcesSchema() {
   socialRecipeSourcesSchemaReady ??= (async () => {
     await db.execute(sql`
@@ -146,6 +153,33 @@ const NON_INGREDIENT_PATTERNS = [
   /\btiktok\s+make\s+your\s+day\b/i,
   /\blog\s+in\s+to\s+follow\b/i,
   /\bwatch\s+more\s+videos\b/i,
+];
+
+const GENERIC_NUTRITION: Array<{ pattern: RegExp } & NutritionEstimate> = [
+  { pattern: /\boats?\b/i, caloriesPer100g: 389, proteinPer100g: 16.9, carbsPer100g: 66.3, fatPer100g: 6.9 },
+  { pattern: /\bbananas?\b/i, caloriesPer100g: 89, proteinPer100g: 1.1, carbsPer100g: 22.8, fatPer100g: 0.3 },
+  { pattern: /\byogh?urts?\b/i, caloriesPer100g: 61, proteinPer100g: 3.5, carbsPer100g: 4.7, fatPer100g: 3.3 },
+  { pattern: /\bpeanut\s+butter\b/i, caloriesPer100g: 588, proteinPer100g: 25, carbsPer100g: 20, fatPer100g: 50 },
+  { pattern: /\bchicken\b/i, caloriesPer100g: 165, proteinPer100g: 31, carbsPer100g: 0, fatPer100g: 3.6 },
+  { pattern: /\beggs?\b/i, caloriesPer100g: 155, proteinPer100g: 13, carbsPer100g: 1.1, fatPer100g: 11 },
+  { pattern: /\brice\b/i, caloriesPer100g: 130, proteinPer100g: 2.7, carbsPer100g: 28, fatPer100g: 0.3 },
+  { pattern: /\bpasta\b/i, caloriesPer100g: 158, proteinPer100g: 5.8, carbsPer100g: 31, fatPer100g: 0.9 },
+  { pattern: /\bpotatoes?\b/i, caloriesPer100g: 77, proteinPer100g: 2, carbsPer100g: 17, fatPer100g: 0.1 },
+  { pattern: /\bsweet\s+potatoes?\b/i, caloriesPer100g: 86, proteinPer100g: 1.6, carbsPer100g: 20, fatPer100g: 0.1 },
+  { pattern: /\bbeans?\b/i, caloriesPer100g: 127, proteinPer100g: 8.7, carbsPer100g: 22.8, fatPer100g: 0.5 },
+  { pattern: /\blentils?\b/i, caloriesPer100g: 116, proteinPer100g: 9, carbsPer100g: 20, fatPer100g: 0.4 },
+  { pattern: /\bchickpeas?\b/i, caloriesPer100g: 164, proteinPer100g: 8.9, carbsPer100g: 27.4, fatPer100g: 2.6 },
+  { pattern: /\btuna\b/i, caloriesPer100g: 132, proteinPer100g: 28, carbsPer100g: 0, fatPer100g: 1.3 },
+  { pattern: /\bsalmon\b/i, caloriesPer100g: 208, proteinPer100g: 20, carbsPer100g: 0, fatPer100g: 13 },
+  { pattern: /\bbeef\b/i, caloriesPer100g: 250, proteinPer100g: 26, carbsPer100g: 0, fatPer100g: 15 },
+  { pattern: /\bavocados?\b/i, caloriesPer100g: 160, proteinPer100g: 2, carbsPer100g: 8.5, fatPer100g: 14.7 },
+  { pattern: /\bolive\s+oil\b/i, caloriesPer100g: 884, proteinPer100g: 0, carbsPer100g: 0, fatPer100g: 100 },
+  { pattern: /\bcheese\b/i, caloriesPer100g: 402, proteinPer100g: 25, carbsPer100g: 1.3, fatPer100g: 33 },
+  { pattern: /\bmilk\b/i, caloriesPer100g: 61, proteinPer100g: 3.2, carbsPer100g: 4.8, fatPer100g: 3.3 },
+  { pattern: /\bbroccoli\b/i, caloriesPer100g: 35, proteinPer100g: 2.4, carbsPer100g: 7.2, fatPer100g: 0.4 },
+  { pattern: /\bspinach\b/i, caloriesPer100g: 23, proteinPer100g: 2.9, carbsPer100g: 3.6, fatPer100g: 0.4 },
+  { pattern: /\btomatoes?\b/i, caloriesPer100g: 18, proteinPer100g: 0.9, carbsPer100g: 3.9, fatPer100g: 0.2 },
+  { pattern: /\bonions?\b/i, caloriesPer100g: 40, proteinPer100g: 1.1, carbsPer100g: 9.3, fatPer100g: 0.1 },
 ];
 
 function getString(value: unknown): string {
@@ -265,6 +299,39 @@ function extractMeta(html: string, property: string) {
   return html.match(pattern)?.[1]?.trim() ?? "";
 }
 
+function isGenericSocialTitle(title: string) {
+  return /^(TikTok\s+-\s+Make Your Day|Instagram|Facebook)$/i.test(title.trim());
+}
+
+async function fetchTikTokOembedContext(sourceUrl: string): Promise<Partial<PublicUrlContext>> {
+  try {
+    const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(sourceUrl)}`, {
+      headers: {
+        "User-Agent": "NutriBasket/0.1 recipe importer",
+        "Accept": "application/json",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return {};
+
+    const data = await response.json() as Record<string, unknown>;
+    const title = stripHtml(getString(data.title));
+    const author = stripHtml(getString(data.author_name));
+    const thumbnail = getString(data.thumbnail_url);
+    const html = stripHtml(getString(data.html));
+    const text = [title, author ? `Creator: ${author}` : "", html].filter(Boolean).join("\n");
+
+    return {
+      title,
+      description: title,
+      imageUrl: thumbnail,
+      text,
+    };
+  } catch {
+    return {};
+  }
+}
+
 async function fetchPublicUrlContext(sourceUrl: string): Promise<PublicUrlContext> {
   try {
     const response = await fetch(sourceUrl, {
@@ -274,6 +341,7 @@ async function fetchPublicUrlContext(sourceUrl: string): Promise<PublicUrlContex
       },
       signal: AbortSignal.timeout(10_000),
     });
+    const finalUrl = response.url || sourceUrl;
     if (!response.ok) {
       return { title: "", description: "", imageUrl: "", text: "" };
     }
@@ -282,11 +350,19 @@ async function fetchPublicUrlContext(sourceUrl: string): Promise<PublicUrlContex
     const title = extractMeta(html, "og:title") || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || "";
     const description = extractMeta(html, "og:description") || extractMeta(html, "description");
     const imageUrl = extractMeta(html, "og:image");
+    const oembed = detectPlatform(finalUrl) === "tiktok" || detectPlatform(sourceUrl) === "tiktok"
+      ? await fetchTikTokOembedContext(finalUrl)
+      : {};
+    const cleanTitle = stripHtml(title).slice(0, 180);
+    const oembedTitle = getString(oembed.title).slice(0, 180);
+    const cleanDescription = stripHtml(description).slice(0, 1000);
+    const oembedDescription = getString(oembed.description).slice(0, 1000);
+    const pageText = stripHtml(html).slice(0, 12_000);
     return {
-      title: stripHtml(title).slice(0, 180),
-      description: stripHtml(description).slice(0, 1000),
-      imageUrl,
-      text: stripHtml(html).slice(0, 12_000),
+      title: oembedTitle && (!cleanTitle || isGenericSocialTitle(cleanTitle)) ? oembedTitle : cleanTitle,
+      description: oembedDescription || cleanDescription,
+      imageUrl: getString(oembed.imageUrl) || imageUrl,
+      text: [oembed.text, pageText].map(getString).filter(Boolean).join("\n").slice(0, 12_000),
     };
   } catch {
     return { title: "", description: "", imageUrl: "", text: "" };
@@ -460,6 +536,37 @@ function estimateGrams(ingredient: ParsedIngredient, product: typeof productsTab
   return ingredient.quantity * 100;
 }
 
+function estimateIngredientGrams(ingredient: ParsedIngredient) {
+  if (ingredient.unit === "kg") return ingredient.quantity * 1000;
+  if (ingredient.unit === "g") return ingredient.quantity;
+  if (ingredient.unit === "l") return ingredient.quantity * 1000;
+  if (ingredient.unit === "ml") return ingredient.quantity;
+  if (ingredient.unit === "cup" || ingredient.unit === "cups") return ingredient.quantity * 150;
+  if (ingredient.unit === "tbsp" || ingredient.unit.startsWith("tablespoon")) return ingredient.quantity * 15;
+  if (ingredient.unit === "tsp" || ingredient.unit.startsWith("teaspoon")) return ingredient.quantity * 5;
+  if (ingredient.unit === "can" || ingredient.unit === "cans" || ingredient.unit === "tin" || ingredient.unit === "tins") return ingredient.quantity * 400;
+  if (/\beggs?\b/i.test(ingredient.name)) return ingredient.quantity * 50;
+  if (/\bbananas?\b/i.test(ingredient.name)) return ingredient.quantity * 120;
+  if (/\bavocados?\b/i.test(ingredient.name)) return ingredient.quantity * 150;
+  if (/\bslices?\b/i.test(ingredient.unit)) return ingredient.quantity * 30;
+  return ingredient.quantity * 100;
+}
+
+function estimateGenericNutrition(ingredient: ParsedIngredient) {
+  const estimate = GENERIC_NUTRITION.find((item) => item.pattern.test(ingredient.name) || item.pattern.test(ingredient.raw));
+  if (!estimate) {
+    return { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 };
+  }
+
+  const grams = estimateIngredientGrams(ingredient);
+  return {
+    calories: Math.round((estimate.caloriesPer100g * grams) / 100),
+    proteinG: Math.round((estimate.proteinPer100g * grams) / 100 * 10) / 10,
+    carbsG: Math.round((estimate.carbsPer100g * grams) / 100 * 10) / 10,
+    fatG: Math.round((estimate.fatPer100g * grams) / 100 * 10) / 10,
+  };
+}
+
 function basketQuantityFor(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
   if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "kg") {
     const kg = ingredient.unit === "kg" ? ingredient.quantity : ingredient.quantity / 1000;
@@ -513,6 +620,7 @@ async function matchIngredients(ingredients: ParsedIngredient[], marketCode: str
       });
     const best = ranked[0]?.product;
     if (!best) {
+      const nutrition = estimateGenericNutrition(ingredient);
       return {
         ...ingredient,
         productId: null,
@@ -520,10 +628,10 @@ async function matchIngredients(ingredients: ParsedIngredient[], marketCode: str
         retailerName: null,
         score: 0,
         estimatedCost: 0,
-        calories: 0,
-        proteinG: 0,
-        carbsG: 0,
-        fatG: 0,
+        calories: nutrition.calories,
+        proteinG: nutrition.proteinG,
+        carbsG: nutrition.carbsG,
+        fatG: nutrition.fatG,
       };
     }
 
