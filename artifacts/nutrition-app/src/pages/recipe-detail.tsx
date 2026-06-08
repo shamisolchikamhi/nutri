@@ -1,20 +1,31 @@
+import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useGetRecipe,
   saveRecipe,
   unsaveRecipe,
+  addMealEntry,
   getListSavedRecipesQueryKey,
   getGetRecipeQueryKey,
+  getGetDailyLogQueryKey,
+  getGetMealEntriesQueryKey,
+  getGetDashboardTodayQueryKey,
   createBasketFromRecipes,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, ShoppingCart, ArrowLeft, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/market";
+
+const today = new Date().toISOString().split("T")[0];
+const TRACKER_MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
 type RelatedRecipe = {
   id: number;
@@ -33,6 +44,16 @@ async function apiJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function defaultTrackerMealType(recipe: unknown): typeof TRACKER_MEAL_TYPES[number] {
+  const mealType = typeof (recipe as any)?.mealType === "string" ? (recipe as any).mealType : "";
+  const tags = Array.isArray((recipe as any)?.tags) ? (recipe as any).tags.join(" ") : "";
+  const text = `${mealType} ${(recipe as any)?.name ?? ""} ${tags}`.toLowerCase();
+  if (text.includes("breakfast")) return "breakfast";
+  if (text.includes("snack")) return "snack";
+  if (text.includes("lunch")) return "lunch";
+  return "dinner";
+}
+
 export default function RecipeDetailPage() {
   const [, params] = useRoute("/recipes/:id");
   const [, setLocation] = useLocation();
@@ -41,11 +62,17 @@ export default function RecipeDetailPage() {
   const id = parseInt(params?.id ?? "0");
 
   const { data: recipe, isLoading } = useGetRecipe(id);
+  const [logMealType, setLogMealType] = useState<typeof TRACKER_MEAL_TYPES[number]>("dinner");
+  const [logServings, setLogServings] = useState("1");
   const { data: relatedRecipes } = useQuery({
     queryKey: ["related-recipes", id],
     queryFn: () => apiJson<RelatedRecipe[]>(`/recipes/${id}/related`),
     enabled: id > 0,
   });
+
+  useEffect(() => {
+    if (recipe) setLogMealType(defaultTrackerMealType(recipe));
+  }, [recipe?.id]);
 
   const saveMutation = useMutation({
     mutationFn: () => saveRecipe({ itemId: id }),
@@ -68,6 +95,35 @@ export default function RecipeDetailPage() {
     onSuccess: (basket) => {
       toast({ title: "Basket created!", description: `${basket.items.length} items added` });
       setLocation(`/basket/${basket.id}`);
+    },
+  });
+
+  const logRecipeMutation = useMutation({
+    mutationFn: () => {
+      if (!recipe) throw new Error("Recipe is not loaded");
+      const servings = Math.max(0.25, parseFloat(logServings) || 1);
+      return addMealEntry(today, {
+        name: recipe.name,
+        mealType: logMealType,
+        calories: Math.round(recipe.caloriesPerServing * servings),
+        proteinG: Math.round(recipe.proteinPerServingG * servings * 10) / 10,
+        carbsG: Math.round(recipe.carbsPerServingG * servings * 10) / 10,
+        fatG: Math.round(recipe.fatPerServingG * servings * 10) / 10,
+        servings,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: getGetDailyLogQueryKey(today) });
+      qc.invalidateQueries({ queryKey: getGetMealEntriesQueryKey(today) });
+      qc.invalidateQueries({ queryKey: getGetDashboardTodayQueryKey() });
+      toast({ title: "Recipe logged", description: `${recipe?.name} added to today's tracker` });
+    },
+    onError: (error) => {
+      toast({
+        title: "Could not log recipe",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -159,6 +215,43 @@ export default function RecipeDetailPage() {
               <p className="text-xs text-muted-foreground">Fat</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div>
+            <h2 className="font-semibold">Log this recipe today</h2>
+            <p className="text-xs text-muted-foreground">Adds calories and macros to your daily tracker.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Meal</Label>
+              <Select value={logMealType} onValueChange={(value) => setLogMealType(value as typeof logMealType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRACKER_MEAL_TYPES.map((type) => (
+                    <SelectItem key={type} value={type} className="capitalize">{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Servings eaten</Label>
+              <Input
+                type="number"
+                min="0.25"
+                step="0.25"
+                value={logServings}
+                onChange={(event) => setLogServings(event.target.value)}
+              />
+            </div>
+          </div>
+          <Button className="w-full" onClick={() => logRecipeMutation.mutate()} disabled={logRecipeMutation.isPending}>
+            {logRecipeMutation.isPending ? "Logging..." : "Add to Today's Log"}
+          </Button>
         </CardContent>
       </Card>
 
