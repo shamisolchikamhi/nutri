@@ -246,6 +246,28 @@ function parseQuantity(raw: string) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+function inferDefaultQuantity(name: string): Pick<ParsedIngredient, "quantity" | "unit"> {
+  if (/\boats?\b/i.test(name)) return { quantity: 50, unit: "g" };
+  if (/\bbananas?\b/i.test(name)) return { quantity: 1, unit: "unit" };
+  if (/\byogh?urts?\b/i.test(name)) return { quantity: 150, unit: "g" };
+  if (/\bpeanut\s+butter\b/i.test(name)) return { quantity: 1, unit: "tbsp" };
+  if (/\bchicken\b/i.test(name)) return { quantity: 150, unit: "g" };
+  if (/\beggs?\b/i.test(name)) return { quantity: 2, unit: "unit" };
+  if (/\brice\b/i.test(name)) return { quantity: 75, unit: "g" };
+  if (/\bpasta\b/i.test(name)) return { quantity: 75, unit: "g" };
+  if (/\bpotatoes?\b/i.test(name)) return { quantity: 200, unit: "g" };
+  if (/\bsweet\s+potatoes?\b/i.test(name)) return { quantity: 200, unit: "g" };
+  if (/\bbeans?\b|\blentils?\b|\bchickpeas?\b/i.test(name)) return { quantity: 120, unit: "g" };
+  if (/\btuna\b/i.test(name)) return { quantity: 1, unit: "can" };
+  if (/\bsalmon\b|\bbeef\b/i.test(name)) return { quantity: 150, unit: "g" };
+  if (/\bavocados?\b/i.test(name)) return { quantity: 1, unit: "unit" };
+  if (/\bolive\s+oil\b/i.test(name)) return { quantity: 1, unit: "tbsp" };
+  if (/\bcheese\b/i.test(name)) return { quantity: 30, unit: "g" };
+  if (/\bmilk\b/i.test(name)) return { quantity: 200, unit: "ml" };
+  if (/\bbroccoli\b|\bspinach\b|\btomatoes?\b|\bonions?\b/i.test(name)) return { quantity: 100, unit: "g" };
+  return { quantity: 100, unit: "g" };
+}
+
 function cleanIngredientName(value: string) {
   return value
     .replace(/\([^)]*\)/g, " ")
@@ -261,23 +283,35 @@ function parseIngredientLine(rawLine: string): ParsedIngredient | null {
   if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(raw))) return null;
 
   const match = raw.match(/^((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:[.,]\d+)?))?\s*([a-zA-Z]+)?\s+(.+)$/);
-  const quantity = match?.[1] ? parseQuantity(match[1]) : 1;
   const unitCandidate = match?.[2]?.toLowerCase() ?? "";
-  const unit = UNIT_WORDS.has(unitCandidate) ? unitCandidate : "unit";
+  let unit = UNIT_WORDS.has(unitCandidate) ? unitCandidate : "unit";
   const nameSource = unit === "unit" ? raw.replace(/^(\d+(?:[.,]\d+)?|\d+\/\d+)\s+/, "") : match?.[3] ?? raw;
   const name = cleanIngredientName(nameSource);
 
   if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(name))) return null;
   if (!name || tokenize(name).length === 0) return null;
+  let quantity = match?.[1] ? parseQuantity(match[1]) : 0;
+  if (!quantity) {
+    const inferred = inferDefaultQuantity(name);
+    quantity = inferred.quantity;
+    unit = inferred.unit;
+  }
   return { raw, name, quantity, unit };
 }
 
 function parseIngredients(text: string): ParsedIngredient[] {
   return text
-    .split(/\r?\n|;/)
+    .split(/\r?\n|;|,(?=\s*(?:\d|\d+\/\d+))/)
     .map(parseIngredientLine)
     .filter((ingredient): ingredient is ParsedIngredient => Boolean(ingredient))
     .slice(0, 30);
+}
+
+function hasEnoughRecipeText(text: string, ingredients: ParsedIngredient[], isIngredientsField: boolean) {
+  if (ingredients.length === 0) return false;
+  if (isIngredientsField) return true;
+  if (ingredients.length >= 2) return true;
+  return /\b(?:\d+(?:[.,]\d+)?|\d+\/\d+)\s*(?:g|gram|grams|kg|ml|l|litre|litres|cup|cups|tbsp|tablespoon|tablespoons|tsp|teaspoon|teaspoons|can|cans|tin|tins)\b/i.test(text);
 }
 
 function stripHtml(value: string) {
@@ -394,10 +428,13 @@ function coerceExtractedIngredient(value: unknown): ParsedIngredient | null {
   if (!value || typeof value !== "object") return null;
   const raw = getString((value as Record<string, unknown>).raw);
   const name = cleanIngredientName(getString((value as Record<string, unknown>).name));
-  const unit = getString((value as Record<string, unknown>).unit) || "unit";
-  const quantity = getNumber((value as Record<string, unknown>).quantity, 1);
   if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(raw) || pattern.test(name))) return null;
   if (!name || tokenize(name).length === 0) return null;
+  const inferred = inferDefaultQuantity(name);
+  const rawUnit = getString((value as Record<string, unknown>).unit).toLowerCase();
+  const unit = rawUnit && rawUnit !== "unit" ? rawUnit : inferred.unit;
+  const rawQuantity = getNumber((value as Record<string, unknown>).quantity, 0);
+  const quantity = rawQuantity > 0 ? rawQuantity : inferred.quantity;
   return {
     raw: raw || `${quantity} ${unit} ${name}`.trim(),
     name,
@@ -475,6 +512,7 @@ async function extractRecipeWithAi(input: {
               "Extract a grocery-basket-ready recipe from social media recipe context. " +
               "Use only information present in the URL metadata, caption, provided notes, visible page text, uploaded screenshots, or uploaded video frames. " +
               "Return concise ingredient names that can be matched to grocery products. " +
+              "Every ingredient must have a practical quantity and unit. Prefer visible quantities; if an ingredient is named without an amount, estimate a reasonable serving quantity. " +
               "Do not invent ingredients. If no ingredient details are visible, return an empty ingredients array.",
           },
           {
@@ -722,7 +760,9 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
 
   let aiExtractionUsed = false;
   let aiExtractionBlocked = false;
-  const shouldUseAi = req.body?.autoExtract !== false && (mediaDataUrls.length > 0 || !ingredientsText || !title || !caption);
+  const textIngredients = parseIngredients(ingredientsText || caption);
+  const hasTextRecipe = hasEnoughRecipeText(ingredientsText || caption, textIngredients, Boolean(ingredientsText));
+  const shouldUseAi = req.body?.autoExtract !== false && !hasTextRecipe && (mediaDataUrls.length > 0 || !ingredientsText || !title || !caption);
   const isUrlOnlyImport = !ingredientsText && !caption && mediaDataUrls.length === 0;
   if (shouldUseAi) {
     const context = sourceUrl ? await fetchPublicUrlContext(sourceUrl) : { title: "", description: "", imageUrl: "", text: "" };
