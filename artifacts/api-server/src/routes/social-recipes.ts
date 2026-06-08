@@ -527,6 +527,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
   let aiExtractionUsed = false;
   let aiExtractionBlocked = false;
   const shouldUseAi = req.body?.autoExtract !== false && (!ingredientsText || !title || !caption);
+  const isUrlOnlyImport = !ingredientsText && !caption;
   if (shouldUseAi) {
     const context = await fetchPublicUrlContext(sourceUrl);
     try {
@@ -571,7 +572,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
   if (!title) title = "Social recipe";
   if (!ingredientsText && !caption) {
     res.status(400).json({
-      error: aiExtractionBlocked
+      error: aiExtractionBlocked || isUrlOnlyImport
         ? "OPENAI_API_KEY is required to import from URL only. Add an API key or paste the recipe ingredients."
         : "No recipe ingredients were found. Paste ingredient text or try a public post with visible recipe details.",
     });
