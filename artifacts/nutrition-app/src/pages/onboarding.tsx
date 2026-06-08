@@ -29,6 +29,11 @@ const ACTIVITY = [
   { value: "extra_active", label: "Extra Active", desc: "Very hard exercise daily" },
 ];
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Could not save your profile. Please try again.";
+}
+
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [, setLocation] = useLocation();
@@ -230,6 +235,11 @@ export default function OnboardingPage() {
                     {mutation.isPending ? "Saving..." : "Complete Setup"}
                   </Button>
                 </div>
+                {mutation.error && (
+                  <p className="text-sm text-destructive">
+                    {getErrorMessage(mutation.error)}
+                  </p>
+                )}
               </div>
             )}
 
