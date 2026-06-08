@@ -437,12 +437,29 @@ async function extractRecipeWithAi(input: {
   servings: number;
   thumbnailUrl: string;
   context: PublicUrlContext;
+  mediaDataUrls: string[];
 }): Promise<ExtractedRecipe | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
   let response: Response;
   try {
+    const userContent = [
+      {
+        type: "input_text",
+        text: JSON.stringify({
+          ...input,
+          mediaDataUrls: input.mediaDataUrls.length > 0
+            ? `${input.mediaDataUrls.length} uploaded screenshot/video frame(s) attached`
+            : "No uploaded media frames",
+        }),
+      },
+      ...input.mediaDataUrls.map((imageUrl) => ({
+        type: "input_image",
+        image_url: imageUrl,
+      })),
+    ];
+
     response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
@@ -456,13 +473,13 @@ async function extractRecipeWithAi(input: {
             role: "system",
             content:
               "Extract a grocery-basket-ready recipe from social media recipe context. " +
-              "Only use information present in the URL metadata, caption, provided notes, or visible page text. " +
+              "Use only information present in the URL metadata, caption, provided notes, visible page text, uploaded screenshots, or uploaded video frames. " +
               "Return concise ingredient names that can be matched to grocery products. " +
               "Do not invent ingredients. If no ingredient details are visible, return an empty ingredients array.",
           },
           {
             role: "user",
-            content: JSON.stringify(input),
+            content: userContent,
           },
         ],
         text: {
@@ -682,6 +699,12 @@ router.get("/social-recipes", async (_req, res): Promise<void> => {
 router.post("/social-recipes", async (req, res): Promise<void> => {
   await ensureSocialRecipeSourcesSchema();
   const sourceUrl = getString(req.body?.sourceUrl);
+  const mediaDataUrls = Array.isArray(req.body?.mediaDataUrls)
+    ? req.body.mediaDataUrls
+        .map(getString)
+        .filter((value) => /^data:image\/(?:png|jpe?g|webp);base64,/i.test(value))
+        .slice(0, 8)
+    : [];
   let ingredientsText = getString(req.body?.ingredientsText);
   let caption = getString(req.body?.caption);
   let title = getString(req.body?.title);
@@ -692,17 +715,17 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
   const platform = parsePlatform(req.body?.platform) !== "other" ? parsePlatform(req.body?.platform) : detectPlatform(sourceUrl);
   let servings = Math.max(1, Math.round(getNumber(req.body?.servings, 2)));
 
-  if (!sourceUrl) {
-    res.status(400).json({ error: "sourceUrl is required" });
+  if (!sourceUrl && mediaDataUrls.length === 0) {
+    res.status(400).json({ error: "sourceUrl or uploaded recipe media is required" });
     return;
   }
 
   let aiExtractionUsed = false;
   let aiExtractionBlocked = false;
-  const shouldUseAi = req.body?.autoExtract !== false && (!ingredientsText || !title || !caption);
-  const isUrlOnlyImport = !ingredientsText && !caption;
+  const shouldUseAi = req.body?.autoExtract !== false && (mediaDataUrls.length > 0 || !ingredientsText || !title || !caption);
+  const isUrlOnlyImport = !ingredientsText && !caption && mediaDataUrls.length === 0;
   if (shouldUseAi) {
-    const context = await fetchPublicUrlContext(sourceUrl);
+    const context = sourceUrl ? await fetchPublicUrlContext(sourceUrl) : { title: "", description: "", imageUrl: "", text: "" };
     try {
       const extracted = await extractRecipeWithAi({
         sourceUrl,
@@ -714,6 +737,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
         servings,
         thumbnailUrl,
         context,
+        mediaDataUrls,
       });
       if (extracted) {
         aiExtractionUsed = true;
@@ -809,7 +833,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
     .insert(socialRecipeSourcesTable)
     .values({
       platform,
-      sourceUrl,
+      sourceUrl: sourceUrl || "uploaded-media",
       creatorHandle: creatorHandle || null,
       title,
       caption,

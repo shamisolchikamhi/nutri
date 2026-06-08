@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign, Link2, ShoppingCart, ExternalLink } from "lucide-react";
+import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign, Link2, ShoppingCart, ExternalLink, Upload } from "lucide-react";
 import { formatMoney } from "@/lib/market";
 
 const GOALS = [
@@ -95,6 +95,93 @@ async function apiJson<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function resizeImageDataUrl(dataUrl: string, maxSize = 1024) {
+  return new Promise<string>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) {
+        reject(new Error("Could not process image"));
+        return;
+      }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    image.onerror = () => reject(new Error("Could not load image"));
+    image.src = dataUrl;
+  });
+}
+
+async function extractVideoFrames(file: File) {
+  const url = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "metadata";
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error("Could not load video"));
+      video.src = url;
+    });
+
+    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 1;
+    const latestTimestamp = Math.max(0, duration - 0.05);
+    const timestamps = [0.08, 0.22, 0.38, 0.55, 0.72, 0.9].map((point) => Math.min(latestTimestamp, Math.max(0, duration * point)));
+    const frames: string[] = [];
+
+    for (const time of timestamps) {
+      await new Promise<void>((resolve, reject) => {
+        video.onseeked = () => resolve();
+        video.onerror = () => reject(new Error("Could not read video frame"));
+        video.currentTime = time;
+      });
+
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(1, 1024 / Math.max(video.videoWidth, video.videoHeight));
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      const context = canvas.getContext("2d");
+      if (!context) continue;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      frames.push(canvas.toDataURL("image/jpeg", 0.82));
+    }
+
+    return frames;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function processRecipeMediaFiles(files: FileList | null) {
+  if (!files) return [];
+  const frames: string[] = [];
+
+  for (const file of Array.from(files).slice(0, 4)) {
+    if (file.type.startsWith("image/")) {
+      frames.push(await resizeImageDataUrl(await readFileAsDataUrl(file)));
+    } else if (file.type.startsWith("video/")) {
+      frames.push(...await extractVideoFrames(file));
+    }
+  }
+
+  return frames.slice(0, 8);
+}
+
 export default function RecipesPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -113,6 +200,8 @@ export default function RecipesPage() {
     marketCode: "ZA",
   });
   const [createBasketAfterImport, setCreateBasketAfterImport] = useState(true);
+  const [socialMediaDataUrls, setSocialMediaDataUrls] = useState<string[]>([]);
+  const [socialMediaStatus, setSocialMediaStatus] = useState("");
 
   const { data: recipes, isLoading } = useListRecipes(
     {
@@ -155,6 +244,7 @@ export default function RecipesPage() {
         method: "POST",
         body: JSON.stringify({
           ...socialForm,
+          mediaDataUrls: socialMediaDataUrls,
           autoExtract: true,
           platform: socialForm.platform === "auto" ? undefined : socialForm.platform,
           servings: parseInt(socialForm.servings) || 2,
@@ -172,6 +262,8 @@ export default function RecipesPage() {
         servings: "2",
         marketCode: "ZA",
       });
+      setSocialMediaDataUrls([]);
+      setSocialMediaStatus("");
       refetchSocialRecipes();
       qc.invalidateQueries({ queryKey: getListRecipesQueryKey() });
       if (createBasketAfterImport && created.matchedCount > 0) {
@@ -201,6 +293,7 @@ export default function RecipesPage() {
   const socialBusy = socialLoading;
   const updateSocialForm = (key: keyof typeof socialForm, value: string) =>
     setSocialForm((form) => ({ ...form, [key]: value }));
+  const canImportSocial = Boolean(socialForm.sourceUrl || socialMediaDataUrls.length > 0);
 
   return (
     <div className="space-y-5">
@@ -259,7 +352,7 @@ export default function RecipesPage() {
             <CardContent className="p-4 space-y-3">
               <div>
                 <h2 className="font-semibold">Import social recipe</h2>
-                <p className="text-sm text-muted-foreground">Paste a public recipe link. AI will extract the recipe when the post exposes enough public text.</p>
+                <p className="text-sm text-muted-foreground">Paste a public recipe link, or upload screenshots/video so AI can read visible recipe text.</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1 md:col-span-2">
@@ -269,6 +362,31 @@ export default function RecipesPage() {
                     value={socialForm.sourceUrl}
                     onChange={(e) => updateSocialForm("sourceUrl", e.target.value)}
                   />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <Label>Recipe screenshots or video</Label>
+                  <Input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={async (event) => {
+                      setSocialMediaStatus("Processing uploaded media...");
+                      try {
+                        const frames = await processRecipeMediaFiles(event.target.files);
+                        setSocialMediaDataUrls(frames);
+                        setSocialMediaStatus(frames.length > 0 ? `${frames.length} screenshot/frame(s) ready for AI analysis` : "No readable media frames found");
+                      } catch (error) {
+                        setSocialMediaDataUrls([]);
+                        setSocialMediaStatus(error instanceof Error ? error.message : "Could not process uploaded media");
+                      } finally {
+                        event.target.value = "";
+                      }
+                    }}
+                  />
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>{socialMediaStatus || "Upload screenshots or a saved recipe video when TikTok/Instagram hides caption text."}</span>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label>Title</Label>
@@ -343,9 +461,9 @@ export default function RecipesPage() {
               )}
               <Button
                 onClick={() => importSocialMutation.mutate()}
-                disabled={importSocialMutation.isPending || !socialForm.sourceUrl}
+                disabled={importSocialMutation.isPending || !canImportSocial}
               >
-                {importSocialMutation.isPending ? "Analyzing recipe..." : "Analyze URL and match local products"}
+                {importSocialMutation.isPending ? "Analyzing recipe..." : "Analyze recipe and match local products"}
               </Button>
             </CardContent>
           </Card>
