@@ -2,6 +2,7 @@ import {
   Home, 
   Activity, 
   Utensils, 
+  CalendarDays,
   ShoppingCart, 
   Tag, 
   LineChart, 
@@ -45,6 +46,11 @@ const navItems = [
     title: "Recipes",
     url: "/recipes",
     icon: Utensils,
+  },
+  {
+    title: "Meal Plan",
+    url: "/meal-plan",
+    icon: CalendarDays,
   },
   {
     title: "Basket",

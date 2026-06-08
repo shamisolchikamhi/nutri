@@ -5,6 +5,7 @@ import {
   GetRecipeParams,
   ListRecipesQueryParams,
 } from "@workspace/api-zod";
+import { calcGoalMetrics } from "./profile";
 
 const router: IRouter = Router();
 
@@ -35,6 +36,13 @@ const MEAL_TYPE_LABELS: Record<string, string> = {
   snack: "Snack",
 };
 
+const PLAN_SLOTS = [
+  { key: "breakfast", label: "Breakfast", mealType: "breakfast", calorieShare: 0.25, proteinShare: 0.25 },
+  { key: "lunch", label: "Lunch", mealType: "lunch_dinner", calorieShare: 0.35, proteinShare: 0.35 },
+  { key: "dinner", label: "Dinner", mealType: "lunch_dinner", calorieShare: 0.3, proteinShare: 0.3 },
+  { key: "snack", label: "Snack", mealType: "snack", calorieShare: 0.1, proteinShare: 0.1 },
+] as const;
+
 function inferMealType(recipe: typeof recipesTable.$inferSelect, ingredients: Array<typeof recipeIngredientsTable.$inferSelect> = []) {
   const text = normalizeToken(`${recipe.name} ${(recipe.tags ?? []).join(" ")} ${ingredients.map((item) => item.name).join(" ")}`);
   if (/\b(oats?|porridge|breakfast|granola|pancakes?|smoothie|yogh?urt|toast|eggs?)\b/.test(text)) return "breakfast";
@@ -64,6 +72,55 @@ async function buildRecipeResponse(recipe: typeof recipesTable.$inferSelect, sav
     mealTypeLabel: MEAL_TYPE_LABELS[mealType] ?? MEAL_TYPE_LABELS.lunch_dinner,
     isSaved: savedIds.has(recipe.id),
   };
+}
+
+type RecipeResponse = Awaited<ReturnType<typeof buildRecipeResponse>>;
+type MealPlanRecipe = RecipeResponse & { mealType: string; mealTypeLabel: string };
+type MealPlanItem = { slot: string; slotLabel: string; recipe: MealPlanRecipe };
+type MealPlanDay = {
+  day: number;
+  label: string;
+  items: MealPlanItem[];
+  totals: {
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    cost: number;
+    calorieTarget: number;
+    proteinTargetG: number;
+    calorieCoveragePercent: number;
+    proteinCoveragePercent: number;
+  };
+};
+
+function scorePlanRecipe(
+  recipe: typeof recipesTable.$inferSelect,
+  targetCalories: number,
+  targetProtein: number,
+  savedIds: Set<number>,
+  usedCounts: Map<number, number>,
+) {
+  const calorieGap = Math.abs(recipe.caloriesPerServing - targetCalories);
+  const proteinShortfall = Math.max(0, targetProtein - recipe.proteinPerServingG) * 8;
+  const repeatPenalty = (usedCounts.get(recipe.id) ?? 0) * 80;
+  const savedBoost = savedIds.has(recipe.id) ? -40 : 0;
+  const costPenalty = Math.max(0, recipe.estimatedCost - 75) * 0.25;
+  return calorieGap + proteinShortfall + repeatPenalty + costPenalty + savedBoost;
+}
+
+function pickPlanRecipe(
+  candidates: Array<typeof recipesTable.$inferSelect>,
+  targetCalories: number,
+  targetProtein: number,
+  savedIds: Set<number>,
+  usedCounts: Map<number, number>,
+) {
+  return [...candidates].sort(
+    (a, b) =>
+      scorePlanRecipe(a, targetCalories, targetProtein, savedIds, usedCounts) -
+      scorePlanRecipe(b, targetCalories, targetProtein, savedIds, usedCounts),
+  )[0];
 }
 
 router.get("/recipes/recommended", async (req, res): Promise<void> => {
@@ -118,6 +175,89 @@ router.get("/recipes", async (req, res): Promise<void> => {
 
   const result = await Promise.all(recipes.map((r) => buildRecipeResponse(r, savedIds)));
   res.json(result);
+});
+
+router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
+  await ensureRecipesSchema();
+  const requestedDays = parseInt(String(req.query.days ?? "7"), 10);
+  const days = Number.isFinite(requestedDays) ? Math.min(14, Math.max(1, requestedDays)) : 7;
+  const savedIds = await getSavedRecipeIds();
+  const profiles = await db.select().from(userProfileTable).limit(1);
+  const metrics = profiles[0] ? calcGoalMetrics(profiles[0]) : null;
+  const calorieTarget = metrics?.dailyCalorieTarget ?? 2000;
+  const proteinTargetG = metrics?.proteinTargetG ?? 150;
+
+  const recipes = await db.select().from(recipesTable);
+  const enriched = await Promise.all(
+    recipes.map(async (recipe) => {
+      const ingredients = await db.select().from(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, recipe.id));
+      return { recipe, mealType: inferMealType(recipe, ingredients) };
+    }),
+  );
+
+  const usedCounts = new Map<number, number>();
+  const dayPlans: MealPlanDay[] = [];
+  for (let day = 0; day < days; day++) {
+    const items: MealPlanItem[] = [];
+    for (const slot of PLAN_SLOTS) {
+      const preferred = enriched.filter((item) => item.mealType === slot.mealType).map((item) => item.recipe);
+      const fallback = enriched.map((item) => item.recipe);
+      const recipe = pickPlanRecipe(
+        preferred.length > 0 ? preferred : fallback,
+        calorieTarget * slot.calorieShare,
+        proteinTargetG * slot.proteinShare,
+        savedIds,
+        usedCounts,
+      );
+      if (!recipe) continue;
+      usedCounts.set(recipe.id, (usedCounts.get(recipe.id) ?? 0) + 1);
+      const mealType = enriched.find((item) => item.recipe.id === recipe.id)?.mealType ?? "lunch_dinner";
+      items.push({
+        slot: slot.key,
+        slotLabel: slot.label,
+        recipe: {
+          ...(await buildRecipeResponse(recipe, savedIds)),
+          mealType,
+          mealTypeLabel: MEAL_TYPE_LABELS[mealType] ?? MEAL_TYPE_LABELS.lunch_dinner,
+        },
+      });
+    }
+
+    const totals = items.reduce(
+      (sum, item) => ({
+        calories: sum.calories + item.recipe.caloriesPerServing,
+        proteinG: sum.proteinG + item.recipe.proteinPerServingG,
+        carbsG: sum.carbsG + item.recipe.carbsPerServingG,
+        fatG: sum.fatG + item.recipe.fatPerServingG,
+        cost: sum.cost + item.recipe.estimatedCost,
+      }),
+      { calories: 0, proteinG: 0, carbsG: 0, fatG: 0, cost: 0 },
+    );
+
+    dayPlans.push({
+      day: day + 1,
+      label: day === 0 ? "Today" : `Day ${day + 1}`,
+      items,
+      totals: {
+        calories: Math.round(totals.calories),
+        proteinG: Math.round(totals.proteinG * 10) / 10,
+        carbsG: Math.round(totals.carbsG * 10) / 10,
+        fatG: Math.round(totals.fatG * 10) / 10,
+        cost: Math.round(totals.cost * 100) / 100,
+        calorieTarget,
+        proteinTargetG,
+        calorieCoveragePercent: Math.round((totals.calories / calorieTarget) * 100),
+        proteinCoveragePercent: Math.round((totals.proteinG / proteinTargetG) * 100),
+      },
+    });
+  }
+
+  res.json({
+    calorieTarget,
+    proteinTargetG,
+    days: dayPlans,
+    savedRecipeCount: savedIds.size,
+  });
 });
 
 router.get("/recipes/:id/related", async (req, res): Promise<void> => {
