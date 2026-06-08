@@ -352,73 +352,82 @@ async function extractRecipeWithAi(input: {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-      input: [
-        {
-          role: "system",
-          content:
-            "Extract a grocery-basket-ready recipe from social media recipe context. " +
-            "Only use information present in the URL metadata, caption, provided notes, or visible page text. " +
-            "Return concise ingredient names that can be matched to grocery products. Do not invent ingredients.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify(input),
-        },
-      ],
-      text: {
-        format: {
-          type: "json_schema",
-          name: "social_recipe_extraction",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            required: ["title", "creatorHandle", "caption", "ingredients", "instructions", "servings", "thumbnailUrl"],
-            properties: {
-              title: { type: "string" },
-              creatorHandle: { type: ["string", "null"] },
-              caption: { type: "string" },
-              servings: { type: "integer", minimum: 1 },
-              thumbnailUrl: { type: "string" },
-              ingredients: {
-                type: "array",
-                minItems: 1,
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  required: ["raw", "name", "quantity", "unit"],
-                  properties: {
-                    raw: { type: "string" },
-                    name: { type: "string" },
-                    quantity: { type: "number" },
-                    unit: { type: "string" },
+  let response: Response;
+  try {
+    response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+        input: [
+          {
+            role: "system",
+            content:
+              "Extract a grocery-basket-ready recipe from social media recipe context. " +
+              "Only use information present in the URL metadata, caption, provided notes, or visible page text. " +
+              "Return concise ingredient names that can be matched to grocery products. Do not invent ingredients.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify(input),
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "social_recipe_extraction",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              required: ["title", "creatorHandle", "caption", "ingredients", "instructions", "servings", "thumbnailUrl"],
+              properties: {
+                title: { type: "string" },
+                creatorHandle: { type: ["string", "null"] },
+                caption: { type: "string" },
+                servings: { type: "integer", minimum: 1 },
+                thumbnailUrl: { type: "string" },
+                ingredients: {
+                  type: "array",
+                  minItems: 1,
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["raw", "name", "quantity", "unit"],
+                    properties: {
+                      raw: { type: "string" },
+                      name: { type: "string" },
+                      quantity: { type: "number" },
+                      unit: { type: "string" },
+                    },
                   },
                 },
-              },
-              instructions: {
-                type: "array",
-                items: { type: "string" },
+                instructions: {
+                  type: "array",
+                  items: { type: "string" },
+                },
               },
             },
           },
         },
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`AI recipe extraction failed with ${response.status}`);
+      }),
+    });
+  } catch (error) {
+    throw new Error(`AI recipe extraction could not reach OpenAI: ${error instanceof Error ? error.message : "network request failed"}`);
   }
 
-  const text = outputTextFromResponse(await response.json());
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = data && typeof data === "object"
+      ? getString((data as { error?: { message?: unknown } }).error?.message)
+      : "";
+    throw new Error(`AI recipe extraction failed with ${response.status}${message ? `: ${message}` : ""}`);
+  }
+
+  const text = outputTextFromResponse(data);
   if (!text) return null;
   return coerceExtractedRecipe(JSON.parse(text));
 }

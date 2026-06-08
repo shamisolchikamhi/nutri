@@ -59,6 +59,22 @@ type SocialRecipe = {
   } | null;
 };
 
+async function readErrorMessage(response: Response) {
+  const text = await response.text().catch(() => "");
+  if (!text) return `Request failed with ${response.status}`;
+
+  try {
+    const body = JSON.parse(text) as { error?: unknown; message?: unknown };
+    const message = typeof body.error === "string" ? body.error : typeof body.message === "string" ? body.message : "";
+    if (message) return message;
+  } catch {
+    // Plain text or HTML proxy errors are handled below.
+  }
+
+  const plainText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return plainText ? `Request failed with ${response.status}: ${plainText.slice(0, 220)}` : `Request failed with ${response.status}`;
+}
+
 async function apiJson<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     ...options,
@@ -68,8 +84,7 @@ async function apiJson<T>(path: string, options?: RequestInit): Promise<T> {
     },
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.error ?? `Request failed with ${response.status}`);
+    throw new Error(await readErrorMessage(response));
   }
   return response.json() as Promise<T>;
 }
