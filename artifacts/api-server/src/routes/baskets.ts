@@ -35,6 +35,14 @@ async function getRetailerName(id: number): Promise<string> {
   return r[0]?.name ?? "Unknown";
 }
 
+function buildProductPageUrl(productName: string, retailerName: string) {
+  const query = encodeURIComponent(productName);
+  if (/woolworths/i.test(retailerName)) {
+    return `https://www.woolworths.co.za/cat?Ntt=${query}`;
+  }
+  return `https://www.woolworths.co.za/cat?Ntt=${query}`;
+}
+
 function productPackGrams(product: typeof productsTable.$inferSelect) {
   if (product.packUnit === "kg") return product.packSize * 1000;
   if (product.packUnit === "g") return product.packSize;
@@ -77,6 +85,7 @@ async function buildBasketItemResponse(item: typeof basketItemsTable.$inferSelec
     productId: item.productId,
     productName: product.name,
     retailerName,
+    productUrl: buildProductPageUrl(product.name, retailerName),
     quantity: item.quantity,
     unit: item.unit,
     unitCost: product.priceAud,

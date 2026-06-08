@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Tag } from "lucide-react";
+import { ExternalLink, Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Tag } from "lucide-react";
 import { useState } from "react";
 import { formatMoney } from "@/lib/market";
 
@@ -180,6 +180,17 @@ export default function BasketDetailPage() {
                         <span className="font-medium text-primary">{formatMoney(item.totalCost)}</span>
                         {item.isOnSpecial && <Badge variant="secondary" className="py-0 text-xs">SPECIAL</Badge>}
                       </div>
+                      {(item as any).productUrl && (
+                        <a
+                          href={(item as any).productUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
+                          Open at Woolworths
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
@@ -224,7 +235,19 @@ export default function BasketDetailPage() {
                   <div key={item.id} className="flex items-center justify-between p-2.5 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <div className="h-4 w-4 rounded border border-muted-foreground/30" />
-                      <span className="text-sm">{item.productName}</span>
+                      {(item as any).productUrl ? (
+                        <a
+                          href={(item as any).productUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-sm hover:text-primary hover:underline"
+                        >
+                          {item.productName}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span className="text-sm">{item.productName}</span>
+                      )}
                       <span className="text-xs text-muted-foreground">×{item.quantity} pack{item.quantity === 1 ? "" : "s"}</span>
                     </div>
                     <div className="text-right">
