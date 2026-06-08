@@ -614,7 +614,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
       }
     } catch (error) {
       if (!ingredientsText && !caption) {
-        res.status(502).json({ error: error instanceof Error ? error.message : "AI recipe extraction failed" });
+        res.status(503).json({ error: error instanceof Error ? error.message : "AI recipe extraction failed" });
         return;
       }
     }

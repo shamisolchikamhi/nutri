@@ -61,6 +61,9 @@ type SocialRecipe = {
 
 async function readErrorMessage(response: Response) {
   const text = await response.text().catch(() => "");
+  if (!text && response.status === 502) {
+    return "API server is unavailable. Restart the API server on port 5000, then refresh this page.";
+  }
   if (!text) return `Request failed with ${response.status}`;
 
   try {
@@ -72,6 +75,9 @@ async function readErrorMessage(response: Response) {
   }
 
   const plainText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (response.status === 502 && !plainText) {
+    return "API server is unavailable. Restart the API server on port 5000, then refresh this page.";
+  }
   return plainText ? `Request failed with ${response.status}: ${plainText.slice(0, 220)}` : `Request failed with ${response.status}`;
 }
 
@@ -143,8 +149,9 @@ export default function RecipesPage() {
   });
 
   const importSocialMutation = useMutation({
-    mutationFn: () =>
-      apiJson<SocialRecipe>("/social-recipes", {
+    mutationFn: async () => {
+      await apiJson("/healthz");
+      return apiJson<SocialRecipe>("/social-recipes", {
         method: "POST",
         body: JSON.stringify({
           ...socialForm,
@@ -152,7 +159,8 @@ export default function RecipesPage() {
           platform: socialForm.platform === "auto" ? undefined : socialForm.platform,
           servings: parseInt(socialForm.servings) || 2,
         }),
-    }),
+      });
+    },
     onSuccess: async (created) => {
       setSocialForm({
         sourceUrl: "",
