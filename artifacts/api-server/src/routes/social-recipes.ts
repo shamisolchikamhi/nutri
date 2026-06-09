@@ -771,7 +771,7 @@ router.post("/social-recipes", async (req, res): Promise<void> => {
   const mediaDataUrls = Array.isArray(req.body?.mediaDataUrls)
     ? req.body.mediaDataUrls
         .map(getString)
-        .filter((value) => /^data:image\/(?:png|jpe?g|webp);base64,/i.test(value))
+        .filter((value: string) => /^data:image\/(?:png|jpe?g|webp);base64,/i.test(value))
         .slice(0, 8)
     : [];
   let ingredientsText = getString(req.body?.ingredientsText);

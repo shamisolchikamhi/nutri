@@ -169,5 +169,5 @@ router.get("/profile/goal-summary", async (req, res): Promise<void> => {
   res.json(GetGoalSummaryResponse.parse(metrics));
 });
 
-export { calcGoalMetrics, calcBMR, ACTIVITY_MULTIPLIERS };
+export { calcGoalMetrics, calcBMR, ACTIVITY_MULTIPLIERS, ensureUserProfileSchema };
 export default router;

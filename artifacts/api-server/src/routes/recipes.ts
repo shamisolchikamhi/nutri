@@ -5,7 +5,7 @@ import {
   GetRecipeParams,
   ListRecipesQueryParams,
 } from "@workspace/api-zod";
-import { calcGoalMetrics } from "./profile";
+import { calcGoalMetrics, ensureUserProfileSchema } from "./profile";
 
 const router: IRouter = Router();
 
@@ -179,6 +179,7 @@ router.get("/recipes", async (req, res): Promise<void> => {
 
 router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
   await ensureRecipesSchema();
+  await ensureUserProfileSchema();
   const requestedDays = parseInt(String(req.query.days ?? "7"), 10);
   const days = Number.isFinite(requestedDays) ? Math.min(14, Math.max(1, requestedDays)) : 7;
   const savedIds = await getSavedRecipeIds();
