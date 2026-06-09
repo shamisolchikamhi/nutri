@@ -212,8 +212,14 @@ export default function BasketDetailPage() {
                           </>
                         )}
                         <span className="font-medium text-primary">{formatMoney(item.totalCost)}</span>
+                        {(item as any).priceIsEstimated && <span className="text-amber-600">estimated</span>}
                         {item.isOnSpecial && <Badge variant="secondary" className="py-0 text-xs">SPECIAL</Badge>}
                       </div>
+                      {(item as any).priceIsEstimated && (item as any).listedUnitCost != null && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Basket price corrected from test price {formatMoney((item as any).listedUnitCost)}
+                        </p>
+                      )}
                       {(item as any).productUrl && (
                         <a
                           href={(item as any).productUrl}

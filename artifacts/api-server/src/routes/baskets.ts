@@ -68,6 +68,45 @@ function productPackGrams(product: typeof productsTable.$inferSelect) {
   return Math.max(1, product.packSize) * 100;
 }
 
+function realisticPackPrice(product: typeof productsTable.$inferSelect) {
+  const name = product.name.toLowerCase();
+  const packKg = Math.max(0.1, productPackGrams(product) / 1000);
+
+  if (/chicken|breast|fillet/.test(name)) return Math.round(115 * packKg * 100) / 100;
+  if (/beef|steak|mince/.test(name)) return Math.round(140 * packKg * 100) / 100;
+  if (/fish|salmon|hake/.test(name)) return Math.round(130 * packKg * 100) / 100;
+  if (/tuna/.test(name)) return Math.max(22, Math.round(120 * packKg * 100) / 100);
+  if (/egg/.test(name)) return Math.max(35, product.packSize * 3.5);
+  if (/rice/.test(name)) return Math.round(34 * packKg * 100) / 100;
+  if (/oat|porridge/.test(name)) return Math.round(52 * packKg * 100) / 100;
+  if (/broccoli/.test(name)) return Math.round(65 * packKg * 100) / 100;
+  if (/milk/.test(name)) return Math.round(22 * Math.max(1, product.packSize) * 100) / 100;
+  if (/yoghurt|yogurt/.test(name)) return Math.round(58 * packKg * 100) / 100;
+  if (/peanut butter/.test(name)) return Math.round(110 * packKg * 100) / 100;
+
+  const perKgByCategory: Record<string, number> = {
+    protein: 105,
+    dairy: 55,
+    grains: 42,
+    fruit_veg: 55,
+    snacks: 95,
+    drinks: 24,
+    condiments: 90,
+    frozen: 85,
+    pantry: 50,
+    other: 50,
+  };
+  return Math.round((perKgByCategory[product.category] ?? perKgByCategory.other) * packKg * 100) / 100;
+}
+
+function effectiveBasketPrice(product: typeof productsTable.$inferSelect) {
+  const realistic = realisticPackPrice(product);
+  if (product.priceAud >= realistic * 0.55) {
+    return { price: product.priceAud, isEstimated: false };
+  }
+  return { price: realistic, isEstimated: true };
+}
+
 function ingredientAmountInPackUnit(ingredient: typeof recipeIngredientsTable.$inferSelect, product: typeof productsTable.$inferSelect) {
   if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "kg") {
     return ingredient.unit === "kg" ? ingredient.quantity : ingredient.quantity / 1000;
@@ -141,7 +180,7 @@ async function findBestProductForRetailer(
       if (b.score !== a.score) return b.score - a.score;
       const aQty = basketQuantityForIngredient(ingredient, a.product);
       const bQty = basketQuantityForIngredient(ingredient, b.product);
-      return a.product.priceAud * aQty - b.product.priceAud * bQty;
+      return effectiveBasketPrice(a.product).price * aQty - effectiveBasketPrice(b.product).price * bQty;
     });
   return ranked[0]?.product ?? null;
 }
@@ -166,11 +205,12 @@ async function buildStoreComparisons(items: NonNullable<Awaited<ReturnType<typeo
           if (b.score !== a.score) return b.score - a.score;
           const aQty = basketQuantityForEquivalentProduct(item.quantity, sourceProduct, a.product);
           const bQty = basketQuantityForEquivalentProduct(item.quantity, sourceProduct, b.product);
-          return a.product.priceAud * aQty - b.product.priceAud * bQty;
+          return effectiveBasketPrice(a.product).price * aQty - effectiveBasketPrice(b.product).price * bQty;
         });
       const match = ranked[0]?.product;
       if (!match) return null;
       const quantity = basketQuantityForEquivalentProduct(item.quantity, sourceProduct, match);
+      const effectivePrice = effectiveBasketPrice(match);
       return {
         sourceProductId: item.productId,
         productId: match.id,
@@ -179,7 +219,9 @@ async function buildStoreComparisons(items: NonNullable<Awaited<ReturnType<typeo
         quantity,
         packSize: match.packSize,
         packUnit: match.packUnit,
-        totalCost: Math.round(match.priceAud * quantity * 100) / 100,
+        unitCost: effectivePrice.price,
+        priceIsEstimated: effectivePrice.isEstimated,
+        totalCost: Math.round(effectivePrice.price * quantity * 100) / 100,
       };
     }).filter(Boolean);
 
@@ -205,6 +247,7 @@ async function buildBasketItemResponse(item: typeof basketItemsTable.$inferSelec
   if (!product) return null;
 
   const retailerName = await getRetailerName(product.retailerId);
+  const effectivePrice = effectiveBasketPrice(product);
 
   return {
     id: item.id,
@@ -215,8 +258,10 @@ async function buildBasketItemResponse(item: typeof basketItemsTable.$inferSelec
     productUrl: buildProductPageUrl(product.name, retailerName),
     quantity: item.quantity,
     unit: item.unit,
-    unitCost: product.priceAud,
-    totalCost: Math.round(product.priceAud * item.quantity * 100) / 100,
+    unitCost: effectivePrice.price,
+    listedUnitCost: product.priceAud,
+    priceIsEstimated: effectivePrice.isEstimated,
+    totalCost: Math.round(effectivePrice.price * item.quantity * 100) / 100,
     packSize: product.packSize,
     packUnit: product.packUnit,
     isOnSpecial: product.isOnSpecial,
@@ -263,8 +308,9 @@ async function buildBasketDetail(id: number) {
       totalProteinG += (product.proteinPer100g * servingG) / 100;
       totalCarbsG += (product.carbsPer100g * servingG) / 100;
       totalFatG += (product.fatPer100g * servingG) / 100;
+      const effectivePrice = effectiveBasketPrice(product);
       if (product.isOnSpecial && product.regularPriceAud) {
-        savingsFromSpecials += (product.regularPriceAud - product.priceAud) * item.quantity;
+        savingsFromSpecials += (product.regularPriceAud - effectivePrice.price) * item.quantity;
       }
     }
   }
@@ -304,7 +350,7 @@ router.get("/baskets", async (_req, res): Promise<void> => {
             .from(productsTable)
             .where(eq(productsTable.id, item.productId))
             .limit(1);
-          return p[0] ? p[0].priceAud * item.quantity : 0;
+          return p[0] ? effectiveBasketPrice(p[0]).price * item.quantity : 0;
         })
       );
       return {
@@ -476,7 +522,7 @@ router.post("/baskets/from-recipes", async (req, res): Promise<void> => {
           product: candidate,
           quantity: basketQuantityForIngredient(ing, candidate),
         }))
-        .sort((a, b) => a.product.priceAud * a.quantity - b.product.priceAud * b.quantity)[0]?.product;
+        .sort((a, b) => effectiveBasketPrice(a.product).price * a.quantity - effectiveBasketPrice(b.product).price * b.quantity)[0]?.product;
       if (!product) continue;
 
       const needed = ingredientAmountInPackUnit(ing, product);
