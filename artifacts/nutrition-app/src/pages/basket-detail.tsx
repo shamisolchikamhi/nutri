@@ -68,6 +68,13 @@ export default function BasketDetailPage() {
     </div>
   );
 
+  const storeComparisons = ((basket as any).storeComparisons ?? []) as Array<{
+    retailerName: string;
+    matchedItems: number;
+    totalItems: number;
+    totalCost: number;
+  }>;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
@@ -124,6 +131,33 @@ export default function BasketDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {storeComparisons.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm font-medium mb-3">Basket price by store</p>
+            <div className="grid gap-2 md:grid-cols-3">
+              {storeComparisons.map((store, index) => (
+                <div
+                  key={store.retailerName}
+                  className={`rounded-lg border p-3 ${index === 0 ? "border-primary bg-primary/5" : "bg-muted/30"}`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-sm">{store.retailerName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {store.matchedItems}/{store.totalItems} items matched
+                      </p>
+                    </div>
+                    {index === 0 && <Badge variant="secondary" className="py-0 text-xs">Best</Badge>}
+                  </div>
+                  <p className="mt-2 text-xl font-bold">{formatMoney(store.totalCost)}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* View Toggle */}
       <div className="flex gap-2">

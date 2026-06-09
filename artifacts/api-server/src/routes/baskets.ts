@@ -26,6 +26,8 @@ import {
 
 const router: IRouter = Router();
 
+const TARGET_RETAILERS = ["Woolworths Food", "Pick n Pay", "Checkers"];
+
 function parseId(raw: unknown): number {
   return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
 }
@@ -40,7 +42,22 @@ function buildProductPageUrl(productName: string, retailerName: string) {
   if (/woolworths/i.test(retailerName)) {
     return `https://www.woolworths.co.za/cat?Ntt=${query}`;
   }
-  return `https://www.woolworths.co.za/cat?Ntt=${query}`;
+  if (/pick\s*n\s*pay|pnp/i.test(retailerName)) {
+    return `https://www.pnp.co.za/pnpstorefront/pnp/en/search/?text=${query}`;
+  }
+  if (/checkers/i.test(retailerName)) {
+    return `https://www.checkers.co.za/search/all?q=${query}`;
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(`${retailerName} ${productName}`)}`;
+}
+
+function normalizeTokens(value: string) {
+  const stop = new Set(["fresh", "free", "range", "skinless", "boneless", "smooth", "organic", "woolworths", "pnp", "checkers"]);
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !stop.has(token));
 }
 
 function productPackGrams(product: typeof productsTable.$inferSelect) {
@@ -66,6 +83,116 @@ function ingredientAmountInPackUnit(ingredient: typeof recipeIngredientsTable.$i
   }
   if (ingredient.unit === "unit") return ingredient.quantity;
   return ingredient.quantity;
+}
+
+function scoreProductForIngredient(ingredientName: string, product: typeof productsTable.$inferSelect) {
+  const ingredientTokens = normalizeTokens(ingredientName);
+  const productTokens = normalizeTokens(`${product.brand ?? ""} ${product.name}`);
+  const productSet = new Set(productTokens);
+  let score = 0;
+  for (const token of ingredientTokens) {
+    if (productSet.has(token)) score += 5;
+    else if (productTokens.some((candidate) => candidate.includes(token) || token.includes(candidate))) score += 2;
+  }
+  if (product.name.toLowerCase().includes(ingredientName.toLowerCase())) score += 6;
+  if (product.category !== "other") score += 1;
+  return score;
+}
+
+function basketQuantityForIngredient(ingredient: typeof recipeIngredientsTable.$inferSelect, product: typeof productsTable.$inferSelect) {
+  const needed = ingredientAmountInPackUnit(ingredient, product);
+  return Math.max(1, Math.ceil(needed / Math.max(product.packSize, 0.001)));
+}
+
+function basketQuantityForEquivalentProduct(
+  sourceQuantity: number,
+  sourceProduct: typeof productsTable.$inferSelect,
+  targetProduct: typeof productsTable.$inferSelect,
+) {
+  const sourcePackUnit = sourceProduct.packUnit;
+  if (sourcePackUnit === targetProduct.packUnit) {
+    const needed = sourceQuantity * sourceProduct.packSize;
+    return Math.max(1, Math.ceil(needed / Math.max(targetProduct.packSize, 0.001)));
+  }
+
+  const sourceGrams = sourceQuantity * productPackGrams(sourceProduct);
+  if (targetProduct.packUnit === "kg") return Math.max(1, Math.ceil(sourceGrams / 1000 / Math.max(targetProduct.packSize, 0.001)));
+  if (targetProduct.packUnit === "g") return Math.max(1, Math.ceil(sourceGrams / Math.max(targetProduct.packSize, 0.001)));
+  if (targetProduct.packUnit === "l") return Math.max(1, Math.ceil(sourceGrams / 1000 / Math.max(targetProduct.packSize, 0.001)));
+  if (targetProduct.packUnit === "ml") return Math.max(1, Math.ceil(sourceGrams / Math.max(targetProduct.packSize, 0.001)));
+  return Math.max(1, Math.ceil(sourceQuantity));
+}
+
+async function getTargetRetailers() {
+  const retailers = await db.select().from(retailersTable).where(eq(retailersTable.marketCode, "ZA"));
+  return retailers.filter((retailer) => TARGET_RETAILERS.some((name) => name.toLowerCase() === retailer.name.toLowerCase()));
+}
+
+async function findBestProductForRetailer(
+  ingredient: typeof recipeIngredientsTable.$inferSelect,
+  retailerId: number,
+  products: Array<typeof productsTable.$inferSelect>,
+) {
+  const ranked = products
+    .filter((product) => product.retailerId === retailerId)
+    .map((product) => ({ product, score: scoreProductForIngredient(ingredient.name, product) }))
+    .filter((item) => item.score >= 3)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const aQty = basketQuantityForIngredient(ingredient, a.product);
+      const bQty = basketQuantityForIngredient(ingredient, b.product);
+      return a.product.priceAud * aQty - b.product.priceAud * bQty;
+    });
+  return ranked[0]?.product ?? null;
+}
+
+async function buildStoreComparisons(items: NonNullable<Awaited<ReturnType<typeof buildBasketItemResponse>>>[]) {
+  const [retailers, products] = await Promise.all([
+    getTargetRetailers(),
+    db.select().from(productsTable),
+  ]);
+  const productMap = new Map<number, typeof productsTable.$inferSelect>();
+  for (const product of products) productMap.set(product.id, product);
+
+  return retailers.map((retailer) => {
+    const comparisonItems = items.map((item) => {
+      const sourceProduct = productMap.get(item.productId);
+      if (!sourceProduct) return null;
+      const ranked = products
+        .filter((product) => product.retailerId === retailer.id && product.category === sourceProduct.category)
+        .map((product) => ({ product, score: scoreProductForIngredient(sourceProduct.name, product) }))
+        .filter((candidate) => candidate.score >= 3)
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score;
+          const aQty = basketQuantityForEquivalentProduct(item.quantity, sourceProduct, a.product);
+          const bQty = basketQuantityForEquivalentProduct(item.quantity, sourceProduct, b.product);
+          return a.product.priceAud * aQty - b.product.priceAud * bQty;
+        });
+      const match = ranked[0]?.product;
+      if (!match) return null;
+      const quantity = basketQuantityForEquivalentProduct(item.quantity, sourceProduct, match);
+      return {
+        sourceProductId: item.productId,
+        productId: match.id,
+        productName: match.name,
+        productUrl: buildProductPageUrl(match.name, retailer.name),
+        quantity,
+        packSize: match.packSize,
+        packUnit: match.packUnit,
+        totalCost: Math.round(match.priceAud * quantity * 100) / 100,
+      };
+    }).filter(Boolean);
+
+    const totalCost = comparisonItems.reduce((sum, item) => sum + (item?.totalCost ?? 0), 0);
+    return {
+      retailerId: retailer.id,
+      retailerName: retailer.name,
+      matchedItems: comparisonItems.length,
+      totalItems: items.length,
+      totalCost: Math.round(totalCost * 100) / 100,
+      items: comparisonItems,
+    };
+  }).sort((a, b) => a.totalCost - b.totalCost);
 }
 
 async function buildBasketItemResponse(item: typeof basketItemsTable.$inferSelect) {
@@ -149,6 +276,7 @@ async function buildBasketDetail(id: number) {
     name: basket.name,
     mode: basket.mode,
     items,
+    storeComparisons: await buildStoreComparisons(items),
     totalCost: Math.round(totalCost * 100) / 100,
     totalCalories,
     totalProteinG: Math.round(totalProteinG * 10) / 10,
@@ -324,8 +452,13 @@ router.post("/baskets/from-recipes", async (req, res): Promise<void> => {
     .values({ name: name ?? "Recipe Basket", mode: mode ?? "cheapest" })
     .returning();
 
-  // Gather all ingredients from all recipes, deduplicate by productId and buy whole shop packs.
+  // Gather all ingredients from all recipes, match them to available shop packs, and buy whole packs.
   const ingredientMap = new Map<number, { productId: number; needed: number; product: typeof productsTable.$inferSelect }>();
+  const [targetRetailers, products] = await Promise.all([
+    getTargetRetailers(),
+    db.select().from(productsTable),
+  ]);
+
   for (const recipeId of recipeIds) {
     const ingredients = await db
       .select()
@@ -333,20 +466,29 @@ router.post("/baskets/from-recipes", async (req, res): Promise<void> => {
       .where(eq(recipeIngredientsTable.recipeId, recipeId));
 
     for (const ing of ingredients) {
-      if (ing.productId) {
-        const product = (await db.select().from(productsTable).where(eq(productsTable.id, ing.productId)).limit(1))[0];
-        if (!product) continue;
-        const needed = ingredientAmountInPackUnit(ing, product);
-        const existing = ingredientMap.get(ing.productId);
-        if (existing) {
-          existing.needed += needed;
-        } else {
-          ingredientMap.set(ing.productId, {
-            productId: ing.productId,
-            needed,
-            product,
-          });
-        }
+      const matchedProducts = await Promise.all(
+        targetRetailers.map((retailer) => findBestProductForRetailer(ing, retailer.id, products)),
+      );
+      const fallbackProduct = ing.productId ? products.find((product) => product.id === ing.productId) ?? null : null;
+      const product = [...matchedProducts, fallbackProduct]
+        .filter((candidate): candidate is typeof productsTable.$inferSelect => Boolean(candidate))
+        .map((candidate) => ({
+          product: candidate,
+          quantity: basketQuantityForIngredient(ing, candidate),
+        }))
+        .sort((a, b) => a.product.priceAud * a.quantity - b.product.priceAud * b.quantity)[0]?.product;
+      if (!product) continue;
+
+      const needed = ingredientAmountInPackUnit(ing, product);
+      const existing = ingredientMap.get(product.id);
+      if (existing) {
+        existing.needed += needed;
+      } else {
+        ingredientMap.set(product.id, {
+          productId: product.id,
+          needed,
+          product,
+        });
       }
     }
   }
