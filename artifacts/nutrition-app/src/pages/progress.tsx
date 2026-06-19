@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useGetProgressSummary,
   useGetGoalSummary,
@@ -21,7 +21,6 @@ import { PageError } from "@/components/PageState";
 const today = new Date().toISOString().split("T")[0];
 
 export default function ProgressPage() {
-  const qc = useQueryClient();
   const progressQuery = useGetProgressSummary();
   const goalQuery = useGetGoalSummary();
   const profileQuery = useGetProfile();
@@ -30,11 +29,13 @@ export default function ProgressPage() {
   const { data: profile } = profileQuery;
   const [weightInput, setWeightInput] = useState("");
 
-  const logWeightMutation = useMutation({
+  const logWeightMutation = useAppMutation({
+    operation: "Log weight",
+    reference: "WRITE-WEIGHT",
+    successMessage: "Your weight entry was saved.",
+    invalidate: [getGetProgressSummaryQueryKey(), getGetDailyLogQueryKey(today)],
     mutationFn: (weightKg: number) => upsertDailyLog(today, { weightKg }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: getGetProgressSummaryQueryKey() });
-      qc.invalidateQueries({ queryKey: getGetDailyLogQueryKey(today) });
       setWeightInput("");
     },
   });

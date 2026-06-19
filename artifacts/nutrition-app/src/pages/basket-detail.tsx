@@ -1,5 +1,5 @@
 import { useRoute, useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useGetBasket,
   useGetShoppingList,
@@ -23,7 +23,6 @@ import { PageError } from "@/components/PageState";
 export default function BasketDetailPage() {
   const [, params] = useRoute("/basket/:id");
   const [, setLocation] = useLocation();
-  const qc = useQueryClient();
   const id = parseInt(params?.id ?? "0");
   const [view, setView] = useState<"basket" | "shopping-list">("basket");
   const [addingProductId, setAddingProductId] = useState<number | null>(null);
@@ -35,26 +34,31 @@ export default function BasketDetailPage() {
   const { data: shoppingList } = shoppingListQuery;
   const { data: products } = productsQuery;
 
-  const inv = () => {
-    qc.invalidateQueries({ queryKey: getGetBasketQueryKey(id) });
-    qc.invalidateQueries({ queryKey: getGetShoppingListQueryKey(id) });
-  };
-
-  const addMutation = useMutation({
+  const addMutation = useAppMutation({
+    operation: "Add basket item",
+    reference: "WRITE-BASKET-ITEM-ADD",
+    successMessage: "The item was added to your basket.",
+    invalidate: [getGetBasketQueryKey(id), getGetShoppingListQueryKey(id)],
     mutationFn: (productId: number) =>
       addBasketItem(id, { productId, quantity: 1, unit: "pack" }),
-    onSuccess: () => { inv(); setAddingProductId(null); },
+    onSuccess: () => setAddingProductId(null),
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useAppMutation({
+    operation: "Update basket item",
+    reference: "WRITE-BASKET-ITEM-UPDATE",
+    successMessage: "The basket item was updated.",
+    invalidate: [getGetBasketQueryKey(id), getGetShoppingListQueryKey(id)],
     mutationFn: ({ itemId, productId, quantity }: { itemId: number; productId: number; quantity: number }) =>
       updateBasketItem(id, itemId, { productId, quantity }),
-    onSuccess: inv,
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useAppMutation({
+    operation: "Remove basket item",
+    reference: "WRITE-BASKET-ITEM-REMOVE",
+    successMessage: "The item was removed from your basket.",
+    invalidate: [getGetBasketQueryKey(id), getGetShoppingListQueryKey(id)],
     mutationFn: (itemId: number) => deleteBasketItem(id, itemId),
-    onSuccess: inv,
   });
 
   if (isLoading) return (

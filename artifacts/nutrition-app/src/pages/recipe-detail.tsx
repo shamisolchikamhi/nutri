@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useGetRecipe,
   saveRecipe,
@@ -21,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, ShoppingCart, ArrowLeft, Users } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
 
@@ -58,8 +58,6 @@ function defaultTrackerMealType(recipe: unknown): typeof TRACKER_MEAL_TYPES[numb
 export default function RecipeDetailPage() {
   const [, params] = useRoute("/recipes/:id");
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const qc = useQueryClient();
   const id = parseInt(params?.id ?? "0");
 
   const recipeQuery = useGetRecipe(id);
@@ -76,31 +74,37 @@ export default function RecipeDetailPage() {
     if (recipe) setLogMealType(defaultTrackerMealType(recipe));
   }, [recipe?.id]);
 
-  const saveMutation = useMutation({
+  const saveMutation = useAppMutation({
+    operation: "Save recipe",
+    reference: "WRITE-RECIPE-SAVE",
+    successMessage: "The recipe was added to Saved.",
+    invalidate: [getListSavedRecipesQueryKey(), getGetRecipeQueryKey(id)],
     mutationFn: () => saveRecipe({ itemId: id }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: getListSavedRecipesQueryKey() });
-      qc.invalidateQueries({ queryKey: getGetRecipeQueryKey(id) });
-    },
   });
 
-  const unsaveMutation = useMutation({
+  const unsaveMutation = useAppMutation({
+    operation: "Remove saved recipe",
+    reference: "WRITE-RECIPE-UNSAVE",
+    successMessage: "The recipe was removed from Saved.",
+    invalidate: [getListSavedRecipesQueryKey(), getGetRecipeQueryKey(id)],
     mutationFn: () => unsaveRecipe(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: getListSavedRecipesQueryKey() });
-      qc.invalidateQueries({ queryKey: getGetRecipeQueryKey(id) });
-    },
   });
 
-  const basketMutation = useMutation({
+  const basketMutation = useAppMutation({
+    operation: "Create recipe basket",
+    reference: "WRITE-RECIPE-BASKET",
+    successMessage: "A basket was created from the recipe.",
     mutationFn: () => createBasketFromRecipes({ recipeIds: [id], name: `${recipe?.name} Shopping`, mode: "cheapest" }),
     onSuccess: (basket) => {
-      toast({ title: "Basket created!", description: `${basket.items.length} items added` });
       setLocation(`/basket/${basket.id}`);
     },
   });
 
-  const logRecipeMutation = useMutation({
+  const logRecipeMutation = useAppMutation({
+    operation: "Log recipe",
+    reference: "WRITE-RECIPE-LOG",
+    successMessage: "The recipe was added to today's tracker.",
+    invalidate: [getGetDailyLogQueryKey(today), getGetMealEntriesQueryKey(today), getGetDashboardTodayQueryKey()],
     mutationFn: () => {
       if (!recipe) throw new Error("Recipe is not loaded");
       const servings = Math.max(0.25, parseFloat(logServings) || 1);
@@ -112,19 +116,6 @@ export default function RecipeDetailPage() {
         carbsG: Math.round(recipe.carbsPerServingG * servings * 10) / 10,
         fatG: Math.round(recipe.fatPerServingG * servings * 10) / 10,
         servings,
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: getGetDailyLogQueryKey(today) });
-      qc.invalidateQueries({ queryKey: getGetMealEntriesQueryKey(today) });
-      qc.invalidateQueries({ queryKey: getGetDashboardTodayQueryKey() });
-      toast({ title: "Recipe logged", description: `${recipe?.name} added to today's tracker` });
-    },
-    onError: (error) => {
-      toast({
-        title: "Could not log recipe",
-        description: error instanceof Error ? error.message : "Please try again.",
-        variant: "destructive",
       });
     },
   });

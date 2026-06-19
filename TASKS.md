@@ -11,7 +11,7 @@ should not be shipped on top of unreliable health data or silent failures.
     products, specials, progress, saved items, and settings.
   - Include a plain-language message, retry action, and support/debug reference.
   - Never render failed requests as valid zero values or an empty catalogue.
-- [ ] Add shared mutation error handling for every write action.
+- [x] Add shared mutation error handling for every write action.
   - Cover profile, settings, meals, water, activity, weight, saves, and baskets.
   - Preserve user input after failure and provide an explicit retry action.
   - Show success only after the server confirms persistence.
@@ -50,7 +50,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Reuse it in onboarding and settings.
   - Centralize diet-selection and retailer-selection helpers.
 - [x] Create shared `PageState` components for loading, error, empty, and retry UI.
-- [ ] Create a standard mutation helper for success messages, errors, and query
+- [x] Create a standard mutation helper for success messages, errors, and query
   invalidation instead of repeating page-specific `useMutation` plumbing.
 - [ ] Centralize nutrition defaults and formatting.
   - Remove scattered `2000` kcal, `2500` ml, date locale, and fallback literals.

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import { upsertProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,15 +29,9 @@ const ACTIVITY = [
   { value: "extra_active", label: "Extra Active", desc: "Very hard exercise daily" },
 ];
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
-  return "Could not save your profile. Please try again.";
-}
-
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     sex: "male",
@@ -53,7 +47,11 @@ export default function OnboardingPage() {
     retailerPreferences: [] as number[],
   });
 
-  const mutation = useMutation({
+  const mutation = useAppMutation({
+    operation: "Save profile",
+    reference: "WRITE-PROFILE-ONBOARDING",
+    successMessage: "Your profile is ready.",
+    invalidate: [getGetProfileQueryKey()],
     mutationFn: () =>
       upsertProfile({
         sex: form.sex as "male" | "female" | "other",
@@ -68,7 +66,6 @@ export default function OnboardingPage() {
         retailerPreferences: form.retailerPreferences,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
       setStep(3);
     },
   });
@@ -235,11 +232,6 @@ export default function OnboardingPage() {
                     {mutation.isPending ? "Saving..." : "Complete Setup"}
                   </Button>
                 </div>
-                {mutation.error && (
-                  <p className="text-sm text-destructive">
-                    {getErrorMessage(mutation.error)}
-                  </p>
-                )}
               </div>
             )}
 

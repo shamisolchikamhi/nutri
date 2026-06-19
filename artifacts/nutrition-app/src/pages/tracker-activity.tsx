@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useListActivityLogs,
   createActivityLog,
@@ -32,7 +32,6 @@ const ACTIVITY_TYPES = [
 const today = new Date().toISOString().split("T")[0];
 
 export default function ActivityPage() {
-  const qc = useQueryClient();
   const logsQuery = useListActivityLogs();
   const { data: logs, isLoading } = logsQuery;
   const [open, setOpen] = useState(false);
@@ -46,12 +45,11 @@ export default function ActivityPage() {
     notes: "",
   });
 
-  const inv = () => {
-    qc.invalidateQueries({ queryKey: getListActivityLogsQueryKey() });
-    qc.invalidateQueries({ queryKey: getGetDashboardTodayQueryKey() });
-  };
-
-  const addMutation = useMutation({
+  const addMutation = useAppMutation({
+    operation: "Log activity",
+    reference: "WRITE-ACTIVITY-ADD",
+    successMessage: "The activity was added to your log.",
+    invalidate: [getListActivityLogsQueryKey(), getGetDashboardTodayQueryKey()],
     mutationFn: () =>
       createActivityLog({
         date: form.date,
@@ -62,12 +60,15 @@ export default function ActivityPage() {
         sleepHours: parseFloat(form.sleepHours) || 7,
         notes: form.notes || null,
       } as any),
-    onSuccess: () => { inv(); setOpen(false); },
+    onSuccess: () => setOpen(false),
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useAppMutation({
+    operation: "Remove activity",
+    reference: "WRITE-ACTIVITY-REMOVE",
+    successMessage: "The activity was removed.",
+    invalidate: [getListActivityLogsQueryKey(), getGetDashboardTodayQueryKey()],
     mutationFn: (id: number) => deleteActivityLog(id),
-    onSuccess: inv,
   });
 
   const totalSteps = (logs ?? []).filter(l => l.date === today).reduce((s, l) => s + l.steps, 0);

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useListRecipes,
   useGetRecommendedRecipes,
@@ -192,7 +193,6 @@ async function processRecipeMediaFiles(files: FileList | null) {
 
 export default function RecipesPage() {
   const [, setLocation] = useLocation();
-  const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [goal, setGoal] = useState("all");
   const [difficulty, setDifficulty] = useState("all");
@@ -237,23 +237,27 @@ export default function RecipesPage() {
   const loading = viewMode === "recommended" ? recLoading : isLoading;
   const activeQuery = viewMode === "recommended" ? recommendedQuery : recipesQuery;
 
-  const saveMutation = useMutation({
+  const saveMutation = useAppMutation({
+    operation: "Save recipe",
+    reference: "WRITE-RECIPE-SAVE",
+    successMessage: "The recipe was added to Saved.",
+    invalidate: [getListSavedRecipesQueryKey(), getListRecipesQueryKey()],
     mutationFn: (recipeId: number) => saveRecipe({ itemId: recipeId }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: getListSavedRecipesQueryKey() });
-      qc.invalidateQueries({ queryKey: getListRecipesQueryKey() });
-    },
   });
 
-  const unsaveMutation = useMutation({
+  const unsaveMutation = useAppMutation({
+    operation: "Remove saved recipe",
+    reference: "WRITE-RECIPE-UNSAVE",
+    successMessage: "The recipe was removed from Saved.",
+    invalidate: [getListSavedRecipesQueryKey(), getListRecipesQueryKey()],
     mutationFn: (recipeId: number) => unsaveRecipe(recipeId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: getListSavedRecipesQueryKey() });
-      qc.invalidateQueries({ queryKey: getListRecipesQueryKey() });
-    },
   });
 
-  const importSocialMutation = useMutation({
+  const importSocialMutation = useAppMutation({
+    operation: "Import recipe",
+    reference: "WRITE-RECIPE-IMPORT",
+    successMessage: "The recipe was imported.",
+    invalidate: [getListRecipesQueryKey()],
     mutationFn: async () => {
       await apiJson("/healthz");
       return apiJson<SocialRecipe>("/social-recipes", {
@@ -281,7 +285,6 @@ export default function RecipesPage() {
       setSocialMediaDataUrls([]);
       setSocialMediaStatus("");
       refetchSocialRecipes();
-      qc.invalidateQueries({ queryKey: getListRecipesQueryKey() });
       if (createBasketAfterImport && created.matchedCount > 0) {
         try {
           const basket = await apiJson<{ basketId: number }>(`/social-recipes/${created.id}/basket`, {
@@ -296,7 +299,10 @@ export default function RecipesPage() {
     },
   });
 
-  const basketMutation = useMutation({
+  const basketMutation = useAppMutation({
+    operation: "Create recipe basket",
+    reference: "WRITE-RECIPE-BASKET",
+    successMessage: "A basket was created from the recipe.",
     mutationFn: (socialRecipeId: number) =>
       apiJson<{ basketId: number; unmatchedIngredients: string[] }>(`/social-recipes/${socialRecipeId}/basket`, {
         method: "POST",

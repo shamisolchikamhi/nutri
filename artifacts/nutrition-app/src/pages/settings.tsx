@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useGetProfile,
   useListRetailers,
@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
 import { Scale, Target, ShoppingBag, Save, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MARKETS, type MarketCode, getBudgetLabel, getActiveMarket, setActiveMarket } from "@/lib/market";
@@ -38,8 +37,6 @@ const ACTIVITY_LEVELS = [
 ];
 
 export default function SettingsPage() {
-  const { toast } = useToast();
-  const qc = useQueryClient();
   const profileQuery = useGetProfile();
   const retailersQuery = useListRetailers();
   const { data: profile, isLoading } = profileQuery;
@@ -80,7 +77,11 @@ export default function SettingsPage() {
     }
   }, [profile]);
 
-  const saveMutation = useMutation({
+  const saveMutation = useAppMutation({
+    operation: "Save settings",
+    reference: "WRITE-SETTINGS",
+    successMessage: "Your profile and preferences were updated.",
+    invalidate: [getGetProfileQueryKey(), getGetGoalSummaryQueryKey()],
     mutationFn: () =>
       upsertProfile({
         sex: form.sex as "male" | "female" | "other",
@@ -97,9 +98,6 @@ export default function SettingsPage() {
       }),
     onSuccess: () => {
       setActiveMarket(marketCode);
-      qc.invalidateQueries({ queryKey: getGetProfileQueryKey() });
-      qc.invalidateQueries({ queryKey: getGetGoalSummaryQueryKey() });
-      toast({ title: "Settings saved!", description: "Your profile has been updated." });
     },
   });
 

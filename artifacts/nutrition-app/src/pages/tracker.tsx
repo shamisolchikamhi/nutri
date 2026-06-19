@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useGetDailyLog,
   useGetMealEntries,
@@ -40,7 +40,6 @@ const COMMON_FOODS = [
 ];
 
 export default function TrackerPage() {
-  const qc = useQueryClient();
   const logQuery = useGetDailyLog(today);
   const mealsQuery = useGetMealEntries(today);
   const { data: log, isLoading } = logQuery;
@@ -57,13 +56,11 @@ export default function TrackerPage() {
     servings: "1",
   });
 
-  const inv = () => {
-    qc.invalidateQueries({ queryKey: getGetDailyLogQueryKey(today) });
-    qc.invalidateQueries({ queryKey: getGetMealEntriesQueryKey(today) });
-    qc.invalidateQueries({ queryKey: getGetDashboardTodayQueryKey() });
-  };
-
-  const addMutation = useMutation({
+  const addMutation = useAppMutation({
+    operation: "Log meal",
+    reference: "WRITE-MEAL-ADD",
+    successMessage: "The meal was added to today's log.",
+    invalidate: [getGetDailyLogQueryKey(today), getGetMealEntriesQueryKey(today), getGetDashboardTodayQueryKey()],
     mutationFn: () =>
       addMealEntry(today, {
         name: form.name,
@@ -74,17 +71,23 @@ export default function TrackerPage() {
         fatG: parseFloat(form.fatG) || 0,
         servings: parseFloat(form.servings) || 1,
       }),
-    onSuccess: () => { inv(); setOpen(false); resetForm(); },
+    onSuccess: () => { setOpen(false); resetForm(); },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useAppMutation({
+    operation: "Remove meal",
+    reference: "WRITE-MEAL-REMOVE",
+    successMessage: "The meal was removed.",
+    invalidate: [getGetDailyLogQueryKey(today), getGetMealEntriesQueryKey(today), getGetDashboardTodayQueryKey()],
     mutationFn: ({ date, id }: { date: string; id: number }) => deleteMealEntry(date, id),
-    onSuccess: inv,
   });
 
-  const waterMutation = useMutation({
+  const waterMutation = useAppMutation({
+    operation: "Update water",
+    reference: "WRITE-WATER",
+    successMessage: "Your water intake was updated.",
+    invalidate: [getGetDailyLogQueryKey(today), getGetMealEntriesQueryKey(today), getGetDashboardTodayQueryKey()],
     mutationFn: (ml: number) => upsertDailyLog(today, { waterMl: ml }),
-    onSuccess: inv,
   });
 
   const resetForm = () => setForm({ name: "", mealType: "breakfast" as const, calories: "", proteinG: "", carbsG: "", fatG: "", servings: "1" });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import { CalendarDays, ChefHat, Flame, ShoppingCart, Target } from "lucide-react";
 import { createBasketFromRecipes } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
 
@@ -60,14 +60,16 @@ async function fetchMealPlan(days: number): Promise<MealPlan> {
 
 export default function MealPlanPage() {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const [days, setDays] = useState(7);
   const { data: plan, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["meal-plan", days],
     queryFn: () => fetchMealPlan(days),
   });
 
-  const basketMutation = useMutation({
+  const basketMutation = useAppMutation({
+    operation: "Create meal-plan basket",
+    reference: "WRITE-MEAL-PLAN-BASKET",
+    successMessage: "A basket was created from this day's meals.",
     mutationFn: (day: MealPlanDay) =>
       createBasketFromRecipes({
         recipeIds: day.items.map((item) => item.recipe.id),
@@ -75,7 +77,6 @@ export default function MealPlanPage() {
         mode: "cheapest",
       }),
     onSuccess: (basket) => {
-      toast({ title: "Basket created", description: `${basket.items.length} pack-based items added` });
       setLocation(`/basket/${basket.id}`);
     },
   });

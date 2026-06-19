@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useListBaskets,
   createBasket,
@@ -21,26 +21,31 @@ import { PageError } from "@/components/PageState";
 
 export default function BasketPage() {
   const [, setLocation] = useLocation();
-  const qc = useQueryClient();
   const basketsQuery = useListBaskets();
   const { data: baskets, isLoading } = basketsQuery;
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [mode, setMode] = useState<"cheapest" | "healthiest" | "highest_protein" | "lowest_calorie" | "budget">("cheapest");
 
-  const createMutation = useMutation({
+  const createMutation = useAppMutation({
+    operation: "Create basket",
+    reference: "WRITE-BASKET-CREATE",
+    successMessage: "Your basket was created.",
+    invalidate: [getListBasketsQueryKey()],
     mutationFn: () => createBasket({ name: name || "My Basket", mode }),
     onSuccess: (basket) => {
-      qc.invalidateQueries({ queryKey: getListBasketsQueryKey() });
       setOpen(false);
       setName("");
       setLocation(`/basket/${basket.id}`);
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useAppMutation({
+    operation: "Delete basket",
+    reference: "WRITE-BASKET-DELETE",
+    successMessage: "The basket was deleted.",
+    invalidate: [getListBasketsQueryKey()],
     mutationFn: (id: number) => deleteBasket(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: getListBasketsQueryKey() }),
   });
 
   if (isLoading) return <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>;

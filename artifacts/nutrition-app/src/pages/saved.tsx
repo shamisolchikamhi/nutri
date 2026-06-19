@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useListSavedRecipes,
   useListSavedSnacks,
@@ -19,7 +19,6 @@ import { PageError } from "@/components/PageState";
 
 export default function SavedPage() {
   const [, setLocation] = useLocation();
-  const qc = useQueryClient();
   const [tab, setTab] = useState<"recipes" | "snacks">("recipes");
 
   const recipesQuery = useListSavedRecipes();
@@ -27,14 +26,20 @@ export default function SavedPage() {
   const { data: recipes, isLoading: recipesLoading } = recipesQuery;
   const { data: snacks, isLoading: snacksLoading } = snacksQuery;
 
-  const unsaveRecipeMutation = useMutation({
+  const unsaveRecipeMutation = useAppMutation({
+    operation: "Remove saved recipe",
+    reference: "WRITE-SAVED-RECIPE-REMOVE",
+    successMessage: "The recipe was removed from Saved.",
+    invalidate: [getListSavedRecipesQueryKey()],
     mutationFn: (id: number) => unsaveRecipe(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: getListSavedRecipesQueryKey() }),
   });
 
-  const unsaveSnackMutation = useMutation({
+  const unsaveSnackMutation = useAppMutation({
+    operation: "Remove saved snack",
+    reference: "WRITE-SAVED-SNACK-REMOVE",
+    successMessage: "The snack was removed from Saved.",
+    invalidate: [getListSavedSnacksQueryKey()],
     mutationFn: (productId: number) => unsaveSnack(productId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: getListSavedSnacksQueryKey() }),
   });
 
   return (
