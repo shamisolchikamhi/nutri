@@ -15,6 +15,7 @@ import {
   userProfileTable,
 } from "@workspace/db";
 import { calcGoalMetrics } from "./profile";
+import { DEFAULT_NUTRITION_TARGETS, roundMoney, roundNutrition } from "@workspace/nutrition";
 
 const router: IRouter = Router();
 
@@ -45,8 +46,8 @@ router.get("/dashboard/today", async (_req, res): Promise<void> => {
   const log = dailyLogs[0];
   const activity = activityLogs[0];
 
-  let calorieTarget = 2000;
-  let proteinTarget = 150;
+  let calorieTarget = DEFAULT_NUTRITION_TARGETS.calories;
+  let proteinTarget = DEFAULT_NUTRITION_TARGETS.proteinG;
   let goalProgressPercent = 0;
   let currentWeightKg: number | null = null;
 
@@ -82,7 +83,7 @@ router.get("/dashboard/today", async (_req, res): Promise<void> => {
       const p = await db.select().from(productsTable).where(eq(productsTable.id, item.productId)).limit(1);
       if (p[0]) cost += p[0].priceAud * item.quantity;
     }
-    basketCost = Math.round(cost * 100) / 100;
+    basketCost = roundMoney(cost);
   }
 
   // Savings from all active specials
@@ -109,17 +110,17 @@ router.get("/dashboard/today", async (_req, res): Promise<void> => {
     caloriesEaten,
     caloriesRemaining: Math.max(0, calorieTarget - caloriesEaten),
     calorieTarget,
-    proteinEatenG: Math.round(proteinEatenG * 10) / 10,
-    proteinRemainingG: Math.max(0, Math.round((proteinTarget - proteinEatenG) * 10) / 10),
+    proteinEatenG: roundNutrition(proteinEatenG),
+    proteinRemainingG: Math.max(0, roundNutrition(proteinTarget - proteinEatenG)),
     proteinTargetG: proteinTarget,
-    carbsEatenG: Math.round(carbsEatenG * 10) / 10,
-    fatEatenG: Math.round(fatEatenG * 10) / 10,
+    carbsEatenG: roundNutrition(carbsEatenG),
+    fatEatenG: roundNutrition(fatEatenG),
     waterMl: log?.waterMl ?? 0,
     netCalorieBalance: calorieTarget - caloriesEaten + activeCaloriesBurned,
     activeCaloriesBurned,
-    goalProgressPercent: Math.round(goalProgressPercent * 10) / 10,
+    goalProgressPercent: roundNutrition(goalProgressPercent),
     basketCost,
-    savingsFromSpecials: Math.round(savingsFromSpecials * 100) / 100,
+    savingsFromSpecials: roundMoney(savingsFromSpecials),
     streak,
     currentWeightKg,
   });
@@ -131,7 +132,7 @@ router.get("/dashboard/snack-suggestions", async (_req, res): Promise<void> => {
   const caloriesEaten = meals.reduce((s, m) => s + m.calories, 0);
 
   const profiles = await db.select().from(userProfileTable).limit(1);
-  const calorieTarget = profiles[0] ? calcGoalMetrics(profiles[0]).dailyCalorieTarget : 2000;
+  const calorieTarget = profiles[0] ? calcGoalMetrics(profiles[0]).dailyCalorieTarget : DEFAULT_NUTRITION_TARGETS.calories;
   const remaining = calorieTarget - caloriesEaten;
 
   const snackProducts = await db
@@ -167,9 +168,9 @@ router.get("/dashboard/snack-suggestions", async (_req, res): Promise<void> => {
           retailerName: retailers[0]?.name ?? "Unknown",
           priceAud: p.priceAud,
           caloriesPerServing: Math.round((p.caloriesPer100g * servingG) / 100),
-          proteinPerServingG: Math.round((p.proteinPer100g * servingG) / 100 * 10) / 10,
-          sugarPerServingG: Math.round(((p.sugarPer100g ?? 0) * servingG) / 100 * 10) / 10,
-          fatPerServingG: Math.round((p.fatPer100g * servingG) / 100 * 10) / 10,
+          proteinPerServingG: roundNutrition((p.proteinPer100g * servingG) / 100),
+          sugarPerServingG: roundNutrition(((p.sugarPer100g ?? 0) * servingG) / 100),
+          fatPerServingG: roundNutrition((p.fatPer100g * servingG) / 100),
           servingSize: servingG,
           servingUnit: "g",
           isOnSpecial: p.isOnSpecial,
@@ -190,7 +191,7 @@ router.get("/dashboard/meal-suggestion", async (_req, res): Promise<void> => {
   const caloriesEaten = meals.reduce((s, m) => s + m.calories, 0);
 
   const profiles = await db.select().from(userProfileTable).limit(1);
-  const calorieTarget = profiles[0] ? calcGoalMetrics(profiles[0]).dailyCalorieTarget : 2000;
+  const calorieTarget = profiles[0] ? calcGoalMetrics(profiles[0]).dailyCalorieTarget : DEFAULT_NUTRITION_TARGETS.calories;
   const remaining = calorieTarget - caloriesEaten;
 
   const mealCount = meals.length;
@@ -246,10 +247,10 @@ router.get("/dashboard/progress", async (_req, res): Promise<void> => {
     currentWeightKg: latestWeight,
     targetWeightKg: profile.targetWeightKg,
     startWeightKg: startWeight,
-    kgLost: Math.round(kgLost * 100) / 100,
-    kgToGo: Math.round(kgToGo * 100) / 100,
-    progressPercent: Math.round(progressPercent * 10) / 10,
-    estimatedWeeksRemaining: Math.round(estimatedWeeksRemaining * 10) / 10,
+    kgLost: roundMoney(kgLost),
+    kgToGo: roundMoney(kgToGo),
+    progressPercent: roundNutrition(progressPercent),
+    estimatedWeeksRemaining: roundNutrition(estimatedWeeksRemaining),
     weeklyTrend,
   });
 });

@@ -75,6 +75,10 @@ export function formatMoney(value: number | null | undefined, market = getActive
   }).format(amount);
 }
 
+export function formatDate(date: Date | string, options: Intl.DateTimeFormatOptions, market = getActiveMarket()) {
+  return new Intl.DateTimeFormat(market.locale, options).format(new Date(date));
+}
+
 export function getBudgetLabel(market = getActiveMarket()) {
   return `Weekly budget (${market.currencyCode})`;
 }

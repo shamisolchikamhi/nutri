@@ -23,6 +23,8 @@ import { Trash2, Plus, Droplets } from "lucide-react";
 import { PageError } from "@/components/PageState";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
+import { DEFAULT_HYDRATION_TARGET_ML, DEFAULT_NUTRITION_TARGETS } from "@workspace/nutrition";
+import { formatDate } from "@/lib/market";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -105,7 +107,7 @@ export default function TrackerPage() {
   }));
 
   const calPct = log ? Math.min(100, (log.totalCalories / log.calorieTarget) * 100) : 0;
-  const waterPct = log ? Math.min(100, (log.waterMl / 2500) * 100) : 0;
+  const waterPct = log ? Math.min(100, (log.waterMl / DEFAULT_HYDRATION_TARGET_ML) * 100) : 0;
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
   const failedQuery = [logQuery, mealsQuery].find((query) => query.isError);
@@ -116,7 +118,7 @@ export default function TrackerPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Meal Tracker</h1>
-          <p className="text-muted-foreground text-sm">{new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}</p>
+          <p className="text-muted-foreground text-sm">{formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" })}</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -184,7 +186,7 @@ export default function TrackerPage() {
         <CardContent className="p-4 space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Calories</span>
-            <span className="text-sm font-bold">{log?.totalCalories ?? 0} / {log?.calorieTarget ?? 2000} kcal</span>
+            <span className="text-sm font-bold">{log?.totalCalories ?? 0} / {log?.calorieTarget ?? DEFAULT_NUTRITION_TARGETS.calories} kcal</span>
           </div>
           <Progress value={calPct} className="h-2.5" />
           <div className="grid grid-cols-3 gap-2 text-center">
@@ -208,7 +210,7 @@ export default function TrackerPage() {
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium flex items-center gap-1.5"><Droplets className="h-4 w-4 text-blue-500" /> Water Intake</span>
-            <span className="text-sm font-bold text-blue-600">{log?.waterMl ?? 0} / 2500 ml</span>
+            <span className="text-sm font-bold text-blue-600">{log?.waterMl ?? 0} / {DEFAULT_HYDRATION_TARGET_ML} ml</span>
           </div>
           <Progress value={waterPct} className="h-2 mb-3" />
           <div className="flex gap-2 flex-wrap">

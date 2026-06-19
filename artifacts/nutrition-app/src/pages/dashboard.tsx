@@ -11,8 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Flame, Droplets, Zap, Target, TrendingDown, ShoppingCart, Tag, Clock } from "lucide-react";
-import { formatMoney } from "@/lib/market";
+import { formatDate, formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
+import { DEFAULT_HYDRATION_TARGET_ML } from "@workspace/nutrition";
 
 function MacroRing({ value, max, color, label }: { value: number | null; max: number | null; color: string; label: string }) {
   const pct = value != null && max != null && max > 0 ? Math.min(100, (value / max) * 100) : null;
@@ -46,7 +47,7 @@ export default function DashboardPage() {
   const { data: mealSuggestion } = mealQuery;
   const { data: goalSummary } = goalQuery;
 
-  const todayDate = new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
+  const todayDate = formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" });
 
   if (isLoading) {
     return (
@@ -143,7 +144,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs text-muted-foreground">Water</p>
               <p className="font-semibold">{today?.waterMl ?? 0} ml</p>
-              <p className="text-xs text-muted-foreground">Goal: 2500 ml</p>
+              <p className="text-xs text-muted-foreground">Goal: {DEFAULT_HYDRATION_TARGET_ML} ml</p>
             </div>
           </CardContent>
         </Card>

@@ -52,7 +52,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Create shared `PageState` components for loading, error, empty, and retry UI.
 - [x] Create a standard mutation helper for success messages, errors, and query
   invalidation instead of repeating page-specific `useMutation` plumbing.
-- [ ] Centralize nutrition defaults and formatting.
+- [x] Centralize nutrition defaults and formatting.
   - Remove scattered `2000` kcal, `2500` ml, date locale, and fallback literals.
   - Derive goals from the profile or market configuration.
 - [ ] Extract shared recipe and product cards, image fallbacks, save controls, and

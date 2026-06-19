@@ -9,6 +9,7 @@ import { PageError } from "@/components/PageState";
 import { PageEmpty } from "@/components/PageState";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
+import { formatDate } from "@/lib/market";
 
 export default function HistoryPage() {
   const [, setLocation] = useLocation();
@@ -22,7 +23,7 @@ export default function HistoryPage() {
   if (failedQuery) return <PageError reference="DATA-HISTORY" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   const chartData = weekly?.days?.map((d) => ({
-    day: new Date(d.date).toLocaleDateString("en-AU", { weekday: "short" }),
+    day: formatDate(d.date, { weekday: "short" }),
     calories: d.totalCalories,
     target: d.calorieTarget,
     onTarget: d.totalCalories > 0 && d.adherencePercent >= 80 && d.adherencePercent <= 115,
@@ -138,7 +139,7 @@ export default function HistoryPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="font-medium text-sm">
-                        {new Date(day.date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
+                        {formatDate(day.date, { weekday: "short", day: "numeric", month: "short" })}
                       </p>
                       <p className="text-xs text-muted-foreground">{day.totalCalories} / {day.calorieTarget} kcal</p>
                     </div>

@@ -6,6 +6,7 @@ import {
   ListRecipesQueryParams,
 } from "@workspace/api-zod";
 import { calcGoalMetrics, ensureUserProfileSchema } from "./profile";
+import { DEFAULT_NUTRITION_TARGETS, roundMoney, roundNutrition } from "@workspace/nutrition";
 
 const router: IRouter = Router();
 
@@ -185,8 +186,8 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
   const savedIds = await getSavedRecipeIds();
   const profiles = await db.select().from(userProfileTable).limit(1);
   const metrics = profiles[0] ? calcGoalMetrics(profiles[0]) : null;
-  const calorieTarget = metrics?.dailyCalorieTarget ?? 2000;
-  const proteinTargetG = metrics?.proteinTargetG ?? 150;
+  const calorieTarget = metrics?.dailyCalorieTarget ?? DEFAULT_NUTRITION_TARGETS.calories;
+  const proteinTargetG = metrics?.proteinTargetG ?? DEFAULT_NUTRITION_TARGETS.proteinG;
 
   const recipes = await db.select().from(recipesTable);
   const enriched = await Promise.all(
@@ -241,10 +242,10 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
       items,
       totals: {
         calories: Math.round(totals.calories),
-        proteinG: Math.round(totals.proteinG * 10) / 10,
-        carbsG: Math.round(totals.carbsG * 10) / 10,
-        fatG: Math.round(totals.fatG * 10) / 10,
-        cost: Math.round(totals.cost * 100) / 100,
+        proteinG: roundNutrition(totals.proteinG),
+        carbsG: roundNutrition(totals.carbsG),
+        fatG: roundNutrition(totals.fatG),
+        cost: roundMoney(totals.cost),
         calorieTarget,
         proteinTargetG,
         calorieCoveragePercent: Math.round((totals.calories / calorieTarget) * 100),

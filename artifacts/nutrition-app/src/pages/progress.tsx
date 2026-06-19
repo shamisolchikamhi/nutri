@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { TrendingDown, Target, Scale, Award } from "lucide-react";
 import { PageError } from "@/components/PageState";
+import { formatDate } from "@/lib/market";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -45,7 +46,7 @@ export default function ProgressPage() {
   if (failedQuery) return <PageError reference="DATA-PROGRESS" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   const chartData = progress?.weeklyTrend?.map((d) => ({
-    date: new Date(d.date).toLocaleDateString("en-AU", { month: "short", day: "numeric" }),
+    date: formatDate(d.date, { month: "short", day: "numeric" }),
     weight: d.weightKg,
   })) ?? [];
 

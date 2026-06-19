@@ -24,6 +24,7 @@ import {
   GetWeeklySummaryResponse,
 } from "@workspace/api-zod";
 import { calcGoalMetrics, ACTIVITY_MULTIPLIERS } from "./profile";
+import { DEFAULT_NUTRITION_TARGETS, roundNutrition } from "@workspace/nutrition";
 
 const router: IRouter = Router();
 
@@ -62,10 +63,10 @@ async function buildDailyLogResponse(date: string) {
   const totalFatG = meals.reduce((s, m) => s + m.fatG, 0);
 
   const profiles = await db.select().from(userProfileTable).limit(1);
-  let calorieTarget = 2000;
-  let proteinTarget = 150;
-  let carbsTarget = 200;
-  let fatTarget = 60;
+  let calorieTarget = DEFAULT_NUTRITION_TARGETS.calories;
+  let proteinTarget = DEFAULT_NUTRITION_TARGETS.proteinG;
+  let carbsTarget = DEFAULT_NUTRITION_TARGETS.carbsG;
+  let fatTarget = DEFAULT_NUTRITION_TARGETS.fatG;
   if (profiles.length > 0) {
     const metrics = calcGoalMetrics(profiles[0]);
     calorieTarget = metrics.dailyCalorieTarget;
@@ -96,15 +97,15 @@ async function buildDailyLogResponse(date: string) {
   return {
     date: log.date,
     totalCalories,
-    totalProteinG: Math.round(totalProteinG * 10) / 10,
-    totalCarbsG: Math.round(totalCarbsG * 10) / 10,
-    totalFatG: Math.round(totalFatG * 10) / 10,
+    totalProteinG: roundNutrition(totalProteinG),
+    totalCarbsG: roundNutrition(totalCarbsG),
+    totalFatG: roundNutrition(totalFatG),
     waterMl: log.waterMl,
     calorieTarget,
     proteinTarget,
     carbsTarget,
     fatTarget,
-    adherencePercent: Math.round(adherencePercent * 10) / 10,
+    adherencePercent: roundNutrition(adherencePercent),
     streak,
     weightKg: log.weightKg ?? null,
     notes: log.notes ?? null,
@@ -204,7 +205,7 @@ router.get("/logs/weekly-summary", async (req, res): Promise<void> => {
       : 0;
   const avgDailyProteinG =
     daysWithData.length > 0
-      ? Math.round(daysWithData.reduce((s, d) => s + d.totalProteinG, 0) / daysWithData.length * 10) / 10
+      ? roundNutrition(daysWithData.reduce((s, d) => s + d.totalProteinG, 0) / daysWithData.length)
       : 0;
   const avgDailyWaterMl =
     daysWithData.length > 0
@@ -235,7 +236,7 @@ router.get("/logs/activity", async (req, res): Promise<void> => {
 
   const profiles = await db.select().from(userProfileTable).limit(1);
   const profile = profiles[0];
-  const calorieTarget = profile ? calcGoalMetrics(profile).dailyCalorieTarget : 2000;
+  const calorieTarget = profile ? calcGoalMetrics(profile).dailyCalorieTarget : DEFAULT_NUTRITION_TARGETS.calories;
 
   const result = logs.map((l) => {
     const estimatedCaloriesBurned = l.activeCalories + Math.round(l.workoutDurationMin * 6);
@@ -261,7 +262,7 @@ router.post("/logs/activity", async (req, res): Promise<void> => {
   const [log] = await db.insert(activityLogsTable).values({ ...rest, date: dateStr }).returning();
   const profiles = await db.select().from(userProfileTable).limit(1);
   const profile = profiles[0];
-  const calorieTarget = profile ? calcGoalMetrics(profile).dailyCalorieTarget : 2000;
+  const calorieTarget = profile ? calcGoalMetrics(profile).dailyCalorieTarget : DEFAULT_NUTRITION_TARGETS.calories;
   const estimatedCaloriesBurned = log.activeCalories + Math.round(log.workoutDurationMin * 6);
 
   res.status(201).json({
@@ -294,7 +295,7 @@ router.put("/logs/activity/:id", async (req, res): Promise<void> => {
 
   const profiles = await db.select().from(userProfileTable).limit(1);
   const profile = profiles[0];
-  const calorieTarget = profile ? calcGoalMetrics(profile).dailyCalorieTarget : 2000;
+  const calorieTarget = profile ? calcGoalMetrics(profile).dailyCalorieTarget : DEFAULT_NUTRITION_TARGETS.calories;
   const estimatedCaloriesBurned = log.activeCalories + Math.round(log.workoutDurationMin * 6);
 
   res.json({
