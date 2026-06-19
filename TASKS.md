@@ -36,7 +36,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Add automated end-to-end tests for onboarding through first dashboard load.
 - [x] Add end-to-end tests for logging a meal, water, activity, and weight.
 - [x] Add end-to-end tests for saving a recipe and creating its grocery basket.
-- [ ] Add end-to-end tests for product filters, specials, and basket comparison.
+- [x] Add end-to-end tests for product filters, specials, and basket comparison.
 - [ ] Add destructive-action confirmation and undo for deletes/removals.
 - [ ] Improve empty states with one relevant next action and prerequisite guidance.
 - [ ] Replace raw HTTP messages with user-focused errors and stable error codes.

@@ -72,6 +72,49 @@ const basket = {
   costPerServing: 35,
   savingsFromSpecials: 0,
   createdAt: "2026-06-19T12:00:00.000Z",
+  storeComparisons: [
+    { retailerName: "Test Market", matchedItems: 1, totalItems: 1, totalCost: 70 },
+    { retailerName: "Value Mart", matchedItems: 1, totalItems: 1, totalCost: 76 },
+  ],
+};
+
+const product = {
+  id: 10,
+  name: "Chicken Breast 500g",
+  brand: "Farm Fresh",
+  retailerId: 1,
+  retailerName: "Test Market",
+  category: "protein",
+  priceAud: 35,
+  regularPriceAud: 42,
+  packSize: 500,
+  packUnit: "g",
+  caloriesPer100g: 165,
+  proteinPer100g: 31,
+  carbsPer100g: 0,
+  fatPer100g: 3.6,
+  fiberPer100g: 0,
+  sugarPer100g: 0,
+  isOnSpecial: true,
+  savingsPercent: 17,
+  savingsAud: 7,
+  imageUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
+};
+
+const special = {
+  id: 1,
+  productId: 10,
+  productName: "Chicken Breast 500g",
+  retailerId: 1,
+  retailerName: "Test Market",
+  regularPriceAud: 42,
+  specialPriceAud: 35,
+  savingsAud: 7,
+  savingsPercent: 17,
+  category: "protein",
+  imageUrl: product.imageUrl,
+  goalFit: ["high_protein", "budget"],
+  validUntil: "2026-06-30",
 };
 
 const dashboard = {
@@ -205,7 +248,17 @@ const server = createServer((req, res) => {
   }
   if (req.method === "POST" && req.url === "/api/baskets/from-recipes") return send(res, 201, basket);
   if (req.method === "GET" && req.url === "/api/baskets/1") return send(res, 200, basket);
-  if (req.method === "GET" && req.url === "/api/products") return send(res, 200, []);
+  if (req.method === "GET" && req.url === "/api/retailers") return send(res, 200, [{ id: 1, name: "Test Market", marketCode: "ZA", logoUrl: "", isActive: true }]);
+  if (req.method === "GET" && req.url.startsWith("/api/products?")) return send(res, 200, [product]);
+  if (req.method === "GET" && req.url === "/api/products") return send(res, 200, [product]);
+  if (req.method === "GET" && req.url === "/api/products/10/compare") {
+    return send(res, 200, [
+      { product, pricePerUnit: 0.07, isCheapest: true, isBestValue: true },
+      { product: { ...product, id: 11, retailerName: "Value Mart", priceAud: 38 }, pricePerUnit: 0.076, isCheapest: false, isBestValue: false },
+    ]);
+  }
+  if (req.method === "GET" && req.url === "/api/specials/best-value") return send(res, 200, [{ ...special, id: 2, productName: "Best Value Chicken" }]);
+  if (req.method === "GET" && req.url.startsWith("/api/specials")) return send(res, 200, [special]);
   if (req.method === "GET" && req.url === "/api/dashboard/today") return send(res, 200, dashboard);
   if (req.method === "GET" && req.url === "/api/dashboard/snack-suggestions") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/meal-suggestion") return send(res, 200, null);

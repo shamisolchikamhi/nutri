@@ -12,5 +12,5 @@ test("saves a recipe and creates its grocery basket", async ({ page }) => {
   await expect(page).toHaveURL(/\/basket\/1$/);
   await expect(page.getByRole("heading", { name: "High Protein Chicken Bowl Shopping" })).toBeVisible();
   await expect(page.getByText("Chicken Breast 500g", { exact: true })).toBeVisible();
-  await expect(page.getByText("R 70", { exact: true })).toHaveCount(2);
+  await expect(page.getByText("R 70", { exact: true })).toHaveCount(3);
 });
