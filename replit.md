@@ -4,7 +4,19 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- Install dependencies with `pnpm install`.
+- Start PostgreSQL and export its connection string, for example
+  `export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/nutribasket`.
+- Create/update the local schema with `pnpm --filter @workspace/db run push`.
+- Start the API with `PORT=5000 pnpm --filter @workspace/api-server run dev`.
+- Verify the API and database together with `curl http://127.0.0.1:5000/api/healthz`.
+  A healthy response is `{"status":"ok","service":"nutribasket-api"}`. Any
+  other response means the frontend must not be started against that port.
+- In another terminal, start the web app with
+  `PORT=5173 BASE_PATH=/ VITE_API_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/nutrition-app run dev`.
+  `VITE_API_TARGET` is intentionally required: startup checks the health and
+  identity of that service instead of silently proxying to whatever occupies
+  port 5000.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -12,7 +24,8 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --limit=80` — fetch a real product/nutrition fixture without writing to the DB
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --limit=80 --write` — seed scraped product/nutrition data into the DB
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --from=scripts/out/open-food-facts-ZA.json --write` — seed from a cached scrape fixture
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required API env: `DATABASE_URL` — Postgres connection string
+- Required web env: `VITE_API_TARGET` — explicit NutriBasket API origin
 - Optional env: `OPENAI_API_KEY` — enables URL-only AI extraction for social recipes
 - Optional env: `OPENAI_MODEL` — overrides the social recipe extraction model; defaults to `gpt-4o-mini`
 

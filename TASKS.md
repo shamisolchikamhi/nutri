@@ -22,7 +22,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Fix dashboard fallback calculations.
   - Do not show `0 / 2000 kcal` together with `0` remaining.
   - Use server-provided targets; otherwise show an unavailable state.
-- [ ] Make startup fail clearly when the API is unavailable or misconfigured.
+- [x] Make startup fail clearly when the API is unavailable or misconfigured.
   - Add an API health check and configuration diagnostics.
   - Document local database/API setup and avoid silently proxying to another
     service occupying port 5000.

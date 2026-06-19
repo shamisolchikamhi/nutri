@@ -28,6 +28,7 @@ import type {
   BasketInput,
   BasketItem,
   BasketItemInput,
+  CreateBasketFromSocialRecipe201,
   DailyLog,
   DailyLogInput,
   DashboardToday,
@@ -37,6 +38,7 @@ import type {
   ListDailyLogsParams,
   ListProductsParams,
   ListRecipesParams,
+  ListRetailersParams,
   ListSpecialsParams,
   MealEntry,
   MealEntryInput,
@@ -49,6 +51,8 @@ import type {
   SaveItemInput,
   ShoppingList,
   SnackSuggestion,
+  SocialRecipe,
+  SocialRecipeInput,
   Special,
   UserProfile,
   UserProfileInput,
@@ -1435,20 +1439,20 @@ export function useGetRecommendedRecipes<TData = Awaited<ReturnType<typeof getRe
 
 
 
-export const getListRetailersUrl = () => {
+export const getListSocialRecipesUrl = () => {
 
 
 
 
-  return `/api/retailers`
+  return `/api/social-recipes`
 }
 
 /**
- * @summary List supported retailers
+ * @summary List social recipe imports and local product match status
  */
-export const listRetailers = async ( options?: RequestInit): Promise<Retailer[]> => {
+export const listSocialRecipes = async ( options?: RequestInit): Promise<SocialRecipe[]> => {
 
-  return customFetch<Retailer[]>(getListRetailersUrl(),
+  return customFetch<SocialRecipe[]>(getListSocialRecipesUrl(),
   {
     ...options,
     method: 'GET'
@@ -1461,23 +1465,248 @@ export const listRetailers = async ( options?: RequestInit): Promise<Retailer[]>
 
 
 
-export const getListRetailersQueryKey = () => {
+export const getListSocialRecipesQueryKey = () => {
     return [
-    `/api/retailers`
+    `/api/social-recipes`
     ] as const;
     }
 
 
-export const getListRetailersQueryOptions = <TData = Awaited<ReturnType<typeof listRetailers>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRetailers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListSocialRecipesQueryOptions = <TData = Awaited<ReturnType<typeof listSocialRecipes>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSocialRecipes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListRetailersQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListSocialRecipesQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRetailers>>> = ({ signal }) => listRetailers({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSocialRecipes>>> = ({ signal }) => listSocialRecipes({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSocialRecipes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSocialRecipesQueryResult = NonNullable<Awaited<ReturnType<typeof listSocialRecipes>>>
+export type ListSocialRecipesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List social recipe imports and local product match status
+ */
+
+export function useListSocialRecipes<TData = Awaited<ReturnType<typeof listSocialRecipes>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSocialRecipes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSocialRecipesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getImportSocialRecipeUrl = () => {
+
+
+
+
+  return `/api/social-recipes`
+}
+
+/**
+ * @summary Import a social recipe from a public link and match available ingredients to local products
+ */
+export const importSocialRecipe = async (socialRecipeInput: SocialRecipeInput, options?: RequestInit): Promise<SocialRecipe> => {
+
+  return customFetch<SocialRecipe>(getImportSocialRecipeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      socialRecipeInput,)
+  }
+);}
+
+
+
+
+export const getImportSocialRecipeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importSocialRecipe>>, TError,{data: BodyType<SocialRecipeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importSocialRecipe>>, TError,{data: BodyType<SocialRecipeInput>}, TContext> => {
+
+const mutationKey = ['importSocialRecipe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importSocialRecipe>>, {data: BodyType<SocialRecipeInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  importSocialRecipe(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportSocialRecipeMutationResult = NonNullable<Awaited<ReturnType<typeof importSocialRecipe>>>
+    export type ImportSocialRecipeMutationBody = BodyType<SocialRecipeInput>
+    export type ImportSocialRecipeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import a social recipe from a public link and match available ingredients to local products
+ */
+export const useImportSocialRecipe = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importSocialRecipe>>, TError,{data: BodyType<SocialRecipeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importSocialRecipe>>,
+        TError,
+        {data: BodyType<SocialRecipeInput>},
+        TContext
+      > => {
+      return useMutation(getImportSocialRecipeMutationOptions(options));
+    }
+
+export const getCreateBasketFromSocialRecipeUrl = (id: number,) => {
+
+
+
+
+  return `/api/social-recipes/${id}/basket`
+}
+
+/**
+ * @summary Create a grocery basket from matched local-store ingredients for a social recipe
+ */
+export const createBasketFromSocialRecipe = async (id: number, options?: RequestInit): Promise<CreateBasketFromSocialRecipe201> => {
+
+  return customFetch<CreateBasketFromSocialRecipe201>(getCreateBasketFromSocialRecipeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCreateBasketFromSocialRecipeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBasketFromSocialRecipe>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBasketFromSocialRecipe>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['createBasketFromSocialRecipe'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBasketFromSocialRecipe>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  createBasketFromSocialRecipe(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBasketFromSocialRecipeMutationResult = NonNullable<Awaited<ReturnType<typeof createBasketFromSocialRecipe>>>
+
+    export type CreateBasketFromSocialRecipeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a grocery basket from matched local-store ingredients for a social recipe
+ */
+export const useCreateBasketFromSocialRecipe = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBasketFromSocialRecipe>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBasketFromSocialRecipe>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getCreateBasketFromSocialRecipeMutationOptions(options));
+    }
+
+export const getListRetailersUrl = (params?: ListRetailersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/retailers?${stringifiedParams}` : `/api/retailers`
+}
+
+/**
+ * @summary List supported retailers
+ */
+export const listRetailers = async (params?: ListRetailersParams, options?: RequestInit): Promise<Retailer[]> => {
+
+  return customFetch<Retailer[]>(getListRetailersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRetailersQueryKey = (params?: ListRetailersParams,) => {
+    return [
+    `/api/retailers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListRetailersQueryOptions = <TData = Awaited<ReturnType<typeof listRetailers>>, TError = ErrorType<unknown>>(params?: ListRetailersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRetailers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRetailersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRetailers>>> = ({ signal }) => listRetailers(params, { signal, ...requestOptions });
 
 
 
@@ -1495,11 +1724,11 @@ export type ListRetailersQueryError = ErrorType<unknown>
  */
 
 export function useListRetailers<TData = Awaited<ReturnType<typeof listRetailers>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRetailers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListRetailersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRetailers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListRetailersQueryOptions(options)
+  const queryOptions = getListRetailersQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

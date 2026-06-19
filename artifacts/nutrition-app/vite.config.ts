@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
@@ -26,14 +26,55 @@ if (!basePath) {
   );
 }
 
-const apiTarget = process.env.VITE_API_TARGET ?? "http://127.0.0.1:5000";
+function apiPreflightPlugin(apiTarget: string): Plugin {
+  const verifyApi = async () => {
+    const healthUrl = new URL("/api/healthz", apiTarget).toString();
+    let response: Response;
+    try {
+      response = await fetch(healthUrl, { signal: AbortSignal.timeout(3_000) });
+    } catch {
+      throw new Error(
+        `NutriBasket API is unavailable at ${apiTarget}. Start the API and database first, then retry.`,
+      );
+    }
 
-export default defineConfig({
+    if (!response.ok) {
+      throw new Error(
+        `NutriBasket API health check failed with HTTP ${response.status} at ${healthUrl}. Check DATABASE_URL and the API logs.`,
+      );
+    }
+
+    const body = await response.json() as { status?: unknown; service?: unknown };
+    if (body.status !== "ok" || body.service !== "nutribasket-api") {
+      throw new Error(
+        `The service at ${apiTarget} is not the NutriBasket API. Set VITE_API_TARGET to the correct API origin.`,
+      );
+    }
+  };
+
+  return {
+    name: "nutribasket-api-preflight",
+    configureServer: verifyApi,
+    configurePreviewServer: verifyApi,
+  };
+}
+
+export default defineConfig(async ({ command }) => {
+  const apiTarget = process.env.VITE_API_TARGET;
+  if (command === "serve" && !apiTarget) {
+    throw new Error(
+      "VITE_API_TARGET is required. Set it to the NutriBasket API origin, for example http://127.0.0.1:5000.",
+    );
+  }
+  const resolvedApiTarget = apiTarget ?? "http://127.0.0.1:5000";
+
+  return {
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    ...(command === "serve" ? [apiPreflightPlugin(resolvedApiTarget)] : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -67,7 +108,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": {
-        target: apiTarget,
+        target: resolvedApiTarget,
         changeOrigin: true,
       },
     },
@@ -81,9 +122,10 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": {
-        target: apiTarget,
+        target: resolvedApiTarget,
         changeOrigin: true,
       },
     },
   },
+  };
 });

@@ -12,7 +12,8 @@ import * as zod from 'zod';
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
-  "status": zod.string()
+  "status": zod.string(),
+  "service": zod.enum(['nutribasket-api'])
 })
 
 
@@ -434,11 +435,78 @@ export const GetRecommendedRecipesResponse = zod.array(GetRecommendedRecipesResp
 
 
 /**
+ * @summary List social recipe imports and local product match status
+ */
+export const ListSocialRecipesResponseItem = zod.object({
+  "id": zod.number(),
+  "platform": zod.string(),
+  "sourceUrl": zod.string(),
+  "creatorHandle": zod.string().nullish(),
+  "title": zod.string(),
+  "caption": zod.string().optional(),
+  "marketCode": zod.string(),
+  "status": zod.string(),
+  "importedRecipeId": zod.number().nullish(),
+  "matchedCount": zod.number(),
+  "unmatchedIngredients": zod.array(zod.string()),
+  "recipe": zod.union([zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "prepTimeMin": zod.number(),
+  "cookTimeMin": zod.number().optional(),
+  "servings": zod.number(),
+  "caloriesPerServing": zod.number(),
+  "proteinPerServingG": zod.number(),
+  "carbsPerServingG": zod.number(),
+  "fatPerServingG": zod.number(),
+  "fiberPerServingG": zod.number().nullish(),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "tags": zod.array(zod.string()),
+  "estimatedCost": zod.number(),
+  "imageUrl": zod.string(),
+  "isSaved": zod.boolean().optional()
+}),zod.null()]).optional()
+})
+export const ListSocialRecipesResponse = zod.array(ListSocialRecipesResponseItem)
+
+
+/**
+ * @summary Import a social recipe from a public link and match available ingredients to local products
+ */
+export const ImportSocialRecipeBody = zod.object({
+  "platform": zod.enum(['tiktok', 'instagram', 'facebook', 'other']).optional(),
+  "sourceUrl": zod.string(),
+  "creatorHandle": zod.string().optional(),
+  "title": zod.string().optional(),
+  "caption": zod.string().optional(),
+  "ingredientsText": zod.string().optional(),
+  "servings": zod.number().optional(),
+  "marketCode": zod.string().optional(),
+  "thumbnailUrl": zod.string().optional(),
+  "autoExtract": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Create a grocery basket from matched local-store ingredients for a social recipe
+ */
+export const CreateBasketFromSocialRecipeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary List supported retailers
  */
+export const ListRetailersQueryParams = zod.object({
+  "marketCode": zod.coerce.string().optional().describe('Optional ISO 3166-1 alpha-2 market code used to scope retailers.')
+})
+
 export const ListRetailersResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
+  "marketCode": zod.string().describe('ISO 3166-1 alpha-2 market code for the retailer, e.g. ZA, AU, GB, US.'),
   "logoUrl": zod.string(),
   "isActive": zod.boolean()
 })
@@ -453,7 +521,8 @@ export const ListProductsQueryParams = zod.object({
   "retailerId": zod.coerce.number().optional(),
   "category": zod.coerce.string().optional(),
   "onSpecial": zod.coerce.boolean().optional(),
-  "maxPrice": zod.coerce.number().optional()
+  "maxPrice": zod.coerce.number().optional(),
+  "marketCode": zod.coerce.string().optional().describe('Optional ISO 3166-1 alpha-2 market code used to scope the product catalog.')
 })
 
 export const ListProductsResponseItem = zod.object({
@@ -590,6 +659,7 @@ export const GetBasketResponse = zod.object({
   "productId": zod.number(),
   "productName": zod.string(),
   "retailerName": zod.string(),
+  "productUrl": zod.string().optional(),
   "quantity": zod.number(),
   "unit": zod.string().optional(),
   "unitCost": zod.number(),
@@ -680,6 +750,7 @@ export const UpdateBasketItemResponse = zod.object({
   "productId": zod.number(),
   "productName": zod.string(),
   "retailerName": zod.string(),
+  "productUrl": zod.string().optional(),
   "quantity": zod.number(),
   "unit": zod.string().optional(),
   "unitCost": zod.number(),
@@ -728,6 +799,7 @@ export const GetShoppingListResponse = zod.object({
   "productId": zod.number(),
   "productName": zod.string(),
   "retailerName": zod.string(),
+  "productUrl": zod.string().optional(),
   "quantity": zod.number(),
   "unit": zod.string().optional(),
   "unitCost": zod.number(),

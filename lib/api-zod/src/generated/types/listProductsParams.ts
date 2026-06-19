@@ -12,4 +12,8 @@ retailerId?: number;
 category?: string;
 onSpecial?: boolean;
 maxPrice?: number;
+/**
+ * Optional ISO 3166-1 alpha-2 market code used to scope the product catalog.
+ */
+marketCode?: string;
 };

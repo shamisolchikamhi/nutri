@@ -12,6 +12,7 @@ export interface BasketItem {
   productId: number;
   productName: string;
   retailerName: string;
+  productUrl?: string;
   quantity: number;
   unit?: string;
   unitCost: number;

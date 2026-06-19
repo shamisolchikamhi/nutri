@@ -5,8 +5,16 @@
  * NutriBasket API specification
  * OpenAPI spec version: 0.1.0
  */
+export type HealthStatusService = typeof HealthStatusService[keyof typeof HealthStatusService];
+
+
+export const HealthStatusService = {
+  'nutribasket-api': 'nutribasket-api',
+} as const;
+
 export interface HealthStatus {
   status: string;
+  service: HealthStatusService;
 }
 
 export type UserProfileSex = typeof UserProfileSex[keyof typeof UserProfileSex];
@@ -317,9 +325,51 @@ export interface RecipeDetail {
   instructions: string[];
 }
 
+export type SocialRecipeInputPlatform = typeof SocialRecipeInputPlatform[keyof typeof SocialRecipeInputPlatform];
+
+
+export const SocialRecipeInputPlatform = {
+  tiktok: 'tiktok',
+  instagram: 'instagram',
+  facebook: 'facebook',
+  other: 'other',
+} as const;
+
+export interface SocialRecipeInput {
+  platform?: SocialRecipeInputPlatform;
+  sourceUrl: string;
+  creatorHandle?: string;
+  title?: string;
+  caption?: string;
+  ingredientsText?: string;
+  servings?: number;
+  marketCode?: string;
+  thumbnailUrl?: string;
+  autoExtract?: boolean;
+}
+
+export interface SocialRecipe {
+  id: number;
+  platform: string;
+  sourceUrl: string;
+  /** @nullable */
+  creatorHandle?: string | null;
+  title: string;
+  caption?: string;
+  marketCode: string;
+  status: string;
+  /** @nullable */
+  importedRecipeId?: number | null;
+  matchedCount: number;
+  unmatchedIngredients: string[];
+  recipe?: Recipe | null;
+}
+
 export interface Retailer {
   id: number;
   name: string;
+  /** ISO 3166-1 alpha-2 market code for the retailer, e.g. ZA, AU, GB, US. */
+  marketCode: string;
   logoUrl: string;
   isActive: boolean;
 }
@@ -430,6 +480,7 @@ export interface BasketItem {
   productId: number;
   productName: string;
   retailerName: string;
+  productUrl?: string;
   quantity: number;
   unit?: string;
   unitCost: number;
@@ -621,12 +672,30 @@ export const ListRecipesDifficulty = {
   hard: 'hard',
 } as const;
 
+export type CreateBasketFromSocialRecipe201 = {
+  basketId: number;
+  basketName: string;
+  itemCount: number;
+  unmatchedIngredients: string[];
+};
+
+export type ListRetailersParams = {
+/**
+ * Optional ISO 3166-1 alpha-2 market code used to scope retailers.
+ */
+marketCode?: string;
+};
+
 export type ListProductsParams = {
 query?: string;
 retailerId?: number;
 category?: string;
 onSpecial?: boolean;
 maxPrice?: number;
+/**
+ * Optional ISO 3166-1 alpha-2 market code used to scope the product catalog.
+ */
+marketCode?: string;
 };
 
 export type ListSpecialsParams = {

@@ -9,6 +9,8 @@
 export interface Retailer {
   id: number;
   name: string;
+  /** ISO 3166-1 alpha-2 market code for the retailer, e.g. ZA, AU, GB, US. */
+  marketCode: string;
   logoUrl: string;
   isActive: boolean;
 }
