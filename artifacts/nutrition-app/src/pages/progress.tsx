@@ -61,9 +61,10 @@ export default function ProgressPage() {
       {/* Weight Logger */}
       <Card>
         <CardContent className="p-4">
-          <Label className="text-sm font-medium mb-2 block">Log Today's Weight</Label>
+          <Label htmlFor="progress-weight" className="text-sm font-medium mb-2 block">Log Today's Weight</Label>
           <div className="flex gap-2">
             <Input
+              id="progress-weight"
               type="number"
               placeholder={`${progress?.currentWeightKg ?? 75} kg`}
               value={weightInput}

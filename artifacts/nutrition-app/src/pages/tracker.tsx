@@ -141,33 +141,33 @@ export default function TrackerPage() {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1 col-span-2">
-                    <Label>Food Name</Label>
-                    <Input value={form.name} onChange={(e) => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Chicken Breast" />
+                    <Label htmlFor="meal-name">Food Name</Label>
+                    <Input id="meal-name" value={form.name} onChange={(e) => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g. Chicken Breast" />
                   </div>
                   <div className="space-y-1">
                     <Label>Meal Type</Label>
                     <Select value={form.mealType} onValueChange={(v) => setForm(f => ({...f, mealType: v as typeof f.mealType}))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label="Meal Type"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {MEAL_TYPES.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label>Calories</Label>
-                    <Input type="number" value={form.calories} onChange={(e) => setForm(f => ({...f, calories: e.target.value}))} placeholder="0" />
+                    <Label htmlFor="meal-calories">Calories</Label>
+                    <Input id="meal-calories" type="number" value={form.calories} onChange={(e) => setForm(f => ({...f, calories: e.target.value}))} placeholder="0" />
                   </div>
                   <div className="space-y-1">
-                    <Label>Protein (g)</Label>
-                    <Input type="number" value={form.proteinG} onChange={(e) => setForm(f => ({...f, proteinG: e.target.value}))} placeholder="0" />
+                    <Label htmlFor="meal-protein">Protein (g)</Label>
+                    <Input id="meal-protein" type="number" value={form.proteinG} onChange={(e) => setForm(f => ({...f, proteinG: e.target.value}))} placeholder="0" />
                   </div>
                   <div className="space-y-1">
-                    <Label>Carbs (g)</Label>
-                    <Input type="number" value={form.carbsG} onChange={(e) => setForm(f => ({...f, carbsG: e.target.value}))} placeholder="0" />
+                    <Label htmlFor="meal-carbs">Carbs (g)</Label>
+                    <Input id="meal-carbs" type="number" value={form.carbsG} onChange={(e) => setForm(f => ({...f, carbsG: e.target.value}))} placeholder="0" />
                   </div>
                   <div className="space-y-1">
-                    <Label>Fat (g)</Label>
-                    <Input type="number" value={form.fatG} onChange={(e) => setForm(f => ({...f, fatG: e.target.value}))} placeholder="0" />
+                    <Label htmlFor="meal-fat">Fat (g)</Label>
+                    <Input id="meal-fat" type="number" value={form.fatG} onChange={(e) => setForm(f => ({...f, fatG: e.target.value}))} placeholder="0" />
                   </div>
                 </div>
                 <Button className="w-full" onClick={() => addMutation.mutate()} disabled={!form.name || addMutation.isPending}>

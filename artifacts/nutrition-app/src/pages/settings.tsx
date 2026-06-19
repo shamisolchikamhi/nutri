@@ -89,7 +89,7 @@ export default function SettingsPage() {
             <div className="space-y-1">
               <Label>Sex</Label>
               <Select value={form.sex} onValueChange={(v) => set("sex", v as ProfileForm["sex"])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Sex"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
@@ -98,8 +98,8 @@ export default function SettingsPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Age</Label>
-              <Input type="number" value={form.ageYears} onChange={(e) => set("ageYears", e.target.value)} aria-invalid={Boolean(errors.ageYears)} />
+              <Label htmlFor="settings-age">Age</Label>
+              <Input id="settings-age" type="number" value={form.ageYears} onChange={(e) => set("ageYears", e.target.value)} aria-invalid={Boolean(errors.ageYears)} />
               {errors.ageYears && <p className="text-xs text-destructive" role="alert">{errors.ageYears}</p>}
             </div>
           </div>
@@ -114,23 +114,23 @@ export default function SettingsPage() {
         <CardContent>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Height (cm)</Label>
-              <Input type="number" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} aria-invalid={Boolean(errors.heightCm)} />
+              <Label htmlFor="settings-height">Height (cm)</Label>
+              <Input id="settings-height" type="number" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} aria-invalid={Boolean(errors.heightCm)} />
               {errors.heightCm && <p className="text-xs text-destructive" role="alert">{errors.heightCm}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Current (kg)</Label>
-              <Input type="number" value={form.currentWeightKg} onChange={(e) => set("currentWeightKg", e.target.value)} aria-invalid={Boolean(errors.currentWeightKg)} />
+              <Label htmlFor="settings-current-weight">Current (kg)</Label>
+              <Input id="settings-current-weight" type="number" value={form.currentWeightKg} onChange={(e) => set("currentWeightKg", e.target.value)} aria-invalid={Boolean(errors.currentWeightKg)} />
               {errors.currentWeightKg && <p className="text-xs text-destructive" role="alert">{errors.currentWeightKg}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Target (kg)</Label>
-              <Input type="number" value={form.targetWeightKg} onChange={(e) => set("targetWeightKg", e.target.value)} aria-invalid={Boolean(errors.targetWeightKg)} />
+              <Label htmlFor="settings-target-weight">Target (kg)</Label>
+              <Input id="settings-target-weight" type="number" value={form.targetWeightKg} onChange={(e) => set("targetWeightKg", e.target.value)} aria-invalid={Boolean(errors.targetWeightKg)} />
               {errors.targetWeightKg && <p className="text-xs text-destructive" role="alert">{errors.targetWeightKg}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Body Fat %</Label>
-              <Input type="number" placeholder="Optional" value={form.bodyFatPercent} onChange={(e) => set("bodyFatPercent", e.target.value)} aria-invalid={Boolean(errors.bodyFatPercent)} />
+              <Label htmlFor="settings-body-fat">Body Fat %</Label>
+              <Input id="settings-body-fat" type="number" placeholder="Optional" value={form.bodyFatPercent} onChange={(e) => set("bodyFatPercent", e.target.value)} aria-invalid={Boolean(errors.bodyFatPercent)} />
               {errors.bodyFatPercent && <p className="text-xs text-destructive" role="alert">{errors.bodyFatPercent}</p>}
             </div>
           </div>
@@ -163,15 +163,15 @@ export default function SettingsPage() {
           <div className="space-y-1">
             <Label>Activity Level</Label>
             <Select value={form.activityLevel} onValueChange={(v) => set("activityLevel", v as ProfileForm["activityLevel"])}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Activity Level"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ACTIVITY_OPTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>Meals per day</Label>
-            <Input type="number" min="1" max="6" value={form.mealFrequency} onChange={(e) => set("mealFrequency", e.target.value)} aria-invalid={Boolean(errors.mealFrequency)} />
+            <Label htmlFor="settings-meals">Meals per day</Label>
+            <Input id="settings-meals" type="number" min="1" max="6" value={form.mealFrequency} onChange={(e) => set("mealFrequency", e.target.value)} aria-invalid={Boolean(errors.mealFrequency)} />
             {errors.mealFrequency && <p className="text-xs text-destructive" role="alert">{errors.mealFrequency}</p>}
           </div>
         </CardContent>
@@ -186,7 +186,7 @@ export default function SettingsPage() {
           <div className="space-y-1">
             <Label>Home Market</Label>
             <Select value={marketCode} onValueChange={(v) => setMarketCode(v as MarketCode)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Home Market"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Object.values(MARKETS).map((market) => (
                   <SelectItem key={market.code} value={market.code}>
@@ -198,8 +198,8 @@ export default function SettingsPage() {
             <p className="text-xs text-muted-foreground">Controls currency display and future market-scoped grocery recommendations</p>
           </div>
           <div className="space-y-1">
-            <Label>{getBudgetLabel(MARKETS[marketCode])}</Label>
-            <Input type="number" value={form.budgetWeekly} onChange={(e) => set("budgetWeekly", e.target.value)} aria-invalid={Boolean(errors.budgetWeekly)} />
+            <Label htmlFor="settings-budget">{getBudgetLabel(MARKETS[marketCode])}</Label>
+            <Input id="settings-budget" type="number" value={form.budgetWeekly} onChange={(e) => set("budgetWeekly", e.target.value)} aria-invalid={Boolean(errors.budgetWeekly)} />
             {errors.budgetWeekly && <p className="text-xs text-destructive" role="alert">{errors.budgetWeekly}</p>}
           </div>
           <div className="space-y-1">

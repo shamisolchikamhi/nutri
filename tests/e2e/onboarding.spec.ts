@@ -7,14 +7,12 @@ test("onboarding saves a valid profile and loads the dashboard", async ({ page }
   await expect(page.getByRole("alert")).toHaveText("Age is required");
   await expect(page.getByText("Step 1 of 3")).toBeVisible();
 
-  await page.getByRole("spinbutton").fill("41");
+  await page.getByLabel("Age").fill("41");
   await page.getByRole("button", { name: "Continue →" }).click();
 
-  const bodyFields = page.getByRole("spinbutton");
-  await expect(bodyFields).toHaveCount(3);
-  await bodyFields.nth(0).fill("181");
-  await bodyFields.nth(1).fill("86");
-  await bodyFields.nth(2).fill("78");
+  await page.getByLabel("Height (cm)").fill("181");
+  await page.getByLabel("Current weight (kg)").fill("86");
+  await page.getByLabel("Target weight (kg)").fill("78");
   await page.getByRole("button", { name: "Continue →" }).click();
 
   await page.getByRole("button", { name: "Complete Setup" }).click();
@@ -24,4 +22,18 @@ test("onboarding saves a valid profile and loads the dashboard", async ({ page }
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("/ 2000 kcal", { exact: true })).toBeVisible();
   await expect(page.getByText("Nutrition targets unavailable", { exact: true })).toHaveCount(0);
+});
+
+test("onboarding supports a keyboard-only step transition", async ({ page }) => {
+  await page.goto("/onboarding");
+
+  const age = page.getByLabel("Age");
+  await age.focus();
+  await age.fill("41");
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Continue →" })).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  await expect(page.getByText("Step 2 of 3")).toBeVisible();
+  await expect(page.getByLabel("Height (cm)")).toBeFocused();
 });

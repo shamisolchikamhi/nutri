@@ -96,33 +96,33 @@ export default function ActivityPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Date</Label>
-                  <Input type="date" value={form.date} onChange={(e) => setForm(f => ({...f, date: e.target.value}))} />
+                  <Label htmlFor="activity-date">Date</Label>
+                  <Input id="activity-date" type="date" value={form.date} onChange={(e) => setForm(f => ({...f, date: e.target.value}))} />
                 </div>
                 <div className="space-y-1">
                   <Label>Activity Type</Label>
                   <Select value={form.workoutType} onValueChange={(v) => setForm(f => ({...f, workoutType: v}))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Activity Type"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {ACTIVITY_TYPES.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Duration (min)</Label>
-                  <Input type="number" value={form.workoutDurationMin} onChange={(e) => setForm(f => ({...f, workoutDurationMin: e.target.value}))} placeholder="30" />
+                  <Label htmlFor="activity-duration">Duration (min)</Label>
+                  <Input id="activity-duration" type="number" value={form.workoutDurationMin} onChange={(e) => setForm(f => ({...f, workoutDurationMin: e.target.value}))} placeholder="30" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Active Calories</Label>
-                  <Input type="number" value={form.activeCalories} onChange={(e) => setForm(f => ({...f, activeCalories: e.target.value}))} placeholder="200" />
+                  <Label htmlFor="activity-calories">Active Calories</Label>
+                  <Input id="activity-calories" type="number" value={form.activeCalories} onChange={(e) => setForm(f => ({...f, activeCalories: e.target.value}))} placeholder="200" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Steps</Label>
-                  <Input type="number" value={form.steps} onChange={(e) => setForm(f => ({...f, steps: e.target.value}))} placeholder="8000" />
+                  <Label htmlFor="activity-steps">Steps</Label>
+                  <Input id="activity-steps" type="number" value={form.steps} onChange={(e) => setForm(f => ({...f, steps: e.target.value}))} placeholder="8000" />
                 </div>
                 <div className="space-y-1">
-                  <Label>Notes</Label>
-                  <Input value={form.notes} onChange={(e) => setForm(f => ({...f, notes: e.target.value}))} placeholder="Optional" />
+                  <Label htmlFor="activity-notes">Notes</Label>
+                  <Input id="activity-notes" value={form.notes} onChange={(e) => setForm(f => ({...f, notes: e.target.value}))} placeholder="Optional" />
                 </div>
               </div>
               <Button className="w-full" onClick={() => addMutation.mutate()} disabled={addMutation.isPending}>
