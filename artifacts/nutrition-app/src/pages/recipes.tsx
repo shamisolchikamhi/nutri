@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
 import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useListRecipes,
@@ -10,21 +9,15 @@ import {
   getListSavedRecipesQueryKey,
   getListRecipesQueryKey,
 } from "@workspace/api-client-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Flame, ChefHat, DollarSign, Link2, ExternalLink, Upload } from "lucide-react";
-import { formatMoney } from "@/lib/market";
+import { Link2 } from "lucide-react";
 import { PageEmpty, PageError } from "@/components/PageState";
-import { BasketAction } from "@/components/content/BasketAction";
 import { RecipeCard } from "@/components/content/RecipeCard";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
+import { SocialRecipesPanel } from "@/components/social-recipes/SocialRecipesPanel";
 
 const GOALS = [
   { value: "all", label: "All Goals" },
@@ -49,151 +42,6 @@ const MEAL_CATEGORIES = [
   { value: "snack", label: "Snack" },
 ];
 
-type SocialRecipe = {
-  id: number;
-  platform: string;
-  sourceUrl: string;
-  creatorHandle: string | null;
-  title: string;
-  caption: string;
-  marketCode: string;
-  status: string;
-  importedRecipeId: number | null;
-  matchedCount: number;
-  unmatchedIngredients: string[];
-  recipe: {
-    id: number;
-    name: string;
-    estimatedCost: number;
-    caloriesPerServing: number;
-    proteinPerServingG: number;
-    servings: number;
-  } | null;
-};
-
-async function readErrorMessage(response: Response) {
-  const text = await response.text().catch(() => "");
-  if (!text && response.status === 502) {
-    return "API server is unavailable. Restart the API server on port 5000, then refresh this page.";
-  }
-  if (!text) return `Request failed with ${response.status}`;
-
-  try {
-    const body = JSON.parse(text) as { error?: unknown; message?: unknown };
-    const message = typeof body.error === "string" ? body.error : typeof body.message === "string" ? body.message : "";
-    if (message) return message;
-  } catch {
-    // Plain text or HTML proxy errors are handled below.
-  }
-
-  const plainText = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  if (response.status === 502 && !plainText) {
-    return "API server is unavailable. Restart the API server on port 5000, then refresh this page.";
-  }
-  return plainText ? `Request failed with ${response.status}: ${plainText.slice(0, 220)}` : `Request failed with ${response.status}`;
-}
-
-async function apiJson<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response));
-  }
-  return response.json() as Promise<T>;
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error ?? new Error("Could not read file"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function resizeImageDataUrl(dataUrl: string, maxSize = 1024) {
-  return new Promise<string>((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => {
-      const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(image.width * scale));
-      canvas.height = Math.max(1, Math.round(image.height * scale));
-      const context = canvas.getContext("2d");
-      if (!context) {
-        reject(new Error("Could not process image"));
-        return;
-      }
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
-    };
-    image.onerror = () => reject(new Error("Could not load image"));
-    image.src = dataUrl;
-  });
-}
-
-async function extractVideoFrames(file: File) {
-  const url = URL.createObjectURL(file);
-  const video = document.createElement("video");
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = "metadata";
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      video.onloadedmetadata = () => resolve();
-      video.onerror = () => reject(new Error("Could not load video"));
-      video.src = url;
-    });
-
-    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 1;
-    const latestTimestamp = Math.max(0, duration - 0.05);
-    const timestamps = [0.08, 0.22, 0.38, 0.55, 0.72, 0.9].map((point) => Math.min(latestTimestamp, Math.max(0, duration * point)));
-    const frames: string[] = [];
-
-    for (const time of timestamps) {
-      await new Promise<void>((resolve, reject) => {
-        video.onseeked = () => resolve();
-        video.onerror = () => reject(new Error("Could not read video frame"));
-        video.currentTime = time;
-      });
-
-      const canvas = document.createElement("canvas");
-      const scale = Math.min(1, 1024 / Math.max(video.videoWidth, video.videoHeight));
-      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
-      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
-      const context = canvas.getContext("2d");
-      if (!context) continue;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      frames.push(canvas.toDataURL("image/jpeg", 0.82));
-    }
-
-    return frames;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-async function processRecipeMediaFiles(files: FileList | null) {
-  if (!files) return [];
-  const frames: string[] = [];
-
-  for (const file of Array.from(files).slice(0, 4)) {
-    if (file.type.startsWith("image/")) {
-      frames.push(await resizeImageDataUrl(await readFileAsDataUrl(file)));
-    } else if (file.type.startsWith("video/")) {
-      frames.push(...await extractVideoFrames(file));
-    }
-  }
-
-  return frames.slice(0, 8);
-}
-
 export default function RecipesPage() {
   const scheduleUndoable = useUndoableAction();
   const [, setLocation] = useLocation();
@@ -202,19 +50,6 @@ export default function RecipesPage() {
   const [difficulty, setDifficulty] = useState("all");
   const [mealCategory, setMealCategory] = useState("all");
   const [viewMode, setViewMode] = useState<"all" | "recommended" | "social">("all");
-  const [socialForm, setSocialForm] = useState({
-    sourceUrl: "",
-    platform: "auto",
-    title: "",
-    creatorHandle: "",
-    ingredientsText: "",
-    caption: "",
-    servings: "2",
-    marketCode: "ZA",
-  });
-  const [createBasketAfterImport, setCreateBasketAfterImport] = useState(true);
-  const [socialMediaDataUrls, setSocialMediaDataUrls] = useState<string[]>([]);
-  const [socialMediaStatus, setSocialMediaStatus] = useState("");
 
   const recipesQuery = useListRecipes(
     {
@@ -225,14 +60,8 @@ export default function RecipesPage() {
     { query: { enabled: viewMode === "all" } as any }
   );
   const recommendedQuery = useGetRecommendedRecipes({ query: { enabled: viewMode === "recommended" } as any });
-  const socialQuery = useQuery({
-    queryKey: ["social-recipes"],
-    queryFn: () => apiJson<SocialRecipe[]>("/social-recipes"),
-    enabled: viewMode === "social",
-  });
   const { data: recipes, isLoading } = recipesQuery;
   const { data: recommended, isLoading: recLoading } = recommendedQuery;
-  const { data: socialRecipes, isLoading: socialLoading, refetch: refetchSocialRecipes } = socialQuery;
 
   const displayRecipes = (viewMode === "recommended" ? recommended : recipes)?.filter((recipe) => {
     if (mealCategory === "all") return true;
@@ -256,70 +85,6 @@ export default function RecipesPage() {
     invalidate: [getListSavedRecipesQueryKey(), getListRecipesQueryKey()],
     mutationFn: (recipeId: number) => unsaveRecipe(recipeId),
   });
-
-  const importSocialMutation = useAppMutation({
-    operation: "Import recipe",
-    reference: "WRITE-RECIPE-IMPORT",
-    successMessage: "The recipe was imported.",
-    invalidate: [getListRecipesQueryKey()],
-    mutationFn: async () => {
-      await apiJson("/healthz");
-      return apiJson<SocialRecipe>("/social-recipes", {
-        method: "POST",
-        body: JSON.stringify({
-          ...socialForm,
-          mediaDataUrls: socialMediaDataUrls,
-          autoExtract: true,
-          platform: socialForm.platform === "auto" ? undefined : socialForm.platform,
-          servings: parseInt(socialForm.servings) || 2,
-        }),
-      });
-    },
-    onSuccess: async (created) => {
-      setSocialForm({
-        sourceUrl: "",
-        platform: "auto",
-        title: "",
-        creatorHandle: "",
-        ingredientsText: "",
-        caption: "",
-        servings: "2",
-        marketCode: "ZA",
-      });
-      setSocialMediaDataUrls([]);
-      setSocialMediaStatus("");
-      refetchSocialRecipes();
-      if (createBasketAfterImport && created.matchedCount > 0) {
-        try {
-          const basket = await apiJson<{ basketId: number }>(`/social-recipes/${created.id}/basket`, {
-            method: "POST",
-            body: JSON.stringify({ mode: "cheapest" }),
-          });
-          setLocation(`/basket/${basket.basketId}`);
-        } catch {
-          refetchSocialRecipes();
-        }
-      }
-    },
-  });
-
-  const basketMutation = useAppMutation({
-    operation: "Create recipe basket",
-    reference: "WRITE-RECIPE-BASKET",
-    successMessage: "A basket was created from the recipe.",
-    mutationFn: (socialRecipeId: number) =>
-      apiJson<{ basketId: number; unmatchedIngredients: string[] }>(`/social-recipes/${socialRecipeId}/basket`, {
-        method: "POST",
-        body: JSON.stringify({ mode: "cheapest" }),
-      }),
-    onSuccess: (basket) => setLocation(`/basket/${basket.basketId}`),
-  });
-
-  const importedSocialRecipes = socialRecipes ?? [];
-  const socialBusy = socialLoading;
-  const updateSocialForm = (key: keyof typeof socialForm, value: string) =>
-    setSocialForm((form) => ({ ...form, [key]: value }));
-  const canImportSocial = Boolean(socialForm.sourceUrl || socialMediaDataUrls.length > 0);
 
   return (
     <div className="space-y-5">
@@ -387,185 +152,7 @@ export default function RecipesPage() {
 
       {/* Recipe Grid */}
       {viewMode === "social" ? (
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div>
-                <h2 className="font-semibold">Import social recipe</h2>
-                <p className="text-sm text-muted-foreground">Paste a public recipe link, or upload screenshots/video so AI can read visible recipe text.</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1 md:col-span-2">
-                  <Label>Post URL</Label>
-                  <Input
-                    placeholder="https://www.tiktok.com/@creator/video/..."
-                    value={socialForm.sourceUrl}
-                    onChange={(e) => updateSocialForm("sourceUrl", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1 md:col-span-2">
-                  <Label>Recipe screenshots or video</Label>
-                  <Input
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    onChange={async (event) => {
-                      setSocialMediaStatus("Processing uploaded media...");
-                      try {
-                        const frames = await processRecipeMediaFiles(event.target.files);
-                        setSocialMediaDataUrls(frames);
-                        setSocialMediaStatus(frames.length > 0 ? `${frames.length} screenshot/frame(s) ready for AI analysis` : "No readable media frames found");
-                      } catch (error) {
-                        setSocialMediaDataUrls([]);
-                        setSocialMediaStatus(error instanceof Error ? error.message : "Could not process uploaded media");
-                      } finally {
-                        event.target.value = "";
-                      }
-                    }}
-                  />
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Upload className="h-3.5 w-3.5" />
-                    <span>{socialMediaStatus || "Upload screenshots or a saved recipe video when TikTok/Instagram hides caption text."}</span>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label>Title</Label>
-                  <Input
-                    placeholder="High protein chicken bowl"
-                    value={socialForm.title}
-                    onChange={(e) => updateSocialForm("title", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Creator</Label>
-                  <Input
-                    placeholder="@creator"
-                    value={socialForm.creatorHandle}
-                    onChange={(e) => updateSocialForm("creatorHandle", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Platform</Label>
-                  <Select value={socialForm.platform} onValueChange={(value) => updateSocialForm("platform", value)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="auto">Auto detect</SelectItem>
-                      <SelectItem value="tiktok">TikTok</SelectItem>
-                      <SelectItem value="instagram">Instagram</SelectItem>
-                      <SelectItem value="facebook">Facebook</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label>Servings</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={socialForm.servings}
-                    onChange={(e) => updateSocialForm("servings", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1 md:col-span-2">
-                  <Label>Ingredients</Label>
-                  <Textarea
-                    placeholder={"Optional hint if the post is hard to read:\n1 cup oats\n2 bananas\n200g yoghurt\n1 tbsp peanut butter"}
-                    value={socialForm.ingredientsText}
-                    onChange={(e) => updateSocialForm("ingredientsText", e.target.value)}
-                    className="min-h-28"
-                  />
-                </div>
-                <div className="space-y-1 md:col-span-2">
-                  <Label>Caption or notes</Label>
-                  <Textarea
-                    placeholder="Optional caption, method, or notes from the post"
-                    value={socialForm.caption}
-                    onChange={(e) => updateSocialForm("caption", e.target.value)}
-                    className="min-h-20"
-                  />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={createBasketAfterImport}
-                  onCheckedChange={(checked) => setCreateBasketAfterImport(checked === true)}
-                />
-                Create a grocery basket from matched local-store ingredients
-              </label>
-              <Button
-                onClick={() => importSocialMutation.mutate()}
-                disabled={importSocialMutation.isPending || !canImportSocial}
-              >
-                {importSocialMutation.isPending ? "Analyzing recipe..." : "Analyze recipe and match local products"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {socialBusy ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1,2].map(i => <Skeleton key={i} className="h-44 rounded-xl" />)}
-            </div>
-          ) : socialQuery.isError ? (
-            <PageError reference="DATA-SOCIAL-RECIPES" onRetry={() => void socialQuery.refetch()} isRetrying={socialQuery.isFetching} />
-          ) : importedSocialRecipes.length === 0 ? (
-            <PageEmpty title="No social recipes imported yet" description="Add a public post URL or upload visible recipe media before importing." action={<Button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder^="https://www.tiktok.com"]')?.focus()}>Add recipe source</Button>} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {importedSocialRecipes.map((item) => (
-                <Card key={item.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="secondary" className="capitalize">{item.platform}</Badge>
-                          <Badge variant={item.status === "needs_review" ? "outline" : "default"} className="capitalize">
-                            {item.status.replace("_", " ")}
-                          </Badge>
-                        </div>
-                        <h3 className="font-semibold leading-tight">{item.title}</h3>
-                        {item.creatorHandle && <p className="text-xs text-muted-foreground">{item.creatorHandle}</p>}
-                      </div>
-                      <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary">
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                      <div className="rounded-lg bg-muted/50 p-2">
-                        <p className="font-bold">{item.matchedCount}</p>
-                        <p className="text-xs text-muted-foreground">matched</p>
-                      </div>
-                      <div className="rounded-lg bg-muted/50 p-2">
-                        <p className="font-bold">{item.unmatchedIngredients.length}</p>
-                        <p className="text-xs text-muted-foreground">review</p>
-                      </div>
-                      <div className="rounded-lg bg-muted/50 p-2">
-                        <p className="font-bold">{item.recipe ? formatMoney(item.recipe.estimatedCost) : "-"}</p>
-                        <p className="text-xs text-muted-foreground">basket est.</p>
-                      </div>
-                    </div>
-                    {item.unmatchedIngredients.length > 0 && (
-                      <p className="text-xs text-amber-700">
-                        Needs match: {item.unmatchedIngredients.slice(0, 4).join(", ")}
-                      </p>
-                    )}
-                    <div className="flex gap-2">
-                      {item.importedRecipeId && (
-                        <Button variant="outline" size="sm" onClick={() => setLocation(`/recipes/${item.importedRecipeId}`)}>
-                          View recipe
-                        </Button>
-                      )}
-                      <BasketAction
-                        onClick={() => basketMutation.mutate(item.id)}
-                        disabled={basketMutation.isPending || item.matchedCount === 0}
-                        pending={basketMutation.isPending}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+        <SocialRecipesPanel />
       ) : loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-64 rounded-xl" />)}

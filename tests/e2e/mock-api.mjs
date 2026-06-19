@@ -273,6 +273,7 @@ const server = createServer((req, res) => {
   if (req.method === "GET" && req.url.startsWith("/api/specials")) return send(res, 200, [special]);
   if (req.method === "GET" && req.url === "/api/saved/recipes") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/saved/snacks") return send(res, 200, []);
+  if (req.method === "GET" && req.url === "/api/social-recipes") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/today") return send(res, 200, dashboard);
   if (req.method === "GET" && req.url === "/api/dashboard/snack-suggestions") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/meal-suggestion") return send(res, 200, null);

@@ -57,7 +57,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Derive goals from the profile or market configuration.
 - [x] Extract shared recipe and product cards, image fallbacks, save controls, and
   basket actions used across dashboard, recipes, saved, products, and specials.
-- [ ] Move social-recipe media processing and import UI out of the 627-line
+- [x] Move social-recipe media processing and import UI out of the 627-line
   recipes page into focused hooks/components.
 - [ ] Split oversized API route modules into services and route adapters.
   - Prioritize `social-recipes.ts` and `baskets.ts`.
