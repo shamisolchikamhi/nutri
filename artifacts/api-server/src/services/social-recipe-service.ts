@@ -1,0 +1,701 @@
+import { eq } from "drizzle-orm";
+import {
+  db,
+  productsTable,
+  retailersTable,
+  recipeIngredientsTable,
+  recipesTable,
+  socialRecipeSourcesTable,
+} from "@workspace/db";
+
+export type Platform = "tiktok" | "instagram" | "facebook" | "other";
+
+export type ParsedIngredient = {
+  raw: string;
+  name: string;
+  quantity: number;
+  unit: string;
+};
+
+export type MatchedIngredient = ParsedIngredient & {
+  productId: number | null;
+  productName: string | null;
+  retailerName: string | null;
+  score: number;
+  estimatedCost: number;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+};
+
+export type ExtractedRecipe = {
+  title: string;
+  creatorHandle: string | null;
+  caption: string;
+  ingredients: ParsedIngredient[];
+  instructions: string[];
+  servings: number;
+  thumbnailUrl: string;
+};
+
+export type PublicUrlContext = {
+  title: string;
+  description: string;
+  imageUrl: string;
+  text: string;
+};
+
+export type NutritionEstimate = {
+  caloriesPer100g: number;
+  proteinPer100g: number;
+  carbsPer100g: number;
+  fatPer100g: number;
+};
+
+const UNIT_WORDS = new Set([
+  "g",
+  "gram",
+  "grams",
+  "kg",
+  "ml",
+  "l",
+  "litre",
+  "litres",
+  "cup",
+  "cups",
+  "tbsp",
+  "tablespoon",
+  "tablespoons",
+  "tsp",
+  "teaspoon",
+  "teaspoons",
+  "can",
+  "cans",
+  "tin",
+  "tins",
+  "packet",
+  "packets",
+  "slice",
+  "slices",
+]);
+
+const STOP_WORDS = new Set([
+  "fresh",
+  "chopped",
+  "diced",
+  "sliced",
+  "optional",
+  "cooked",
+  "raw",
+  "large",
+  "small",
+  "medium",
+  "low",
+  "fat",
+  "free",
+  "and",
+  "or",
+  "with",
+  "of",
+]);
+
+const NON_INGREDIENT_PATTERNS = [
+  /\bingredients?\s+(not\s+)?(specified|provided|available|listed|shown|visible|found)\b/i,
+  /\b(no|without)\s+ingredients?\b/i,
+  /\bunknown\s+ingredients?\b/i,
+  /\bnot\s+(specified|provided|available|listed|shown|visible|found)\b/i,
+  /\btiktok\s+make\s+your\s+day\b/i,
+  /\blog\s+in\s+to\s+follow\b/i,
+  /\bwatch\s+more\s+videos\b/i,
+];
+
+const GENERIC_NUTRITION: Array<{ pattern: RegExp } & NutritionEstimate> = [
+  { pattern: /\boats?\b/i, caloriesPer100g: 389, proteinPer100g: 16.9, carbsPer100g: 66.3, fatPer100g: 6.9 },
+  { pattern: /\bbananas?\b/i, caloriesPer100g: 89, proteinPer100g: 1.1, carbsPer100g: 22.8, fatPer100g: 0.3 },
+  { pattern: /\byogh?urts?\b/i, caloriesPer100g: 61, proteinPer100g: 3.5, carbsPer100g: 4.7, fatPer100g: 3.3 },
+  { pattern: /\bpeanut\s+butter\b/i, caloriesPer100g: 588, proteinPer100g: 25, carbsPer100g: 20, fatPer100g: 50 },
+  { pattern: /\bchicken\b/i, caloriesPer100g: 165, proteinPer100g: 31, carbsPer100g: 0, fatPer100g: 3.6 },
+  { pattern: /\beggs?\b/i, caloriesPer100g: 155, proteinPer100g: 13, carbsPer100g: 1.1, fatPer100g: 11 },
+  { pattern: /\brice\b/i, caloriesPer100g: 130, proteinPer100g: 2.7, carbsPer100g: 28, fatPer100g: 0.3 },
+  { pattern: /\bpasta\b/i, caloriesPer100g: 158, proteinPer100g: 5.8, carbsPer100g: 31, fatPer100g: 0.9 },
+  { pattern: /\bpotatoes?\b/i, caloriesPer100g: 77, proteinPer100g: 2, carbsPer100g: 17, fatPer100g: 0.1 },
+  { pattern: /\bsweet\s+potatoes?\b/i, caloriesPer100g: 86, proteinPer100g: 1.6, carbsPer100g: 20, fatPer100g: 0.1 },
+  { pattern: /\bbeans?\b/i, caloriesPer100g: 127, proteinPer100g: 8.7, carbsPer100g: 22.8, fatPer100g: 0.5 },
+  { pattern: /\blentils?\b/i, caloriesPer100g: 116, proteinPer100g: 9, carbsPer100g: 20, fatPer100g: 0.4 },
+  { pattern: /\bchickpeas?\b/i, caloriesPer100g: 164, proteinPer100g: 8.9, carbsPer100g: 27.4, fatPer100g: 2.6 },
+  { pattern: /\btuna\b/i, caloriesPer100g: 132, proteinPer100g: 28, carbsPer100g: 0, fatPer100g: 1.3 },
+  { pattern: /\bsalmon\b/i, caloriesPer100g: 208, proteinPer100g: 20, carbsPer100g: 0, fatPer100g: 13 },
+  { pattern: /\bbeef\b/i, caloriesPer100g: 250, proteinPer100g: 26, carbsPer100g: 0, fatPer100g: 15 },
+  { pattern: /\bavocados?\b/i, caloriesPer100g: 160, proteinPer100g: 2, carbsPer100g: 8.5, fatPer100g: 14.7 },
+  { pattern: /\bolive\s+oil\b/i, caloriesPer100g: 884, proteinPer100g: 0, carbsPer100g: 0, fatPer100g: 100 },
+  { pattern: /\bcheese\b/i, caloriesPer100g: 402, proteinPer100g: 25, carbsPer100g: 1.3, fatPer100g: 33 },
+  { pattern: /\bmilk\b/i, caloriesPer100g: 61, proteinPer100g: 3.2, carbsPer100g: 4.8, fatPer100g: 3.3 },
+  { pattern: /\bbroccoli\b/i, caloriesPer100g: 35, proteinPer100g: 2.4, carbsPer100g: 7.2, fatPer100g: 0.4 },
+  { pattern: /\bspinach\b/i, caloriesPer100g: 23, proteinPer100g: 2.9, carbsPer100g: 3.6, fatPer100g: 0.4 },
+  { pattern: /\btomatoes?\b/i, caloriesPer100g: 18, proteinPer100g: 0.9, carbsPer100g: 3.9, fatPer100g: 0.2 },
+  { pattern: /\bonions?\b/i, caloriesPer100g: 40, proteinPer100g: 1.1, carbsPer100g: 9.3, fatPer100g: 0.1 },
+];
+
+export function getString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function getNumber(value: unknown, fallback: number): number {
+  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export function getOptionalString(value: unknown): string | null {
+  const text = getString(value);
+  return text ? text : null;
+}
+
+export function parsePlatform(value: unknown): Platform {
+  const platform = getString(value).toLowerCase();
+  if (platform === "tiktok" || platform === "instagram" || platform === "facebook") return platform;
+  return "other";
+}
+
+function parseId(raw: unknown): number {
+  return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
+}
+
+export function detectPlatform(url: string): Platform {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("tiktok")) return "tiktok";
+    if (host.includes("instagram")) return "instagram";
+    if (host.includes("facebook") || host.includes("fb.watch")) return "facebook";
+  } catch {
+    return "other";
+  }
+  return "other";
+}
+
+function normalizeToken(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+export function inferMealTypeFromText(value: string) {
+  const text = normalizeToken(value);
+  if (/\b(oats?|porridge|breakfast|granola|pancakes?|smoothie|yogh?urt|toast|eggs?)\b/.test(text)) return "breakfast";
+  if (/\b(snack|bar|balls?|bites?|nuts?|fruit|chips?|dip|hummus)\b/.test(text)) return "snack";
+  return "lunch_dinner";
+}
+
+function tokenize(value: string) {
+  return normalizeToken(value)
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !STOP_WORDS.has(token) && !UNIT_WORDS.has(token));
+}
+
+function parseQuantity(raw: string) {
+  const fraction = raw.match(/^(\d+)\/(\d+)$/);
+  if (fraction) {
+    const top = Number.parseFloat(fraction[1]);
+    const bottom = Number.parseFloat(fraction[2]);
+    return bottom > 0 ? top / bottom : 1;
+  }
+  const mixed = raw.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) {
+    const whole = Number.parseFloat(mixed[1]);
+    const top = Number.parseFloat(mixed[2]);
+    const bottom = Number.parseFloat(mixed[3]);
+    return bottom > 0 ? whole + top / bottom : whole;
+  }
+  const parsed = Number.parseFloat(raw.replace(",", "."));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function inferDefaultQuantity(name: string): Pick<ParsedIngredient, "quantity" | "unit"> {
+  if (/\boats?\b/i.test(name)) return { quantity: 50, unit: "g" };
+  if (/\bbananas?\b/i.test(name)) return { quantity: 1, unit: "unit" };
+  if (/\byogh?urts?\b/i.test(name)) return { quantity: 150, unit: "g" };
+  if (/\bpeanut\s+butter\b/i.test(name)) return { quantity: 1, unit: "tbsp" };
+  if (/\bchicken\b/i.test(name)) return { quantity: 150, unit: "g" };
+  if (/\beggs?\b/i.test(name)) return { quantity: 2, unit: "unit" };
+  if (/\brice\b/i.test(name)) return { quantity: 75, unit: "g" };
+  if (/\bpasta\b/i.test(name)) return { quantity: 75, unit: "g" };
+  if (/\bpotatoes?\b/i.test(name)) return { quantity: 200, unit: "g" };
+  if (/\bsweet\s+potatoes?\b/i.test(name)) return { quantity: 200, unit: "g" };
+  if (/\bbeans?\b|\blentils?\b|\bchickpeas?\b/i.test(name)) return { quantity: 120, unit: "g" };
+  if (/\btuna\b/i.test(name)) return { quantity: 1, unit: "can" };
+  if (/\bsalmon\b|\bbeef\b/i.test(name)) return { quantity: 150, unit: "g" };
+  if (/\bavocados?\b/i.test(name)) return { quantity: 1, unit: "unit" };
+  if (/\bolive\s+oil\b/i.test(name)) return { quantity: 1, unit: "tbsp" };
+  if (/\bcheese\b/i.test(name)) return { quantity: 30, unit: "g" };
+  if (/\bmilk\b/i.test(name)) return { quantity: 200, unit: "ml" };
+  if (/\bbroccoli\b|\bspinach\b|\btomatoes?\b|\bonions?\b/i.test(name)) return { quantity: 100, unit: "g" };
+  return { quantity: 100, unit: "g" };
+}
+
+function cleanIngredientName(value: string) {
+  return value
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[-•*]/g, " ")
+    .replace(/\b(to taste|for serving|as needed)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseIngredientLine(rawLine: string): ParsedIngredient | null {
+  const raw = rawLine.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, "").trim();
+  if (!raw || raw.length < 3) return null;
+  if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(raw))) return null;
+
+  const match = raw.match(/^((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:[.,]\d+)?))?\s*([a-zA-Z]+)?\s+(.+)$/);
+  const unitCandidate = match?.[2]?.toLowerCase() ?? "";
+  let unit = UNIT_WORDS.has(unitCandidate) ? unitCandidate : "unit";
+  const nameSource = unit === "unit" ? raw.replace(/^(\d+(?:[.,]\d+)?|\d+\/\d+)\s+/, "") : match?.[3] ?? raw;
+  const name = cleanIngredientName(nameSource);
+
+  if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(name))) return null;
+  if (!name || tokenize(name).length === 0) return null;
+  let quantity = match?.[1] ? parseQuantity(match[1]) : 0;
+  if (!quantity) {
+    const inferred = inferDefaultQuantity(name);
+    quantity = inferred.quantity;
+    unit = inferred.unit;
+  }
+  return { raw, name, quantity, unit };
+}
+
+export function parseIngredients(text: string): ParsedIngredient[] {
+  return text
+    .split(/\r?\n|;|,(?=\s*(?:\d|\d+\/\d+))/)
+    .map(parseIngredientLine)
+    .filter((ingredient): ingredient is ParsedIngredient => Boolean(ingredient))
+    .slice(0, 30);
+}
+
+export function hasEnoughRecipeText(text: string, ingredients: ParsedIngredient[], isIngredientsField: boolean) {
+  if (ingredients.length === 0) return false;
+  if (isIngredientsField) return true;
+  if (ingredients.length >= 2) return true;
+  return /\b(?:\d+(?:[.,]\d+)?|\d+\/\d+)\s*(?:g|gram|grams|kg|ml|l|litre|litres|cup|cups|tbsp|tablespoon|tablespoons|tsp|teaspoon|teaspoons|can|cans|tin|tins)\b/i.test(text);
+}
+
+function stripHtml(value: string) {
+  return value
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x27;|&#39;/g, "'")
+    .replace(/&quot;/g, "\"")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractMeta(html: string, property: string) {
+  const escaped = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`, "i");
+  return html.match(pattern)?.[1]?.trim() ?? "";
+}
+
+function isGenericSocialTitle(title: string) {
+  return /^(TikTok\s+-\s+Make Your Day|Instagram|Facebook)$/i.test(title.trim());
+}
+
+async function fetchTikTokOembedContext(sourceUrl: string): Promise<Partial<PublicUrlContext>> {
+  try {
+    const response = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(sourceUrl)}`, {
+      headers: {
+        "User-Agent": "NutriBasket/0.1 recipe importer",
+        "Accept": "application/json",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return {};
+
+    const data = await response.json() as Record<string, unknown>;
+    const title = stripHtml(getString(data.title));
+    const author = stripHtml(getString(data.author_name));
+    const thumbnail = getString(data.thumbnail_url);
+    const html = stripHtml(getString(data.html));
+    const text = [title, author ? `Creator: ${author}` : "", html].filter(Boolean).join("\n");
+
+    return {
+      title,
+      description: title,
+      imageUrl: thumbnail,
+      text,
+    };
+  } catch {
+    return {};
+  }
+}
+
+export async function fetchPublicUrlContext(sourceUrl: string): Promise<PublicUrlContext> {
+  try {
+    const response = await fetch(sourceUrl, {
+      headers: {
+        "User-Agent": "NutriBasket/0.1 recipe importer",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    const finalUrl = response.url || sourceUrl;
+    if (!response.ok) {
+      return { title: "", description: "", imageUrl: "", text: "" };
+    }
+
+    const html = await response.text();
+    const title = extractMeta(html, "og:title") || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || "";
+    const description = extractMeta(html, "og:description") || extractMeta(html, "description");
+    const imageUrl = extractMeta(html, "og:image");
+    const oembed = detectPlatform(finalUrl) === "tiktok" || detectPlatform(sourceUrl) === "tiktok"
+      ? await fetchTikTokOembedContext(finalUrl)
+      : {};
+    const cleanTitle = stripHtml(title).slice(0, 180);
+    const oembedTitle = getString(oembed.title).slice(0, 180);
+    const cleanDescription = stripHtml(description).slice(0, 1000);
+    const oembedDescription = getString(oembed.description).slice(0, 1000);
+    const pageText = stripHtml(html).slice(0, 12_000);
+    return {
+      title: oembedTitle && (!cleanTitle || isGenericSocialTitle(cleanTitle)) ? oembedTitle : cleanTitle,
+      description: oembedDescription || cleanDescription,
+      imageUrl: getString(oembed.imageUrl) || imageUrl,
+      text: [oembed.text, pageText].map(getString).filter(Boolean).join("\n").slice(0, 12_000),
+    };
+  } catch {
+    return { title: "", description: "", imageUrl: "", text: "" };
+  }
+}
+
+function outputTextFromResponse(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const direct = (data as { output_text?: unknown }).output_text;
+  if (typeof direct === "string") return direct;
+
+  const output = (data as { output?: unknown }).output;
+  if (!Array.isArray(output)) return "";
+  const chunks: string[] = [];
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = (item as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (!part || typeof part !== "object") continue;
+      const text = (part as { text?: unknown }).text;
+      if (typeof text === "string") chunks.push(text);
+    }
+  }
+  return chunks.join("\n");
+}
+
+function coerceExtractedIngredient(value: unknown): ParsedIngredient | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = getString((value as Record<string, unknown>).raw);
+  const name = cleanIngredientName(getString((value as Record<string, unknown>).name));
+  if (NON_INGREDIENT_PATTERNS.some((pattern) => pattern.test(raw) || pattern.test(name))) return null;
+  if (!name || tokenize(name).length === 0) return null;
+  const inferred = inferDefaultQuantity(name);
+  const rawUnit = getString((value as Record<string, unknown>).unit).toLowerCase();
+  const unit = rawUnit && rawUnit !== "unit" ? rawUnit : inferred.unit;
+  const rawQuantity = getNumber((value as Record<string, unknown>).quantity, 0);
+  const quantity = rawQuantity > 0 ? rawQuantity : inferred.quantity;
+  return {
+    raw: raw || `${quantity} ${unit} ${name}`.trim(),
+    name,
+    quantity: Math.max(0.01, quantity),
+    unit: unit.toLowerCase(),
+  };
+}
+
+function coerceExtractedRecipe(value: unknown): ExtractedRecipe | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const ingredients = Array.isArray(record.ingredients)
+    ? record.ingredients.map(coerceExtractedIngredient).filter((item): item is ParsedIngredient => Boolean(item))
+    : [];
+  if (ingredients.length === 0) return null;
+
+  return {
+    title: getString(record.title) || "Social recipe",
+    creatorHandle: getOptionalString(record.creatorHandle),
+    caption: getString(record.caption),
+    ingredients,
+    instructions: Array.isArray(record.instructions)
+      ? record.instructions.map(getString).filter(Boolean).slice(0, 12)
+      : [],
+    servings: Math.max(1, Math.round(getNumber(record.servings, 2))),
+    thumbnailUrl: getString(record.thumbnailUrl),
+  };
+}
+
+export async function extractRecipeWithAi(input: {
+  sourceUrl: string;
+  platform: Platform;
+  title: string;
+  caption: string;
+  ingredientsText: string;
+  creatorHandle: string;
+  servings: number;
+  thumbnailUrl: string;
+  context: PublicUrlContext;
+  mediaDataUrls: string[];
+}): Promise<ExtractedRecipe | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  let response: Response;
+  try {
+    const userContent = [
+      {
+        type: "input_text",
+        text: JSON.stringify({
+          ...input,
+          mediaDataUrls: input.mediaDataUrls.length > 0
+            ? `${input.mediaDataUrls.length} uploaded screenshot/video frame(s) attached`
+            : "No uploaded media frames",
+        }),
+      },
+      ...input.mediaDataUrls.map((imageUrl) => ({
+        type: "input_image",
+        image_url: imageUrl,
+      })),
+    ];
+
+    response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+        input: [
+          {
+            role: "system",
+            content:
+              "Extract a grocery-basket-ready recipe from social media recipe context. " +
+              "Use only information present in the URL metadata, caption, provided notes, visible page text, uploaded screenshots, or uploaded video frames. " +
+              "Return concise ingredient names that can be matched to grocery products. " +
+              "Every ingredient must have a practical quantity and unit. Prefer visible quantities; if an ingredient is named without an amount, estimate a reasonable serving quantity. " +
+              "Do not invent ingredients. If no ingredient details are visible, return an empty ingredients array.",
+          },
+          {
+            role: "user",
+            content: userContent,
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "social_recipe_extraction",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              required: ["title", "creatorHandle", "caption", "ingredients", "instructions", "servings", "thumbnailUrl"],
+              properties: {
+                title: { type: "string" },
+                creatorHandle: { type: ["string", "null"] },
+                caption: { type: "string" },
+                servings: { type: "integer", minimum: 1 },
+                thumbnailUrl: { type: "string" },
+                ingredients: {
+                  type: "array",
+                  minItems: 0,
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["raw", "name", "quantity", "unit"],
+                    properties: {
+                      raw: { type: "string" },
+                      name: { type: "string" },
+                      quantity: { type: "number" },
+                      unit: { type: "string" },
+                    },
+                  },
+                },
+                instructions: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+      }),
+    });
+  } catch (error) {
+    throw new Error(`AI recipe extraction could not reach OpenAI: ${error instanceof Error ? error.message : "network request failed"}`);
+  }
+
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = data && typeof data === "object"
+      ? getString((data as { error?: { message?: unknown } }).error?.message)
+      : "";
+    throw new Error(`AI recipe extraction failed with ${response.status}${message ? `: ${message}` : ""}`);
+  }
+
+  const text = outputTextFromResponse(data);
+  if (!text) return null;
+  return coerceExtractedRecipe(JSON.parse(text));
+}
+
+function estimateGrams(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
+  if (ingredient.unit === "kg") return ingredient.quantity * 1000;
+  if (ingredient.unit === "g") return ingredient.quantity;
+  if (ingredient.unit === "l") return ingredient.quantity * 1000;
+  if (ingredient.unit === "ml") return ingredient.quantity;
+  if (ingredient.unit === "cup" || ingredient.unit === "cups") return ingredient.quantity * 150;
+  if (ingredient.unit === "tbsp" || ingredient.unit.startsWith("tablespoon")) return ingredient.quantity * 15;
+  if (ingredient.unit === "tsp" || ingredient.unit.startsWith("teaspoon")) return ingredient.quantity * 5;
+  if (ingredient.unit === "can" || ingredient.unit === "cans" || ingredient.unit === "tin" || ingredient.unit === "tins") return ingredient.quantity * 400;
+  if (product.packUnit === "kg") return Math.max(50, ingredient.quantity * product.packSize * 1000);
+  if (product.packUnit === "l") return Math.max(50, ingredient.quantity * product.packSize * 1000);
+  return ingredient.quantity * 100;
+}
+
+export function estimateIngredientGrams(ingredient: ParsedIngredient) {
+  if (ingredient.unit === "kg") return ingredient.quantity * 1000;
+  if (ingredient.unit === "g") return ingredient.quantity;
+  if (ingredient.unit === "l") return ingredient.quantity * 1000;
+  if (ingredient.unit === "ml") return ingredient.quantity;
+  if (ingredient.unit === "cup" || ingredient.unit === "cups") return ingredient.quantity * 150;
+  if (ingredient.unit === "tbsp" || ingredient.unit.startsWith("tablespoon")) return ingredient.quantity * 15;
+  if (ingredient.unit === "tsp" || ingredient.unit.startsWith("teaspoon")) return ingredient.quantity * 5;
+  if (ingredient.unit === "can" || ingredient.unit === "cans" || ingredient.unit === "tin" || ingredient.unit === "tins") return ingredient.quantity * 400;
+  if (/\beggs?\b/i.test(ingredient.name)) return ingredient.quantity * 50;
+  if (/\bbananas?\b/i.test(ingredient.name)) return ingredient.quantity * 120;
+  if (/\bavocados?\b/i.test(ingredient.name)) return ingredient.quantity * 150;
+  if (/\bslices?\b/i.test(ingredient.unit)) return ingredient.quantity * 30;
+  return ingredient.quantity * 100;
+}
+
+function estimateGenericNutrition(ingredient: ParsedIngredient) {
+  const estimate = GENERIC_NUTRITION.find((item) => item.pattern.test(ingredient.name) || item.pattern.test(ingredient.raw));
+  if (!estimate) {
+    return { calories: 0, proteinG: 0, carbsG: 0, fatG: 0 };
+  }
+
+  const grams = estimateIngredientGrams(ingredient);
+  return {
+    calories: Math.round((estimate.caloriesPer100g * grams) / 100),
+    proteinG: Math.round((estimate.proteinPer100g * grams) / 100 * 10) / 10,
+    carbsG: Math.round((estimate.carbsPer100g * grams) / 100 * 10) / 10,
+    fatG: Math.round((estimate.fatPer100g * grams) / 100 * 10) / 10,
+  };
+}
+
+export function basketQuantityFor(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
+  const needed = ingredientAmountInPackUnit(ingredient, product);
+  return Math.max(1, Math.ceil(needed / Math.max(product.packSize, 0.001)));
+}
+
+export function ingredientAmountInPackUnit(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
+  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "kg") {
+    return ingredient.unit === "kg" ? ingredient.quantity : ingredient.quantity / 1000;
+  }
+  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "g") {
+    return ingredient.unit === "kg" ? ingredient.quantity * 1000 : ingredient.quantity;
+  }
+  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "l") {
+    return ingredient.unit === "l" ? ingredient.quantity : ingredient.quantity / 1000;
+  }
+  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "ml") {
+    return ingredient.unit === "l" ? ingredient.quantity * 1000 : ingredient.quantity;
+  }
+  if ((product.packUnit === "g" || product.packUnit === "kg") && !["unit", "each"].includes(ingredient.unit)) {
+    const grams = estimateIngredientGrams(ingredient);
+    return product.packUnit === "kg" ? grams / 1000 : grams;
+  }
+  return ingredient.quantity;
+}
+
+async function getMarketProducts(marketCode: string) {
+  const retailers = await db.select().from(retailersTable).where(eq(retailersTable.marketCode, marketCode));
+  const retailerIds = new Set(retailers.map((retailer) => retailer.id));
+  const retailerNames = new Map(retailers.map((retailer) => [retailer.id, retailer.name]));
+  const products = await db.select().from(productsTable);
+  return {
+    products: products.filter((product) => retailerIds.has(product.retailerId)),
+    retailerNames,
+  };
+}
+
+function scoreProduct(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
+  const ingredientTokens = tokenize(ingredient.name);
+  const productTokens = tokenize(`${product.brand ?? ""} ${product.name}`);
+  const productTokenSet = new Set(productTokens);
+  let score = 0;
+
+  for (const token of ingredientTokens) {
+    if (productTokenSet.has(token)) score += 4;
+    else if (productTokens.some((candidate) => candidate.includes(token) || token.includes(candidate))) score += 2;
+  }
+
+  if (normalizeToken(product.name).includes(normalizeToken(ingredient.name))) score += 5;
+  if (product.isOnSpecial) score += 1;
+  if (product.priceAud > 0) score += Math.max(0, 1 - product.priceAud / 250);
+  return score;
+}
+
+export async function matchIngredients(ingredients: ParsedIngredient[], marketCode: string): Promise<MatchedIngredient[]> {
+  const { products, retailerNames } = await getMarketProducts(marketCode);
+
+  return ingredients.map((ingredient) => {
+    const ranked = products
+      .map((product) => ({ product, score: scoreProduct(ingredient, product) }))
+      .filter((item) => item.score >= 4)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.product.priceAud - b.product.priceAud;
+      });
+    const best = ranked[0]?.product;
+    if (!best) {
+      const nutrition = estimateGenericNutrition(ingredient);
+      return {
+        ...ingredient,
+        productId: null,
+        productName: null,
+        retailerName: null,
+        score: 0,
+        estimatedCost: 0,
+        calories: nutrition.calories,
+        proteinG: nutrition.proteinG,
+        carbsG: nutrition.carbsG,
+        fatG: nutrition.fatG,
+      };
+    }
+
+    const grams = estimateGrams(ingredient, best);
+    const packs = basketQuantityFor(ingredient, best);
+    return {
+      ...ingredient,
+      productId: best.id,
+      productName: best.name,
+      retailerName: retailerNames.get(best.retailerId) ?? "Unknown",
+      score: ranked[0].score,
+      estimatedCost: Math.round(best.priceAud * packs * 100) / 100,
+      calories: Math.round((best.caloriesPer100g * grams) / 100),
+      proteinG: Math.round((best.proteinPer100g * grams) / 100 * 10) / 10,
+      carbsG: Math.round((best.carbsPer100g * grams) / 100 * 10) / 10,
+      fatG: Math.round((best.fatPer100g * grams) / 100 * 10) / 10,
+    };
+  });
+}
+
+export async function buildSocialRecipeResponse(source: typeof socialRecipeSourcesTable.$inferSelect) {
+  const recipe = source.importedRecipeId
+    ? (await db.select().from(recipesTable).where(eq(recipesTable.id, source.importedRecipeId)).limit(1))[0]
+    : null;
+  const ingredients = source.importedRecipeId
+    ? await db.select().from(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, source.importedRecipeId))
+    : [];
+
+  return {
+    ...source,
+    createdAt: source.createdAt.toISOString(),
+    recipe,
+    ingredients,
+    matchedCount: ingredients.filter((ingredient) => ingredient.productId != null).length,
+    unmatchedIngredients: ingredients.filter((ingredient) => ingredient.productId == null).map((ingredient) => ingredient.name),
+  };
+}

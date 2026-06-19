@@ -59,7 +59,7 @@ should not be shipped on top of unreliable health data or silent failures.
   basket actions used across dashboard, recipes, saved, products, and specials.
 - [x] Move social-recipe media processing and import UI out of the 627-line
   recipes page into focused hooks/components.
-- [ ] Split oversized API route modules into services and route adapters.
+- [x] Split oversized API route modules into services and route adapters.
   - Prioritize `social-recipes.ts` and `baskets.ts`.
 - [ ] Consolidate repeated server helpers.
   - One `parseId`/request-validation utility.
