@@ -18,6 +18,61 @@ let meals = [];
 let waterMl = 0;
 let weightKg = 86;
 let activities = [];
+let recipeSaved = false;
+
+const recipe = {
+  id: 1,
+  name: "High Protein Chicken Bowl",
+  description: "A quick balanced dinner.",
+  prepTimeMin: 10,
+  cookTimeMin: 20,
+  servings: 2,
+  caloriesPerServing: 520,
+  proteinPerServingG: 48,
+  carbsPerServingG: 52,
+  fatPerServingG: 14,
+  fiberPerServingG: 8,
+  difficulty: "easy",
+  tags: ["high_protein", "dinner"],
+  estimatedCost: 92,
+  imageUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
+  ingredients: [
+    { name: "Chicken breast", quantity: 2, unit: "pack", estimatedCost: 70 },
+    { name: "Brown rice", quantity: 1, unit: "pack", estimatedCost: 22 },
+  ],
+  instructions: ["Cook the rice.", "Grill the chicken and serve."],
+};
+
+const basket = {
+  id: 1,
+  name: "High Protein Chicken Bowl Shopping",
+  mode: "cheapest",
+  items: [
+    {
+      id: 1,
+      basketId: 1,
+      productId: 10,
+      productName: "Chicken Breast 500g",
+      retailerName: "Test Market",
+      productUrl: "https://example.test/chicken",
+      quantity: 2,
+      unit: "pack",
+      unitCost: 35,
+      totalCost: 70,
+      isOnSpecial: false,
+      category: "protein",
+    },
+  ],
+  totalCost: 70,
+  totalCalories: 1200,
+  totalProteinG: 220,
+  totalCarbsG: 0,
+  totalFatG: 20,
+  totalServings: 2,
+  costPerServing: 35,
+  savingsFromSpecials: 0,
+  createdAt: "2026-06-19T12:00:00.000Z",
+};
 
 const dashboard = {
   date: "2026-06-19",
@@ -141,6 +196,16 @@ const server = createServer((req, res) => {
       weeklyTrend: [{ date: "2026-06-19", weightKg }],
     });
   }
+  if (req.method === "GET" && req.url === "/api/recipes/1") return send(res, 200, { ...recipe, isSaved: recipeSaved });
+  if (req.method === "GET" && req.url === "/api/recipes/1/related") return send(res, 200, []);
+  if (req.method === "POST" && req.url === "/api/saved/recipes") {
+    recipeSaved = true;
+    res.writeHead(204);
+    return res.end();
+  }
+  if (req.method === "POST" && req.url === "/api/baskets/from-recipes") return send(res, 201, basket);
+  if (req.method === "GET" && req.url === "/api/baskets/1") return send(res, 200, basket);
+  if (req.method === "GET" && req.url === "/api/products") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/today") return send(res, 200, dashboard);
   if (req.method === "GET" && req.url === "/api/dashboard/snack-suggestions") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/meal-suggestion") return send(res, 200, null);

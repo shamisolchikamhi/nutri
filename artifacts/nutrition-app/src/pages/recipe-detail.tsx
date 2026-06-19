@@ -155,6 +155,7 @@ export default function RecipeDetailPage() {
           onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600"; }}
         />
         <button
+          aria-label={recipe.isSaved ? "Remove recipe from saved" : "Save recipe"}
           className="absolute top-3 right-3 h-9 w-9 bg-background/80 backdrop-blur rounded-full flex items-center justify-center"
           onClick={() => recipe.isSaved ? unsaveMutation.mutate() : saveMutation.mutate()}
         >
