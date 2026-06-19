@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { retailerAdapters, type RetailerKey } from "./retailers";
+import { fetchRenderedHtml } from "./retailers/browser-fetch";
 
 type RetailerConfig = {
   key: RetailerKey;
@@ -243,7 +244,8 @@ function extractProductsFromHtml(html: string, retailer: RetailerConfig, sourceU
   return products;
 }
 
-async function fetchHtml(url: string) {
+async function fetchHtml(url: string, render = false) {
+  if (render) return fetchRenderedHtml(url);
   const response = await fetch(url, {
     headers: {
       "Accept": "text/html,application/xhtml+xml",
@@ -254,11 +256,11 @@ async function fetchHtml(url: string) {
   return response.text();
 }
 
-async function scrapeRetailer(retailer: RetailerConfig, limit: number) {
+async function scrapeRetailer(retailer: RetailerConfig, limit: number, render = false) {
   const productsByKey = new Map<string, ScrapedProduct>();
   for (const url of retailer.urls) {
     try {
-      const html = await fetchHtml(url);
+      const html = await fetchHtml(url, render);
       const products = extractProductsFromHtml(html, retailer, url, Math.max(10, limit - productsByKey.size));
       for (const product of products) {
         productsByKey.set(`${retailer.key}:${product.name.toLowerCase()}`, product);
@@ -354,6 +356,7 @@ async function main() {
   const retailerKeys = parseRetailerKeys(getArg("retailer", "all"));
   const limit = Number.parseInt(getArg("limit", "60") ?? "60", 10);
   const shouldWrite = hasFlag("write");
+  const render = hasFlag("render");
   const fixturePath = getArg("from");
   const outPath = resolve(getArg("out", "scripts/out/za-retailers.json") ?? "");
 
@@ -365,7 +368,7 @@ async function main() {
     for (const key of retailerKeys) {
       const retailer = RETAILERS[key];
       if (!retailer) throw new Error(`Unsupported retailer "${key}". Use all, woolworths, pick-n-pay, or checkers.`);
-      productsByRetailer[retailer.name] = await scrapeRetailer(retailer, limit);
+      productsByRetailer[retailer.name] = await scrapeRetailer(retailer, limit, render);
     }
     await mkdir(dirname(outPath), { recursive: true });
     await writeFile(

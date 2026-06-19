@@ -80,7 +80,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Add a dedicated Woolworths adapter for its current product and promotion
     page structure.
   - Prefer permitted structured feeds or retailer APIs where available.
-- [ ] Add browser-rendered extraction for JavaScript-dependent retailer pages.
+- [x] Add browser-rendered extraction for JavaScript-dependent retailer pages.
   - Respect retailer terms, robots directives, rate limits, and access controls.
   - Do not attempt to bypass retailer bot protection or authentication.
 - [x] Add scraper contract tests using versioned HTML/catalogue fixtures.
