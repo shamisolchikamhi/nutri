@@ -67,7 +67,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - One ingredient normalization, quantity conversion, product matching, and
     basket-quantity service shared by baskets and social recipes.
 - [x] Move schema creation out of request-time route code into database migrations.
-- [ ] Review navigation information architecture with users.
+- [x] Review navigation information architecture with users.
   - Combine Tracker, History, Activity, and Progress under a `Track` workspace.
   - Combine Products and Specials under a `Shop` workspace with filter tabs.
   - Treat Saved as a library section instead of another top-level destination.

@@ -7,9 +7,10 @@ import {
   Tag, 
   LineChart, 
   Settings, 
-  Bookmark,
   Search,
-  History
+  History,
+  Dumbbell,
+  Library
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -24,6 +25,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 
 const navItems = [
@@ -33,14 +37,16 @@ const navItems = [
     icon: Home,
   },
   {
-    title: "Tracker",
+    title: "Track",
     url: "/tracker",
     icon: Activity,
-  },
-  {
-    title: "History",
-    url: "/tracker/history",
-    icon: History,
+    routes: ["/tracker", "/tracker/activity", "/tracker/history", "/progress"],
+    children: [
+      { title: "Today", url: "/tracker", icon: Activity },
+      { title: "Activity", url: "/tracker/activity", icon: Dumbbell },
+      { title: "History", url: "/tracker/history", icon: History },
+      { title: "Progress", url: "/progress", icon: LineChart },
+    ],
   },
   {
     title: "Recipes",
@@ -58,24 +64,19 @@ const navItems = [
     icon: ShoppingCart,
   },
   {
-    title: "Specials",
-    url: "/specials",
-    icon: Tag,
-  },
-  {
-    title: "Products",
+    title: "Shop",
     url: "/products",
     icon: Search,
+    routes: ["/products", "/specials"],
+    children: [
+      { title: "Products", url: "/products", icon: Search },
+      { title: "Specials", url: "/specials", icon: Tag },
+    ],
   },
   {
-    title: "Progress",
-    url: "/progress",
-    icon: LineChart,
-  },
-  {
-    title: "Saved",
+    title: "Library",
     url: "/saved",
-    icon: Bookmark,
+    icon: Library,
   },
 ];
 
@@ -98,7 +99,9 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const isActive = location === item.url || (item.url !== "/" && location.startsWith(item.url + "/"));
+                const isActive = item.routes
+                  ? item.routes.some((route) => location === route || location.startsWith(`${route}/`))
+                  : location === item.url || location.startsWith(`${item.url}/`);
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive}>
@@ -107,6 +110,20 @@ export function AppSidebar() {
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
+                    {item.children && (
+                      <SidebarMenuSub>
+                        {item.children.map((child) => (
+                          <SidebarMenuSubItem key={child.url}>
+                            <SidebarMenuSubButton asChild isActive={location === child.url}>
+                              <Link href={child.url}>
+                                <child.icon />
+                                <span>{child.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    )}
                   </SidebarMenuItem>
                 );
               })}
