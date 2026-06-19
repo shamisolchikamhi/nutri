@@ -10,10 +10,12 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Flame, Droplets, Zap, Target, TrendingDown, ShoppingCart, Tag, Clock } from "lucide-react";
+import { Flame, Droplets, Zap, Target, TrendingDown, ShoppingCart, Tag } from "lucide-react";
 import { formatDate, formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
 import { DEFAULT_HYDRATION_TARGET_ML } from "@workspace/nutrition";
+import { RecipeCard } from "@/components/content/RecipeCard";
+import { ProductCard } from "@/components/content/ProductCard";
 
 function MacroRing({ value, max, color, label }: { value: number | null; max: number | null; color: string; label: string }) {
   const pct = value != null && max != null && max > 0 ? Math.min(100, (value / max) * 100) : null;
@@ -227,27 +229,7 @@ export default function DashboardPage() {
 
       {/* Suggested Meal */}
       {mealSuggestion && (
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation(`/recipes/${mealSuggestion.id}`)}>
-          <CardContent className="p-4">
-            <div className="flex gap-4">
-              <img
-                src={mealSuggestion.imageUrl}
-                alt={mealSuggestion.name}
-                className="w-20 h-20 rounded-xl object-cover flex-shrink-0"
-                onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=200"; }}
-              />
-              <div className="min-w-0">
-                <Badge variant="secondary" className="text-xs mb-1">Suggested Meal</Badge>
-                <h3 className="font-semibold leading-tight">{mealSuggestion.name}</h3>
-                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Flame className="h-3 w-3" />{mealSuggestion.caloriesPerServing} kcal</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{(mealSuggestion.prepTimeMin ?? 0) + (mealSuggestion.cookTimeMin ?? 0)} min</span>
-                  <span>{formatMoney(mealSuggestion.estimatedCost)}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <RecipeCard recipe={mealSuggestion} variant="suggestion" onOpen={() => setLocation(`/recipes/${mealSuggestion.id}`)} />
       )}
 
       {/* Snack Suggestions */}
@@ -261,19 +243,8 @@ export default function DashboardPage() {
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
             {snacks.slice(0, 5).map((snack) => (
-              <div key={snack.productId} className="flex-shrink-0 w-36 bg-card border rounded-xl p-3 space-y-1.5">
-                <img
-                  src={snack.imageUrl}
-                  alt={snack.name}
-                  className="w-full h-20 object-cover rounded-lg"
-                  onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1547592180-85f173990554?w=200"; }}
-                />
-                <p className="text-xs font-medium leading-tight line-clamp-2">{snack.name}</p>
-                <p className="text-xs text-muted-foreground">{snack.caloriesPerServing} kcal</p>
-                <p className="text-xs font-semibold text-primary">{formatMoney(snack.priceAud)}</p>
-                {snack.isOnSpecial && (
-                  <Badge variant="secondary" className="text-xs py-0">SPECIAL</Badge>
-                )}
+              <div key={snack.productId} className="w-36 flex-shrink-0">
+                <ProductCard variant="compact" product={{ id: snack.productId, name: snack.name, imageUrl: snack.imageUrl, retailerName: snack.retailerName, price: snack.priceAud, isOnSpecial: snack.isOnSpecial, calories: snack.caloriesPerServing }} />
               </div>
             ))}
           </div>

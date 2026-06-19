@@ -19,10 +19,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign, Link2, ShoppingCart, ExternalLink, Upload } from "lucide-react";
+import { Clock, Flame, ChefHat, DollarSign, Link2, ExternalLink, Upload } from "lucide-react";
 import { formatMoney } from "@/lib/market";
 import { PageEmpty, PageError } from "@/components/PageState";
-import { ConfirmAction } from "@/components/ConfirmAction";
+import { BasketAction } from "@/components/content/BasketAction";
+import { RecipeCard } from "@/components/content/RecipeCard";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 
 const GOALS = [
@@ -553,13 +554,11 @@ export default function RecipesPage() {
                           View recipe
                         </Button>
                       )}
-                      <Button
-                        size="sm"
+                      <BasketAction
                         onClick={() => basketMutation.mutate(item.id)}
                         disabled={basketMutation.isPending || item.matchedCount === 0}
-                      >
-                        <ShoppingCart className="h-3.5 w-3.5 mr-1" /> Create basket
-                      </Button>
+                        pending={basketMutation.isPending}
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -578,55 +577,13 @@ export default function RecipesPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(displayRecipes ?? []).map((recipe) => (
-            <Card key={recipe.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setLocation(`/recipes/${recipe.id}`)}>
-              <div className="relative">
-                <img
-                  src={recipe.imageUrl}
-                  alt={recipe.name}
-                  className="w-full h-40 object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400"; }}
-                />
-                {recipe.isSaved ? (
-                  <ConfirmAction
-                    title={`Remove ${recipe.name} from Saved?`}
-                    description="You can save this recipe again later."
-                    onConfirm={() => scheduleUndoable({ label: "Saved recipe removal", onCommit: () => unsaveMutation.mutate(recipe.id) })}
-                  >
-                    <button aria-label={`Remove ${recipe.name} from saved`} className="absolute top-2 right-2 h-8 w-8 bg-background/80 backdrop-blur rounded-full flex items-center justify-center hover:bg-background transition-colors" onClick={(event) => event.stopPropagation()}>
-                      <BookmarkCheck className="h-4 w-4 text-primary" />
-                    </button>
-                  </ConfirmAction>
-                ) : (
-                  <button aria-label={`Save ${recipe.name}`} className="absolute top-2 right-2 h-8 w-8 bg-background/80 backdrop-blur rounded-full flex items-center justify-center hover:bg-background transition-colors" onClick={(event) => { event.stopPropagation(); saveMutation.mutate(recipe.id); }}>
-                    <Bookmark className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-                  <h3 className="text-white font-semibold leading-tight text-sm">{recipe.name}</h3>
-                </div>
-              </div>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex flex-wrap gap-1">
-                  {(recipe as any).mealTypeLabel && (
-                    <Badge variant="outline" className="text-xs py-0">{(recipe as any).mealTypeLabel}</Badge>
-                  )}
-                  {recipe.tags.slice(0, 3).map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs py-0">{tag.replace("_", " ")}</Badge>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Flame className="h-3 w-3" />{recipe.caloriesPerServing} kcal</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{(recipe.prepTimeMin ?? 0) + (recipe.cookTimeMin ?? 0)} min</span>
-                  <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{formatMoney(recipe.estimatedCost)}</span>
-                  <Badge variant="outline" className="text-xs py-0 capitalize">{recipe.difficulty}</Badge>
-                </div>
-                <div className="flex gap-3 text-xs">
-                  <span className="text-emerald-600 font-medium">P: {recipe.proteinPerServingG}g</span>
-                  <span className="text-amber-600">C: {recipe.carbsPerServingG}g</span>
-                  <span className="text-purple-600">F: {recipe.fatPerServingG}g</span>
-                </div>
-              </CardContent>
-            </Card>
+            <RecipeCard
+              key={recipe.id}
+              recipe={{ ...recipe, mealTypeLabel: (recipe as any).mealTypeLabel }}
+              onOpen={() => setLocation(`/recipes/${recipe.id}`)}
+              onSave={() => saveMutation.mutate(recipe.id)}
+              onRemove={() => scheduleUndoable({ label: "Saved recipe removal", onCommit: () => unsaveMutation.mutate(recipe.id) })}
+            />
           ))}
         </div>
       )}

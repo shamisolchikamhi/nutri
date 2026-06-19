@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { useListSpecials, useGetBestValueSpecials, useListRetailers } from "@workspace/api-client-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tag, TrendingDown } from "lucide-react";
-import { formatMoney } from "@/lib/market";
 import { PageEmpty, PageError } from "@/components/PageState";
+import { ProductCard } from "@/components/content/ProductCard";
 
 export default function SpecialsPage() {
   const [retailerId, setRetailerId] = useState("all");
@@ -86,37 +84,11 @@ export default function SpecialsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(displaySpecials ?? []).map((special) => (
-            <Card key={special.id} className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex gap-0">
-                  <img
-                    src={special.imageUrl}
-                    alt={special.productName}
-                    className="w-28 h-28 object-cover flex-shrink-0"
-                    onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200"; }}
-                  />
-                  <div className="p-3 flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-sm leading-tight line-clamp-2">{special.productName}</p>
-                      <Badge className="flex-shrink-0 bg-red-500 text-white text-xs">
-                        -{special.savingsPercent}%
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{special.retailerName}</p>
-                    <div className="flex items-baseline gap-2 mt-2">
-                      <span className="text-xl font-bold text-primary">{formatMoney(special.specialPriceAud)}</span>
-                      <span className="text-sm text-muted-foreground line-through">{formatMoney(special.regularPriceAud)}</span>
-                    </div>
-                    <p className="text-xs text-emerald-600 font-medium">Save {formatMoney(special.savingsAud)}</p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {special.goalFit.slice(0, 2).map((g) => (
-                        <Badge key={g} variant="outline" className="text-xs py-0 capitalize">{g.replace("_", " ")}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <ProductCard
+              key={special.id}
+              variant="special"
+              product={{ id: special.productId, name: special.productName, imageUrl: special.imageUrl, retailerName: special.retailerName, price: special.specialPriceAud, regularPrice: special.regularPriceAud, savings: special.savingsAud, savingsPercent: special.savingsPercent, tags: special.goalFit }}
+            />
           ))}
         </div>
       )}

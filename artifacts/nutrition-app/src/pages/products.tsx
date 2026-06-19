@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { useListProducts, useListRetailers, useCompareProduct } from "@workspace/api-client-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Tag, BarChart2 } from "lucide-react";
+import { Search, Tag } from "lucide-react";
 import { formatMoney } from "@/lib/market";
 import { PageEmpty, PageError } from "@/components/PageState";
+import { ProductCard } from "@/components/content/ProductCard";
 
 const CATEGORIES = [
   { value: "all", label: "All Categories" },
@@ -93,47 +93,11 @@ export default function ProductsPage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {(products ?? []).map((product) => (
-            <Card key={product.id} className="overflow-hidden">
-              <div className="relative">
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="w-full h-32 object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=300"; }}
-                />
-                {product.isOnSpecial && (
-                  <Badge className="absolute top-1.5 left-1.5 bg-red-500 text-white text-xs py-0">SPECIAL</Badge>
-                )}
-              </div>
-              <CardContent className="p-3">
-                <p className="font-medium text-xs leading-tight mb-1 line-clamp-2">{product.name}</p>
-                <p className="text-xs text-muted-foreground mb-2">{product.retailerName}</p>
-                <div className="flex items-baseline justify-between mb-2">
-                  <span className="text-base font-bold text-primary">{formatMoney(product.priceAud)}</span>
-                  {product.isOnSpecial && product.regularPriceAud && (
-                    <span className="text-xs text-muted-foreground line-through">{formatMoney(product.regularPriceAud)}</span>
-                  )}
-                </div>
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <div className="flex justify-between">
-                    <span>Protein</span>
-                    <span className="font-medium text-emerald-600">{product.proteinPer100g}g/100g</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Calories</span>
-                    <span>{product.caloriesPer100g} kcal</span>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-2 text-xs h-7"
-                  onClick={() => setCompareId(product.id)}
-                >
-                  <BarChart2 className="h-3 w-3 mr-1" /> Compare
-                </Button>
-              </CardContent>
-            </Card>
+            <ProductCard
+              key={product.id}
+              product={{ id: product.id, name: product.name, imageUrl: product.imageUrl, retailerName: product.retailerName, price: product.priceAud, regularPrice: product.regularPriceAud, isOnSpecial: product.isOnSpecial, calories: product.caloriesPer100g, proteinG: product.proteinPer100g }}
+              onCompare={() => setCompareId(product.id)}
+            />
           ))}
         </div>
       )}

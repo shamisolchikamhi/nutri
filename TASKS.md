@@ -55,7 +55,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Centralize nutrition defaults and formatting.
   - Remove scattered `2000` kcal, `2500` ml, date locale, and fallback literals.
   - Derive goals from the profile or market configuration.
-- [ ] Extract shared recipe and product cards, image fallbacks, save controls, and
+- [x] Extract shared recipe and product cards, image fallbacks, save controls, and
   basket actions used across dashboard, recipes, saved, products, and specials.
 - [ ] Move social-recipe media processing and import UI out of the 627-line
   recipes page into focused hooks/components.
