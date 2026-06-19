@@ -19,7 +19,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Require age, height, current weight, target weight, and valid ranges.
   - Do not replace missing health data with invented defaults.
   - Show field-level errors and block progression/submission until valid.
-- [ ] Fix dashboard fallback calculations.
+- [x] Fix dashboard fallback calculations.
   - Do not show `0 / 2000 kcal` together with `0` remaining.
   - Use server-provided targets; otherwise show an unavailable state.
 - [ ] Make startup fail clearly when the API is unavailable or misconfigured.

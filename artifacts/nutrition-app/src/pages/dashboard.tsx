@@ -4,7 +4,6 @@ import {
   useGetSnackSuggestions,
   useGetMealSuggestion,
   useGetGoalSummary,
-  useGetProfile,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -15,8 +14,8 @@ import { Flame, Droplets, Zap, Target, TrendingDown, ShoppingCart, Tag, Clock } 
 import { formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
 
-function MacroRing({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
-  const pct = Math.min(100, (value / Math.max(max, 1)) * 100);
+function MacroRing({ value, max, color, label }: { value: number | null; max: number | null; color: string; label: string }) {
+  const pct = value != null && max != null && max > 0 ? Math.min(100, (value / max) * 100) : null;
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="relative w-16 h-16">
@@ -24,14 +23,14 @@ function MacroRing({ value, max, color, label }: { value: number; max: number; c
           <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/30" />
           <circle
             cx="18" cy="18" r="15.9" fill="none" strokeWidth="3"
-            stroke={color} strokeDasharray={`${pct} ${100 - pct}`}
+            stroke={color} strokeDasharray={`${pct ?? 0} ${100 - (pct ?? 0)}`}
             strokeLinecap="round" className="transition-all duration-500"
           />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{Math.round(pct)}%</span>
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{pct == null ? "—" : `${Math.round(pct)}%`}</span>
       </div>
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xs font-medium">{value}g</span>
+      <span className="text-xs font-medium">{value == null || max == null ? "Unavailable" : `${value}g / ${max}g`}</span>
     </div>
   );
 }
@@ -42,12 +41,10 @@ export default function DashboardPage() {
   const snacksQuery = useGetSnackSuggestions();
   const mealQuery = useGetMealSuggestion();
   const goalQuery = useGetGoalSummary();
-  const profileQuery = useGetProfile();
   const { data: today, isLoading } = todayQuery;
   const { data: snacks } = snacksQuery;
   const { data: mealSuggestion } = mealQuery;
   const { data: goalSummary } = goalQuery;
-  const { data: profile } = profileQuery;
 
   const todayDate = new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
 
@@ -63,10 +60,28 @@ export default function DashboardPage() {
     );
   }
 
-  const failedQuery = [todayQuery, snacksQuery, mealQuery, goalQuery, profileQuery].find((query) => query.isError);
+  const failedQuery = [todayQuery, snacksQuery, mealQuery, goalQuery].find((query) => query.isError);
   if (failedQuery) return <PageError reference="DATA-DASHBOARD" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
-  const calPct = today ? Math.min(100, (today.caloriesEaten / today.calorieTarget) * 100) : 0;
+  const calorieTarget = today?.calorieTarget && today.calorieTarget > 0
+    ? today.calorieTarget
+    : goalSummary?.dailyCalorieTarget && goalSummary.dailyCalorieTarget > 0
+      ? goalSummary.dailyCalorieTarget
+      : null;
+  const caloriesEaten = today?.caloriesEaten ?? null;
+  const caloriesRemaining = calorieTarget == null || caloriesEaten == null
+    ? null
+    : today?.calorieTarget && today.calorieTarget > 0
+      ? today.caloriesRemaining
+      : Math.max(0, calorieTarget - caloriesEaten);
+  const calPct = calorieTarget == null || caloriesEaten == null ? null : Math.min(100, (caloriesEaten / calorieTarget) * 100);
+  const proteinTarget = today?.proteinTargetG && today.proteinTargetG > 0
+    ? today.proteinTargetG
+    : goalSummary?.proteinTargetG && goalSummary.proteinTargetG > 0
+      ? goalSummary.proteinTargetG
+      : null;
+  const carbsTarget = goalSummary?.carbsTargetG && goalSummary.carbsTargetG > 0 ? goalSummary.carbsTargetG : null;
+  const fatTarget = goalSummary?.fatTargetG && goalSummary.fatTargetG > 0 ? goalSummary.fatTargetG : null;
 
   return (
     <div className="space-y-6">
@@ -93,27 +108,27 @@ export default function DashboardPage() {
             <div>
               <p className="text-primary-foreground/80 text-sm font-medium">Calories Today</p>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-4xl font-bold">{today?.caloriesEaten ?? 0}</span>
-                <span className="text-primary-foreground/70 text-sm">/ {today?.calorieTarget ?? 2000} kcal</span>
+                <span className="text-4xl font-bold">{caloriesEaten ?? "—"}</span>
+                <span className="text-primary-foreground/70 text-sm">{calorieTarget == null ? "Target unavailable" : `/ ${calorieTarget} kcal`}</span>
               </div>
             </div>
             <div className="text-right">
               <p className="text-primary-foreground/80 text-sm">Remaining</p>
-              <p className="text-2xl font-bold">{today?.caloriesRemaining ?? 0}</p>
+              <p className="text-2xl font-bold">{caloriesRemaining ?? "—"}</p>
             </div>
           </div>
           <div className="h-2 bg-primary-foreground/20 rounded-full overflow-hidden">
             <div
               className="h-full bg-primary-foreground rounded-full transition-all duration-700"
-              style={{ width: `${calPct}%` }}
+              style={{ width: `${calPct ?? 0}%` }}
             />
           </div>
         </div>
         <CardContent className="p-4">
           <div className="flex justify-around">
-            <MacroRing value={Math.round(today?.proteinEatenG ?? 0)} max={today?.proteinTargetG ?? 150} color="#10b981" label="Protein" />
-            <MacroRing value={Math.round(today?.carbsEatenG ?? 0)} max={Math.round((today?.calorieTarget ?? 2000) * 0.5 / 4)} color="#f59e0b" label="Carbs" />
-            <MacroRing value={Math.round(today?.fatEatenG ?? 0)} max={Math.round((today?.calorieTarget ?? 2000) * 0.25 / 9)} color="#8b5cf6" label="Fat" />
+            <MacroRing value={today ? Math.round(today.proteinEatenG) : null} max={proteinTarget} color="#10b981" label="Protein" />
+            <MacroRing value={today ? Math.round(today.carbsEatenG) : null} max={carbsTarget} color="#f59e0b" label="Carbs" />
+            <MacroRing value={today ? Math.round(today.fatEatenG) : null} max={fatTarget} color="#8b5cf6" label="Fat" />
           </div>
         </CardContent>
       </Card>
@@ -171,7 +186,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Goal Summary */}
-      {goalSummary && (
+      {goalSummary?.dailyCalorieTarget && goalSummary.dailyCalorieTarget > 0 && goalSummary.proteinTargetG > 0 ? (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -193,6 +208,18 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">to goal</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-muted-foreground" /> Nutrition targets unavailable
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">Complete your health profile before using calorie and macro targets.</p>
+            <Button variant="outline" size="sm" onClick={() => setLocation("/settings")}>Review profile</Button>
           </CardContent>
         </Card>
       )}
