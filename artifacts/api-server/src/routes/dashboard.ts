@@ -16,7 +16,6 @@ import {
 } from "@workspace/db";
 import { calcGoalMetrics } from "./profile";
 import { DEFAULT_NUTRITION_TARGETS, roundMoney, roundNutrition } from "@workspace/nutrition";
-import { ensureRecipesSchema } from "../lib/schema-readiness";
 
 const router: IRouter = Router();
 
@@ -173,7 +172,6 @@ router.get("/dashboard/snack-suggestions", async (_req, res): Promise<void> => {
 });
 
 router.get("/dashboard/meal-suggestion", async (_req, res): Promise<void> => {
-  await ensureRecipesSchema();
   const today = new Date().toISOString().split("T")[0];
   const meals = await db.select().from(mealEntriesTable).where(eq(mealEntriesTable.date, today));
   const caloriesEaten = meals.reduce((s, m) => s + m.calories, 0);

@@ -7,7 +7,7 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
 - Install dependencies with `pnpm install`.
 - Start PostgreSQL and export its connection string, for example
   `export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/nutribasket`.
-- Create/update the local schema with `pnpm --filter @workspace/db run push`.
+- Apply checked-in migrations with `pnpm db:migrate` before starting the API.
 - Start the API with `PORT=5000 pnpm --filter @workspace/api-server run dev`.
 - Verify the API and database together with `curl http://127.0.0.1:5000/api/healthz`.
   A healthy response is `{"status":"ok","service":"nutribasket-api"}`. Any
@@ -20,7 +20,9 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm db:generate` — generate a migration after changing the canonical schema
+- `pnpm db:migrate` — apply checked-in migrations before starting the API
+- `pnpm --filter @workspace/db run push` — push DB schema changes (local prototyping only)
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --limit=80` — fetch a real product/nutrition fixture without writing to the DB
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --limit=80 --write` — seed scraped product/nutrition data into the DB
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --from=scripts/out/open-food-facts-ZA.json --write` — seed from a cached scrape fixture
@@ -70,7 +72,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 ## Gotchas
 
 - Open Food Facts provides real product/nutrition metadata but not retailer shelf prices; the first scraper uses deterministic test prices until retailer-specific price feeds/scrapers are connected.
-- Social recipe import adds `social_recipe_sources`; run the DB push before testing it against a fresh database.
+- API routes never mutate the schema at request time; run `pnpm db:migrate` before starting a new release.
 
 ## Pointers
 

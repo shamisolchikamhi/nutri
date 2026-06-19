@@ -10,13 +10,11 @@ import {
   specialsTable,
 } from "@workspace/db";
 import { SaveRecipeBody, UnsaveRecipeParams, SaveSnackBody } from "@workspace/api-zod";
-import { ensureRecipesSchema } from "../lib/schema-readiness";
 import { parseId } from "../lib/request";
 
 const router: IRouter = Router();
 
 router.get("/saved/recipes", async (_req, res): Promise<void> => {
-  await ensureRecipesSchema();
   const saved = await db.select().from(savedRecipesTable);
   const savedIds = new Set(saved.map((s) => s.recipeId));
 

@@ -66,7 +66,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - One recipe-schema migration path instead of repeated `ensureRecipesSchema`.
   - One ingredient normalization, quantity conversion, product matching, and
     basket-quantity service shared by baskets and social recipes.
-- [ ] Move schema creation out of request-time route code into database migrations.
+- [x] Move schema creation out of request-time route code into database migrations.
 - [ ] Review navigation information architecture with users.
   - Combine Tracker, History, Activity, and Progress under a `Track` workspace.
   - Combine Products and Specials under a `Shop` workspace with filter tabs.

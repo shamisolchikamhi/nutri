@@ -5,9 +5,8 @@ import {
   GetRecipeParams,
   ListRecipesQueryParams,
 } from "@workspace/api-zod";
-import { calcGoalMetrics, ensureUserProfileSchema } from "./profile";
+import { calcGoalMetrics } from "./profile";
 import { DEFAULT_NUTRITION_TARGETS, roundMoney, roundNutrition } from "@workspace/nutrition";
-import { ensureRecipesSchema } from "../lib/schema-readiness";
 import { parseId } from "../lib/request";
 
 const router: IRouter = Router();
@@ -110,7 +109,6 @@ function pickPlanRecipe(
 }
 
 router.get("/recipes/recommended", async (req, res): Promise<void> => {
-  await ensureRecipesSchema();
   const profiles = await db.select().from(userProfileTable).limit(1);
   const savedIds = await getSavedRecipeIds();
 
@@ -139,7 +137,6 @@ router.get("/recipes/recommended", async (req, res): Promise<void> => {
 });
 
 router.get("/recipes", async (req, res): Promise<void> => {
-  await ensureRecipesSchema();
   const params = ListRecipesQueryParams.safeParse(req.query);
   const savedIds = await getSavedRecipeIds();
 
@@ -164,8 +161,6 @@ router.get("/recipes", async (req, res): Promise<void> => {
 });
 
 router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
-  await ensureRecipesSchema();
-  await ensureUserProfileSchema();
   const requestedDays = parseInt(String(req.query.days ?? "7"), 10);
   const days = Number.isFinite(requestedDays) ? Math.min(14, Math.max(1, requestedDays)) : 7;
   const savedIds = await getSavedRecipeIds();
@@ -248,7 +243,6 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
 });
 
 router.get("/recipes/:id/related", async (req, res): Promise<void> => {
-  await ensureRecipesSchema();
   const id = parseId(req.params.id);
   const savedIds = await getSavedRecipeIds();
   const baseIngredients = await db.select().from(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, id));
@@ -281,7 +275,6 @@ router.get("/recipes/:id/related", async (req, res): Promise<void> => {
 });
 
 router.get("/recipes/:id", async (req, res): Promise<void> => {
-  await ensureRecipesSchema();
   const id = parseId(req.params.id);
   const savedIds = await getSavedRecipeIds();
 
