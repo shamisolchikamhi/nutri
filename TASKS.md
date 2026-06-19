@@ -95,7 +95,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Store retailer external ID, barcode, canonical source URL, region, store,
     channel, currency, first seen, last seen, scraped at, and last verified at.
   - Rename currency-specific database fields such as `priceAud` to neutral names.
-- [ ] Extend the promotions model.
+- [x] Extend the promotions model.
   - Add `validFrom`, `validUntil`, promotion type, regular price, special price,
     multibuy quantity and price, percentage discount, loyalty requirement,
     stock status, region/store scope, terms, and source URL.
