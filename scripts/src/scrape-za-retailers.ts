@@ -289,7 +289,18 @@ async function getOrCreateRetailer(retailer: RetailerConfig) {
 
   const [created] = await db
     .insert(retailersTable)
-    .values({ name: retailer.name, marketCode: "ZA", logoUrl: retailer.logoUrl, isActive: true })
+    .values({
+      name: retailer.name,
+      externalId: retailer.key,
+      marketCode: "ZA",
+      canonicalSourceUrl: retailer.urls[0],
+      channel: "online",
+      currency: "ZAR",
+      logoUrl: retailer.logoUrl,
+      isActive: true,
+      scrapedAt: new Date(),
+      lastVerifiedAt: new Date(),
+    })
     .returning();
 
   return created;
@@ -313,8 +324,12 @@ async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfi
 
     const values = {
       name: product.name,
+      externalId: product.externalId,
+      canonicalSourceUrl: product.sourceUrl,
       brand: product.brand,
       retailerId: row.id,
+      channel: "online",
+      currency: "ZAR",
       category: product.category,
       priceAud: product.priceAud,
       regularPriceAud: product.regularPriceAud,
@@ -327,7 +342,11 @@ async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfi
       fiberPer100g: product.fiberPer100g,
       sugarPer100g: product.sugarPer100g,
       isOnSpecial: false,
+      stockStatus: "unknown",
       imageUrl: product.imageUrl,
+      lastSeenAt: new Date(),
+      scrapedAt: new Date(),
+      lastVerifiedAt: new Date(),
     };
 
     if (existing[0]) {

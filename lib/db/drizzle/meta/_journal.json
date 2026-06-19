@@ -15,6 +15,13 @@
       "when": 1781905726320,
       "tag": "0001_fat_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781905893286,
+      "tag": "0002_lying_rage",
+      "breakpoints": true
     }
   ]
 }

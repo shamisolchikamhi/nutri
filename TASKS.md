@@ -91,7 +91,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Never present generated test prices as observed retailer prices.
   - Add a reviewed product-matching process using barcode first and normalized
     brand/name/pack size as a fallback.
-- [ ] Extend retailer and product provenance fields.
+- [x] Extend retailer and product provenance fields.
   - Store retailer external ID, barcode, canonical source URL, region, store,
     channel, currency, first seen, last seen, scraped at, and last verified at.
   - Rename currency-specific database fields such as `priceAud` to neutral names.
