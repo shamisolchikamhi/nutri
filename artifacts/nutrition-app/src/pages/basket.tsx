@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, Plus, Trash2, ChevronRight } from "lucide-react";
 import { formatMoney } from "@/lib/market";
-import { PageError } from "@/components/PageState";
+import { PageEmpty, PageError } from "@/components/PageState";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 
@@ -95,12 +95,7 @@ export default function BasketPage() {
       </div>
 
       {(baskets ?? []).length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <ShoppingCart className="h-12 w-12 mx-auto mb-3 opacity-20" />
-          <p className="font-medium">No baskets yet</p>
-          <p className="text-sm mb-4">Create a basket to start planning your shop</p>
-          <Button onClick={() => setOpen(true)}>Create your first basket</Button>
-        </div>
+        <PageEmpty title="No baskets yet" description="Create a basket before comparing your grocery shop." action={<Button onClick={() => setOpen(true)}>Create your first basket</Button>} />
       ) : (
         <div className="space-y-3">
           {(baskets ?? []).map((basket) => (

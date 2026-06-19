@@ -145,12 +145,12 @@ export default function ProgressPage() {
       )}
 
       {/* Weight Chart */}
-      {chartData.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Weight Trend</CardTitle>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Weight Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={chartData}>
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -169,12 +169,14 @@ export default function ProgressPage() {
                 <Line type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={2} dot={{ r: 4, fill: "#10b981" }} />
               </LineChart>
             </ResponsiveContainer>
-            {chartData.length === 0 && (
-              <p className="text-center text-muted-foreground text-sm py-8">Log your weight daily to see the trend</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center text-muted-foreground text-sm py-8 space-y-3">
+              <p>Log your first weight before a trend can be calculated.</p>
+              <Button variant="outline" onClick={() => document.querySelector<HTMLInputElement>('input[type="number"]')?.focus()}>Log first weight</Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Goal Summary */}
       {goalSummary && (

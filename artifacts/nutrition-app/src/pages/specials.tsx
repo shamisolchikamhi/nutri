@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tag, TrendingDown } from "lucide-react";
 import { formatMoney } from "@/lib/market";
-import { PageError } from "@/components/PageState";
+import { PageEmpty, PageError } from "@/components/PageState";
 
 export default function SpecialsPage() {
   const [retailerId, setRetailerId] = useState("all");
@@ -82,10 +82,7 @@ export default function SpecialsPage() {
       ) : activeQuery.isError || retailersQuery.isError ? (
         <PageError reference="DATA-SPECIALS" onRetry={() => void (activeQuery.isError ? activeQuery.refetch() : retailersQuery.refetch())} isRetrying={activeQuery.isFetching || retailersQuery.isFetching} />
       ) : (displaySpecials ?? []).length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Tag className="h-10 w-10 mx-auto mb-2 opacity-30" />
-          <p>No specials found</p>
-        </div>
+        <PageEmpty title="No specials match" description="Clear the retailer and goal filters to see all current offers." action={<Button onClick={() => { setTab("all"); setRetailerId("all"); setGoalFit("all"); }}>Clear filters</Button>} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(displaySpecials ?? []).map((special) => (

@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExternalLink, Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Tag } from "lucide-react";
 import { useState } from "react";
 import { formatMoney } from "@/lib/market";
-import { PageError } from "@/components/PageState";
+import { PageEmpty, PageError } from "@/components/PageState";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 
@@ -206,10 +206,7 @@ export default function BasketDetailPage() {
           {/* Items */}
           <div className="space-y-2">
             {basket.items.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-xl">
-                <ShoppingBag className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p>No items yet. Add products above or create from a recipe.</p>
-              </div>
+              <PageEmpty title="No basket items yet" description="Choose a recipe first to add its matched grocery ingredients." action={<Button onClick={() => setLocation("/recipes")}>Browse recipes</Button>} />
             ) : (
               basket.items.map((item) => (
                 <Card key={item.id}>

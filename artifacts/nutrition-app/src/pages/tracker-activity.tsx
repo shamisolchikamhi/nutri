@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Plus, Zap, Footprints } from "lucide-react";
-import { PageError } from "@/components/PageState";
+import { PageEmpty, PageError } from "@/components/PageState";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 
@@ -163,11 +163,7 @@ export default function ActivityPage() {
       <div className="space-y-3">
         <h2 className="font-semibold">Recent Activity</h2>
         {(logs ?? []).length === 0 ? (
-          <div className="border-2 border-dashed rounded-xl p-8 text-center text-muted-foreground">
-            <Zap className="h-8 w-8 mx-auto mb-2 opacity-30" />
-            <p>No activity logged yet</p>
-            <p className="text-sm">Add your first workout above</p>
-          </div>
+          <PageEmpty title="No activity logged yet" description="Log a workout first to build activity totals and history." action={<Button onClick={() => setOpen(true)}>Log first activity</Button>} />
         ) : (
           (logs ?? []).map((log) => (
             <Card key={log.id}>

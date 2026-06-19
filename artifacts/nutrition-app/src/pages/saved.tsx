@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Bookmark, BookmarkX, Flame, Clock, DollarSign, ChefHat } from "lucide-react";
 import { useState } from "react";
 import { formatMoney } from "@/lib/market";
-import { PageError } from "@/components/PageState";
+import { PageEmpty, PageError } from "@/components/PageState";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 
@@ -70,11 +70,7 @@ export default function SavedPage() {
           ) : recipesQuery.isError ? (
             <PageError reference="DATA-SAVED-RECIPES" onRetry={() => void recipesQuery.refetch()} isRetrying={recipesQuery.isFetching} />
           ) : (recipes ?? []).length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <ChefHat className="h-10 w-10 mx-auto mb-2 opacity-20" />
-              <p>No saved recipes yet</p>
-              <Button variant="ghost" onClick={() => setLocation("/recipes")}>Browse recipes →</Button>
-            </div>
+            <PageEmpty title="No saved recipes yet" description="Save a recipe first to build your personal library." action={<Button onClick={() => setLocation("/recipes")}>Browse recipes</Button>} />
           ) : (
             <div className="space-y-3">
               {(recipes ?? []).map((recipe) => (
@@ -127,11 +123,7 @@ export default function SavedPage() {
           ) : snacksQuery.isError ? (
             <PageError reference="DATA-SAVED-SNACKS" onRetry={() => void snacksQuery.refetch()} isRetrying={snacksQuery.isFetching} />
           ) : (snacks ?? []).length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <Bookmark className="h-10 w-10 mx-auto mb-2 opacity-20" />
-              <p>No saved snacks yet</p>
-              <Button variant="ghost" onClick={() => setLocation("/products")}>Browse products →</Button>
-            </div>
+            <PageEmpty title="No saved snacks yet" description="Save a product first to keep it in your snack library." action={<Button onClick={() => setLocation("/products")}>Browse products</Button>} />
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {(snacks ?? []).map((snack) => (

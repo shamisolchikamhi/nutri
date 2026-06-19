@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign, Link2, ShoppingCart, ExternalLink, Upload } from "lucide-react";
 import { formatMoney } from "@/lib/market";
-import { PageError } from "@/components/PageState";
+import { PageEmpty, PageError } from "@/components/PageState";
 import { ConfirmAction } from "@/components/ConfirmAction";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 
@@ -514,10 +514,7 @@ export default function RecipesPage() {
           ) : socialQuery.isError ? (
             <PageError reference="DATA-SOCIAL-RECIPES" onRetry={() => void socialQuery.refetch()} isRetrying={socialQuery.isFetching} />
           ) : importedSocialRecipes.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Link2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              <p>No social recipes imported yet</p>
-            </div>
+            <PageEmpty title="No social recipes imported yet" description="Add a public post URL or upload visible recipe media before importing." action={<Button onClick={() => document.querySelector<HTMLInputElement>('input[placeholder^="https://www.tiktok.com"]')?.focus()}>Add recipe source</Button>} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {importedSocialRecipes.map((item) => (
@@ -584,10 +581,7 @@ export default function RecipesPage() {
       ) : activeQuery.isError ? (
         <PageError reference="DATA-RECIPES" onRetry={() => void activeQuery.refetch()} isRetrying={activeQuery.isFetching} />
       ) : (displayRecipes ?? []).length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <ChefHat className="h-10 w-10 mx-auto mb-2 opacity-30" />
-          <p>No recipes found</p>
-        </div>
+        <PageEmpty title="No recipes match" description="Clear the search and meal filters to return to all recipes." action={<Button onClick={() => { setQuery(""); setGoal("all"); setDifficulty("all"); setMealCategory("all"); setViewMode("all"); }}>Clear filters</Button>} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(displayRecipes ?? []).map((recipe) => (

@@ -238,8 +238,9 @@ export default function TrackerPage() {
             </span>
           </div>
           {entries.length === 0 ? (
-            <div className="border-2 border-dashed rounded-xl p-4 text-center text-muted-foreground text-sm">
-              No {type} logged yet
+            <div className="border-2 border-dashed rounded-xl p-4 text-center text-muted-foreground text-sm space-y-2">
+              <p>No {type} logged yet. Log one to include it in today's totals.</p>
+              <Button variant="outline" size="sm" onClick={() => { setForm((current) => ({ ...current, mealType: type })); setOpen(true); }}>Log {type}</Button>
             </div>
           ) : (
             <div className="space-y-2">

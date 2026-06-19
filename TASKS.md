@@ -38,7 +38,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Add end-to-end tests for saving a recipe and creating its grocery basket.
 - [x] Add end-to-end tests for product filters, specials, and basket comparison.
 - [x] Add destructive-action confirmation and undo for deletes/removals.
-- [ ] Improve empty states with one relevant next action and prerequisite guidance.
+- [x] Improve empty states with one relevant next action and prerequisite guidance.
 - [ ] Replace raw HTTP messages with user-focused errors and stable error codes.
 - [ ] Add accessible labels, validation announcements, and keyboard-flow tests.
 - [ ] Test mobile layouts at 320, 390, 768, and desktop widths.

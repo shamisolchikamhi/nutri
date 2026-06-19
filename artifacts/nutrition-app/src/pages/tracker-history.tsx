@@ -6,8 +6,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Flame, Droplets, TrendingUp, Award } from "lucide-react";
 import { PageError } from "@/components/PageState";
+import { PageEmpty } from "@/components/PageState";
+import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 
 export default function HistoryPage() {
+  const [, setLocation] = useLocation();
   const weeklyQuery = useGetWeeklySummary();
   const logsQuery = useListDailyLogs();
   const { data: weekly, isLoading } = weeklyQuery;
@@ -23,6 +27,18 @@ export default function HistoryPage() {
     target: d.calorieTarget,
     onTarget: d.totalCalories > 0 && d.adherencePercent >= 80 && d.adherencePercent <= 115,
   })) ?? [];
+
+  if ((logs ?? []).length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">History</h1>
+          <p className="text-muted-foreground text-sm">Your weekly nutrition summary</p>
+        </div>
+        <PageEmpty title="No nutrition history yet" description="Log a meal first before weekly nutrition trends can be calculated." action={<Button onClick={() => setLocation("/tracker")}>Log first meal</Button>} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -220,6 +220,8 @@ const server = createServer((req, res) => {
     return;
   }
   if (req.method === "GET" && req.url === "/api/logs/activity") return send(res, 200, activities);
+  if (req.method === "GET" && req.url === "/api/logs/weekly-summary") return send(res, 200, { weekStart: "2026-06-15", weekEnd: "2026-06-21", avgDailyCalories: 0, avgDailyProteinG: 0, avgDailyWaterMl: 0, daysOnTarget: 0, totalCaloriesConsumed: 0, streak: 0, days: [] });
+  if (req.method === "GET" && req.url === "/api/logs/daily") return send(res, 200, []);
   if (req.method === "POST" && req.url === "/api/logs/activity") {
     readJson(req).then((body) => {
       const activity = {
@@ -254,8 +256,12 @@ const server = createServer((req, res) => {
   }
   if (req.method === "POST" && req.url === "/api/baskets/from-recipes") return send(res, 201, basket);
   if (req.method === "GET" && req.url === "/api/baskets/1") return send(res, 200, basket);
+  if (req.method === "GET" && req.url === "/api/baskets") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/retailers") return send(res, 200, [{ id: 1, name: "Test Market", marketCode: "ZA", logoUrl: "", isActive: true }]);
-  if (req.method === "GET" && req.url.startsWith("/api/products?")) return send(res, 200, [product]);
+  if (req.method === "GET" && req.url.startsWith("/api/products?")) {
+    const requestUrl = new URL(req.url, "http://127.0.0.1");
+    return send(res, 200, requestUrl.searchParams.get("query") === "missing" ? [] : [product]);
+  }
   if (req.method === "GET" && req.url === "/api/products") return send(res, 200, [product]);
   if (req.method === "GET" && req.url === "/api/products/10/compare") {
     return send(res, 200, [
@@ -265,6 +271,8 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/specials/best-value") return send(res, 200, [{ ...special, id: 2, productName: "Best Value Chicken" }]);
   if (req.method === "GET" && req.url.startsWith("/api/specials")) return send(res, 200, [special]);
+  if (req.method === "GET" && req.url === "/api/saved/recipes") return send(res, 200, []);
+  if (req.method === "GET" && req.url === "/api/saved/snacks") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/today") return send(res, 200, dashboard);
   if (req.method === "GET" && req.url === "/api/dashboard/snack-suggestions") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/meal-suggestion") return send(res, 200, null);

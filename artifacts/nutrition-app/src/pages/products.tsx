@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, Tag, BarChart2 } from "lucide-react";
 import { formatMoney } from "@/lib/market";
-import { PageError } from "@/components/PageState";
+import { PageEmpty, PageError } from "@/components/PageState";
 
 const CATEGORIES = [
   { value: "all", label: "All Categories" },
@@ -89,10 +89,7 @@ export default function ProductsPage() {
       ) : productsQuery.isError || retailersQuery.isError ? (
         <PageError reference="DATA-PRODUCTS" onRetry={() => void (productsQuery.isError ? productsQuery.refetch() : retailersQuery.refetch())} isRetrying={productsQuery.isFetching || retailersQuery.isFetching} />
       ) : (products ?? []).length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Search className="h-10 w-10 mx-auto mb-2 opacity-30" />
-          <p>No products found</p>
-        </div>
+        <PageEmpty title="No products match" description="Clear the search and filters to return to the full catalogue." action={<Button onClick={() => { setQuery(""); setRetailerId("all"); setCategory("all"); setOnSpecial(false); }}>Clear filters</Button>} />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {(products ?? []).map((product) => (
