@@ -7,25 +7,10 @@ import {
 } from "@workspace/api-zod";
 import { calcGoalMetrics, ensureUserProfileSchema } from "./profile";
 import { DEFAULT_NUTRITION_TARGETS, roundMoney, roundNutrition } from "@workspace/nutrition";
+import { ensureRecipesSchema } from "../lib/schema-readiness";
+import { parseId } from "../lib/request";
 
 const router: IRouter = Router();
-
-let recipesSchemaReady: Promise<void> | null = null;
-
-function ensureRecipesSchema() {
-  recipesSchemaReady ??= db.execute(sql`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS meal_type text NOT NULL DEFAULT 'lunch_dinner'`).then(
-    () => undefined,
-    (error) => {
-      recipesSchemaReady = null;
-      throw error;
-    },
-  );
-  return recipesSchemaReady;
-}
-
-function parseId(raw: unknown): number {
-  return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
-}
 
 function normalizeToken(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();

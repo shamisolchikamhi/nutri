@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import {
   db,
   dailyLogsTable,
@@ -16,21 +16,9 @@ import {
 } from "@workspace/db";
 import { calcGoalMetrics } from "./profile";
 import { DEFAULT_NUTRITION_TARGETS, roundMoney, roundNutrition } from "@workspace/nutrition";
+import { ensureRecipesSchema } from "../lib/schema-readiness";
 
 const router: IRouter = Router();
-
-let recipesSchemaReady: Promise<void> | null = null;
-
-function ensureRecipesSchema() {
-  recipesSchemaReady ??= db.execute(sql`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS meal_type text NOT NULL DEFAULT 'lunch_dinner'`).then(
-    () => undefined,
-    (error) => {
-      recipesSchemaReady = null;
-      throw error;
-    },
-  );
-  return recipesSchemaReady;
-}
 
 router.get("/dashboard/today", async (_req, res): Promise<void> => {
   const today = new Date().toISOString().split("T")[0];

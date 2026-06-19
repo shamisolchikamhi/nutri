@@ -7,6 +7,11 @@ import {
   recipesTable,
   socialRecipeSourcesTable,
 } from "@workspace/db";
+import {
+  basketQuantityForIngredient as sharedBasketQuantity,
+  ingredientAmountInPackUnit as sharedIngredientAmount,
+  scoreProductForIngredient,
+} from "./ingredient-matching";
 
 export type Platform = "tiktok" | "instagram" | "facebook" | "other";
 
@@ -155,10 +160,6 @@ export function parsePlatform(value: unknown): Platform {
   const platform = getString(value).toLowerCase();
   if (platform === "tiktok" || platform === "instagram" || platform === "facebook") return platform;
   return "other";
-}
-
-function parseId(raw: unknown): number {
-  return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
 }
 
 export function detectPlatform(url: string): Platform {
@@ -585,30 +586,12 @@ function estimateGenericNutrition(ingredient: ParsedIngredient) {
 }
 
 export function basketQuantityFor(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
-  const needed = ingredientAmountInPackUnit(ingredient, product);
-  return Math.max(1, Math.ceil(needed / Math.max(product.packSize, 0.001)));
+  return sharedBasketQuantity(ingredient, product, estimateIngredientGrams);
 }
 
-export function ingredientAmountInPackUnit(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
-  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "kg") {
-    return ingredient.unit === "kg" ? ingredient.quantity : ingredient.quantity / 1000;
-  }
-  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "g") {
-    return ingredient.unit === "kg" ? ingredient.quantity * 1000 : ingredient.quantity;
-  }
-  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "l") {
-    return ingredient.unit === "l" ? ingredient.quantity : ingredient.quantity / 1000;
-  }
-  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "ml") {
-    return ingredient.unit === "l" ? ingredient.quantity * 1000 : ingredient.quantity;
-  }
-  if ((product.packUnit === "g" || product.packUnit === "kg") && !["unit", "each"].includes(ingredient.unit)) {
-    const grams = estimateIngredientGrams(ingredient);
-    return product.packUnit === "kg" ? grams / 1000 : grams;
-  }
-  return ingredient.quantity;
+export function socialIngredientAmountInPackUnit(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
+  return sharedIngredientAmount(ingredient, product, estimateIngredientGrams);
 }
-
 async function getMarketProducts(marketCode: string) {
   const retailers = await db.select().from(retailersTable).where(eq(retailersTable.marketCode, marketCode));
   const retailerIds = new Set(retailers.map((retailer) => retailer.id));
@@ -620,29 +603,12 @@ async function getMarketProducts(marketCode: string) {
   };
 }
 
-function scoreProduct(ingredient: ParsedIngredient, product: typeof productsTable.$inferSelect) {
-  const ingredientTokens = tokenize(ingredient.name);
-  const productTokens = tokenize(`${product.brand ?? ""} ${product.name}`);
-  const productTokenSet = new Set(productTokens);
-  let score = 0;
-
-  for (const token of ingredientTokens) {
-    if (productTokenSet.has(token)) score += 4;
-    else if (productTokens.some((candidate) => candidate.includes(token) || token.includes(candidate))) score += 2;
-  }
-
-  if (normalizeToken(product.name).includes(normalizeToken(ingredient.name))) score += 5;
-  if (product.isOnSpecial) score += 1;
-  if (product.priceAud > 0) score += Math.max(0, 1 - product.priceAud / 250);
-  return score;
-}
-
 export async function matchIngredients(ingredients: ParsedIngredient[], marketCode: string): Promise<MatchedIngredient[]> {
   const { products, retailerNames } = await getMarketProducts(marketCode);
 
   return ingredients.map((ingredient) => {
     const ranked = products
-      .map((product) => ({ product, score: scoreProduct(ingredient, product) }))
+      .map((product) => ({ product, score: scoreProductForIngredient(ingredient.name, product, { exact: 4, contains: 5, special: 1, price: 1 }) }))
       .filter((item) => item.score >= 4)
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;

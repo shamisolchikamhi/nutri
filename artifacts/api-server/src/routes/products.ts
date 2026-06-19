@@ -2,12 +2,9 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, productsTable, retailersTable } from "@workspace/db";
 import { ListProductsQueryParams, GetProductParams, CompareProductParams } from "@workspace/api-zod";
+import { parseId } from "../lib/request";
 
 const router: IRouter = Router();
-
-function parseId(raw: unknown): number {
-  return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
-}
 
 function parseMarketCode(raw: unknown): string | null {
   const value = Array.isArray(raw) ? raw[0] : raw;

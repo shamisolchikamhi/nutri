@@ -61,7 +61,7 @@ should not be shipped on top of unreliable health data or silent failures.
   recipes page into focused hooks/components.
 - [x] Split oversized API route modules into services and route adapters.
   - Prioritize `social-recipes.ts` and `baskets.ts`.
-- [ ] Consolidate repeated server helpers.
+- [x] Consolidate repeated server helpers.
   - One `parseId`/request-validation utility.
   - One recipe-schema migration path instead of repeated `ensureRecipesSchema`.
   - One ingredient normalization, quantity conversion, product matching, and

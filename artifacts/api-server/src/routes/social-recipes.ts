@@ -11,6 +11,7 @@ import {
   socialRecipeSourcesTable,
 } from "@workspace/db";
 import { parseId } from "../lib/request";
+import { ensureRecipesSchema } from "../lib/schema-readiness";
 import {
   buildSocialRecipeResponse,
   detectPlatform,
@@ -20,7 +21,7 @@ import {
   getString,
   hasEnoughRecipeText,
   inferMealTypeFromText,
-  ingredientAmountInPackUnit,
+  socialIngredientAmountInPackUnit,
   matchIngredients,
   parseIngredients,
   parsePlatform,
@@ -29,7 +30,6 @@ import {
 const router: IRouter = Router();
 
 let socialRecipeSourcesSchemaReady: Promise<void> | null = null;
-let recipesSchemaReady: Promise<void> | null = null;
 
 function ensureSocialRecipeSourcesSchema() {
   socialRecipeSourcesSchemaReady ??= (async () => {
@@ -67,17 +67,6 @@ function ensureSocialRecipeSourcesSchema() {
   });
 
   return socialRecipeSourcesSchemaReady;
-}
-
-function ensureRecipesSchema() {
-  recipesSchemaReady ??= db.execute(sql`ALTER TABLE recipes ADD COLUMN IF NOT EXISTS meal_type text NOT NULL DEFAULT 'lunch_dinner'`).then(
-    () => undefined,
-    (error) => {
-      recipesSchemaReady = null;
-      throw error;
-    },
-  );
-  return recipesSchemaReady;
 }
 
 router.get("/social-recipes", async (_req, res): Promise<void> => {
@@ -281,7 +270,7 @@ router.post("/social-recipes/:id/basket", async (req, res): Promise<void> => {
     if (!ingredient.productId) continue;
     const product = (await db.select().from(productsTable).where(eq(productsTable.id, ingredient.productId)).limit(1))[0];
     if (!product) continue;
-    const needed = ingredientAmountInPackUnit({
+    const needed = socialIngredientAmountInPackUnit({
       raw: ingredient.name,
       name: ingredient.name,
       quantity: ingredient.quantity,

@@ -8,12 +8,14 @@ import {
   recipesTable,
   recipeIngredientsTable,
 } from "@workspace/db";
+import {
+  basketQuantityForIngredient,
+  ingredientAmountInPackUnit,
+  productPackGrams,
+  scoreProductForIngredient,
+} from "./ingredient-matching";
 
 const TARGET_RETAILERS = ["Woolworths Food", "Pick n Pay", "Checkers"];
-
-function parseId(raw: unknown): number {
-  return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
-}
 
 async function getRetailerName(id: number): Promise<string> {
   const r = await db.select().from(retailersTable).where(eq(retailersTable.id, id)).limit(1);
@@ -32,23 +34,6 @@ function buildProductPageUrl(productName: string, retailerName: string) {
     return `https://www.checkers.co.za/search/all?q=${query}`;
   }
   return `https://www.google.com/search?q=${encodeURIComponent(`${retailerName} ${productName}`)}`;
-}
-
-function normalizeTokens(value: string) {
-  const stop = new Set(["fresh", "free", "range", "skinless", "boneless", "smooth", "organic", "woolworths", "pnp", "checkers"]);
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .split(/\s+/)
-    .filter((token) => token.length > 2 && !stop.has(token));
-}
-
-function productPackGrams(product: typeof productsTable.$inferSelect) {
-  if (product.packUnit === "kg") return product.packSize * 1000;
-  if (product.packUnit === "g") return product.packSize;
-  if (product.packUnit === "l") return product.packSize * 1000;
-  if (product.packUnit === "ml") return product.packSize;
-  return Math.max(1, product.packSize) * 100;
 }
 
 function realisticPackPrice(product: typeof productsTable.$inferSelect) {
@@ -88,42 +73,6 @@ export function effectiveBasketPrice(product: typeof productsTable.$inferSelect)
     return { price: product.priceAud, isEstimated: false };
   }
   return { price: realistic, isEstimated: true };
-}
-
-function ingredientAmountInPackUnit(ingredient: typeof recipeIngredientsTable.$inferSelect, product: typeof productsTable.$inferSelect) {
-  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "kg") {
-    return ingredient.unit === "kg" ? ingredient.quantity : ingredient.quantity / 1000;
-  }
-  if ((ingredient.unit === "g" || ingredient.unit === "kg") && product.packUnit === "g") {
-    return ingredient.unit === "kg" ? ingredient.quantity * 1000 : ingredient.quantity;
-  }
-  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "l") {
-    return ingredient.unit === "l" ? ingredient.quantity : ingredient.quantity / 1000;
-  }
-  if ((ingredient.unit === "ml" || ingredient.unit === "l") && product.packUnit === "ml") {
-    return ingredient.unit === "l" ? ingredient.quantity * 1000 : ingredient.quantity;
-  }
-  if (ingredient.unit === "unit") return ingredient.quantity;
-  return ingredient.quantity;
-}
-
-function scoreProductForIngredient(ingredientName: string, product: typeof productsTable.$inferSelect) {
-  const ingredientTokens = normalizeTokens(ingredientName);
-  const productTokens = normalizeTokens(`${product.brand ?? ""} ${product.name}`);
-  const productSet = new Set(productTokens);
-  let score = 0;
-  for (const token of ingredientTokens) {
-    if (productSet.has(token)) score += 5;
-    else if (productTokens.some((candidate) => candidate.includes(token) || token.includes(candidate))) score += 2;
-  }
-  if (product.name.toLowerCase().includes(ingredientName.toLowerCase())) score += 6;
-  if (product.category !== "other") score += 1;
-  return score;
-}
-
-function basketQuantityForIngredient(ingredient: typeof recipeIngredientsTable.$inferSelect, product: typeof productsTable.$inferSelect) {
-  const needed = ingredientAmountInPackUnit(ingredient, product);
-  return Math.max(1, Math.ceil(needed / Math.max(product.packSize, 0.001)));
 }
 
 function basketQuantityForEquivalentProduct(

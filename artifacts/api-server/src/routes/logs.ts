@@ -25,16 +25,9 @@ import {
 } from "@workspace/api-zod";
 import { calcGoalMetrics, ACTIVITY_MULTIPLIERS } from "./profile";
 import { DEFAULT_NUTRITION_TARGETS, roundNutrition } from "@workspace/nutrition";
+import { parseDateParam, parseId } from "../lib/request";
 
 const router: IRouter = Router();
-
-function parseDate(raw: unknown): string {
-  return Array.isArray(raw) ? raw[0] : String(raw);
-}
-
-function parseId(raw: unknown): number {
-  return parseInt(Array.isArray(raw) ? raw[0] : String(raw), 10);
-}
 
 async function getOrCreateDailyLog(date: string) {
   const existing = await db
@@ -126,13 +119,13 @@ router.get("/logs/daily", async (req, res): Promise<void> => {
 });
 
 router.get("/logs/daily/:date", async (req, res): Promise<void> => {
-  const date = parseDate(req.params.date);
+  const date = parseDateParam(req.params.date);
   const result = await buildDailyLogResponse(date);
   res.json(result);
 });
 
 router.put("/logs/daily/:date", async (req, res): Promise<void> => {
-  const date = parseDate(req.params.date);
+  const date = parseDateParam(req.params.date);
   const parsed = UpsertDailyLogBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -151,7 +144,7 @@ router.put("/logs/daily/:date", async (req, res): Promise<void> => {
 
 // ---- Meal Entries ----
 router.get("/logs/daily/:date/meals", async (req, res): Promise<void> => {
-  const date = parseDate(req.params.date);
+  const date = parseDateParam(req.params.date);
   const meals = await db
     .select()
     .from(mealEntriesTable)
@@ -160,7 +153,7 @@ router.get("/logs/daily/:date/meals", async (req, res): Promise<void> => {
 });
 
 router.post("/logs/daily/:date/meals", async (req, res): Promise<void> => {
-  const date = parseDate(req.params.date);
+  const date = parseDateParam(req.params.date);
   const parsed = AddMealEntryBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
