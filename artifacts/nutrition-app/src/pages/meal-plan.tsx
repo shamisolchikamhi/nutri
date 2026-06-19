@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 type PlanRecipe = {
   id: number;
@@ -61,7 +62,7 @@ export default function MealPlanPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [days, setDays] = useState(7);
-  const { data: plan, isLoading, error } = useQuery({
+  const { data: plan, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["meal-plan", days],
     queryFn: () => fetchMealPlan(days),
   });
@@ -90,12 +91,7 @@ export default function MealPlanPage() {
   }
 
   if (error || !plan) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <ChefHat className="h-10 w-10 mx-auto mb-2 opacity-30" />
-        <p>Could not build a meal plan yet.</p>
-      </div>
-    );
+    return <PageError reference="DATA-MEAL-PLAN" title="We couldn't build your meal plan" description="Complete your profile, then try again. Your current plan has not been changed." onRetry={() => void refetch()} isRetrying={isFetching} />;
   }
 
   const weeklyCost = plan.days.reduce((sum, day) => sum + day.totals.cost, 0);

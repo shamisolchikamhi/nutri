@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ExternalLink, Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Tag } from "lucide-react";
 import { useState } from "react";
 import { formatMoney } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 export default function BasketDetailPage() {
   const [, params] = useRoute("/basket/:id");
@@ -27,9 +28,12 @@ export default function BasketDetailPage() {
   const [view, setView] = useState<"basket" | "shopping-list">("basket");
   const [addingProductId, setAddingProductId] = useState<number | null>(null);
 
-  const { data: basket, isLoading } = useGetBasket(id);
-  const { data: shoppingList } = useGetShoppingList(id, { query: { enabled: view === "shopping-list" } as any });
-  const { data: products } = useListProducts();
+  const basketQuery = useGetBasket(id);
+  const shoppingListQuery = useGetShoppingList(id, { query: { enabled: view === "shopping-list" } as any });
+  const productsQuery = useListProducts();
+  const { data: basket, isLoading } = basketQuery;
+  const { data: shoppingList } = shoppingListQuery;
+  const { data: products } = productsQuery;
 
   const inv = () => {
     qc.invalidateQueries({ queryKey: getGetBasketQueryKey(id) });
@@ -60,6 +64,9 @@ export default function BasketDetailPage() {
       {[1,2,3].map(i => <Skeleton key={i} className="h-16" />)}
     </div>
   );
+
+  const failedQuery = [basketQuery, shoppingListQuery, productsQuery].find((query) => query.isError);
+  if (failedQuery) return <PageError reference="DATA-BASKET" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   if (!basket) return (
     <div className="text-center py-12">

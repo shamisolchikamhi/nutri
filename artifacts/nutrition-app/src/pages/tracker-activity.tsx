@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Plus, Zap, Footprints } from "lucide-react";
+import { PageError } from "@/components/PageState";
 
 const ACTIVITY_TYPES = [
   { value: "walking", label: "Walking" },
@@ -32,7 +33,8 @@ const today = new Date().toISOString().split("T")[0];
 
 export default function ActivityPage() {
   const qc = useQueryClient();
-  const { data: logs, isLoading } = useListActivityLogs();
+  const logsQuery = useListActivityLogs();
+  const { data: logs, isLoading } = logsQuery;
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     date: today,
@@ -72,6 +74,7 @@ export default function ActivityPage() {
   const totalCals = (logs ?? []).filter(l => l.date === today).reduce((s, l) => s + l.estimatedCaloriesBurned, 0);
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>;
+  if (logsQuery.isError) return <PageError reference="DATA-ACTIVITY" onRetry={() => void logsQuery.refetch()} isRetrying={logsQuery.isFetching} />;
 
   return (
     <div className="space-y-5">

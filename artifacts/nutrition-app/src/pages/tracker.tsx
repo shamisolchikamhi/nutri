@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Plus, Droplets } from "lucide-react";
+import { PageError } from "@/components/PageState";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -40,8 +41,10 @@ const COMMON_FOODS = [
 
 export default function TrackerPage() {
   const qc = useQueryClient();
-  const { data: log, isLoading } = useGetDailyLog(today);
-  const { data: meals } = useGetMealEntries(today);
+  const logQuery = useGetDailyLog(today);
+  const mealsQuery = useGetMealEntries(today);
+  const { data: log, isLoading } = logQuery;
+  const { data: meals } = mealsQuery;
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -99,6 +102,8 @@ export default function TrackerPage() {
   const waterPct = log ? Math.min(100, (log.waterMl / 2500) * 100) : 0;
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-xl" />)}</div>;
+  const failedQuery = [logQuery, mealsQuery].find((query) => query.isError);
+  if (failedQuery) return <PageError reference="DATA-TRACKER" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   return (
     <div className="space-y-5">

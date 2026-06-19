@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Scale, Target, ShoppingBag, Save, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MARKETS, type MarketCode, getBudgetLabel, getActiveMarket, setActiveMarket } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 const DIETS = [
   { value: "standard", label: "Standard" },
@@ -39,8 +40,10 @@ const ACTIVITY_LEVELS = [
 export default function SettingsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { data: profile, isLoading } = useGetProfile();
-  const { data: retailers } = useListRetailers();
+  const profileQuery = useGetProfile();
+  const retailersQuery = useListRetailers();
+  const { data: profile, isLoading } = profileQuery;
+  const { data: retailers } = retailersQuery;
   const [marketCode, setMarketCode] = useState<MarketCode>(getActiveMarket().code);
 
   const [form, setForm] = useState({
@@ -130,6 +133,8 @@ export default function SettingsPage() {
   };
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-40" />)}</div>;
+  const failedQuery = [profileQuery, retailersQuery].find((query) => query.isError);
+  if (failedQuery) return <PageError reference="DATA-SETTINGS" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   return (
     <div className="space-y-5">

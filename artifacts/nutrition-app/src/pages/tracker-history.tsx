@@ -5,12 +5,17 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Flame, Droplets, TrendingUp, Award } from "lucide-react";
+import { PageError } from "@/components/PageState";
 
 export default function HistoryPage() {
-  const { data: weekly, isLoading } = useGetWeeklySummary();
-  const { data: logs } = useListDailyLogs();
+  const weeklyQuery = useGetWeeklySummary();
+  const logsQuery = useListDailyLogs();
+  const { data: weekly, isLoading } = weeklyQuery;
+  const { data: logs } = logsQuery;
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-32" />)}</div>;
+  const failedQuery = [weeklyQuery, logsQuery].find((query) => query.isError);
+  if (failedQuery) return <PageError reference="DATA-HISTORY" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   const chartData = weekly?.days?.map((d) => ({
     day: new Date(d.date).toLocaleDateString("en-AU", { weekday: "short" }),

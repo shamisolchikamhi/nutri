@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search, Tag, BarChart2 } from "lucide-react";
 import { formatMoney } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 const CATEGORIES = [
   { value: "all", label: "All Categories" },
@@ -27,13 +28,15 @@ export default function ProductsPage() {
   const [onSpecial, setOnSpecial] = useState(false);
   const [compareId, setCompareId] = useState<number | null>(null);
 
-  const { data: retailers } = useListRetailers();
-  const { data: products, isLoading } = useListProducts({
+  const retailersQuery = useListRetailers();
+  const productsQuery = useListProducts({
     query: query || undefined,
     retailerId: retailerId !== "all" ? parseInt(retailerId) : undefined,
     category: category !== "all" ? category : undefined,
     onSpecial: onSpecial || undefined,
   });
+  const { data: retailers } = retailersQuery;
+  const { data: products, isLoading } = productsQuery;
 
   const { data: compareData } = useCompareProduct(compareId!, { query: { enabled: !!compareId } as any });
 
@@ -83,6 +86,8 @@ export default function ProductsPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
         </div>
+      ) : productsQuery.isError || retailersQuery.isError ? (
+        <PageError reference="DATA-PRODUCTS" onRetry={() => void (productsQuery.isError ? productsQuery.refetch() : retailersQuery.refetch())} isRetrying={productsQuery.isFetching || retailersQuery.isFetching} />
       ) : (products ?? []).length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Search className="h-10 w-10 mx-auto mb-2 opacity-30" />

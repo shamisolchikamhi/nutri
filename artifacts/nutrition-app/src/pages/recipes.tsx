@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign, Link2, ShoppingCart, ExternalLink, Upload } from "lucide-react";
 import { formatMoney } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 const GOALS = [
   { value: "all", label: "All Goals" },
@@ -211,7 +212,7 @@ export default function RecipesPage() {
   const [socialMediaDataUrls, setSocialMediaDataUrls] = useState<string[]>([]);
   const [socialMediaStatus, setSocialMediaStatus] = useState("");
 
-  const { data: recipes, isLoading } = useListRecipes(
+  const recipesQuery = useListRecipes(
     {
       query: query || undefined,
       goal: goal !== "all" ? (goal as any) : undefined,
@@ -219,18 +220,22 @@ export default function RecipesPage() {
     },
     { query: { enabled: viewMode === "all" } as any }
   );
-  const { data: recommended, isLoading: recLoading } = useGetRecommendedRecipes({ query: { enabled: viewMode === "recommended" } as any });
-  const { data: socialRecipes, isLoading: socialLoading, refetch: refetchSocialRecipes } = useQuery({
+  const recommendedQuery = useGetRecommendedRecipes({ query: { enabled: viewMode === "recommended" } as any });
+  const socialQuery = useQuery({
     queryKey: ["social-recipes"],
     queryFn: () => apiJson<SocialRecipe[]>("/social-recipes"),
     enabled: viewMode === "social",
   });
+  const { data: recipes, isLoading } = recipesQuery;
+  const { data: recommended, isLoading: recLoading } = recommendedQuery;
+  const { data: socialRecipes, isLoading: socialLoading, refetch: refetchSocialRecipes } = socialQuery;
 
   const displayRecipes = (viewMode === "recommended" ? recommended : recipes)?.filter((recipe) => {
     if (mealCategory === "all") return true;
     return ((recipe as any).mealType ?? "lunch_dinner") === mealCategory || recipe.tags?.includes(mealCategory);
   });
   const loading = viewMode === "recommended" ? recLoading : isLoading;
+  const activeQuery = viewMode === "recommended" ? recommendedQuery : recipesQuery;
 
   const saveMutation = useMutation({
     mutationFn: (recipeId: number) => saveRecipe({ itemId: recipeId }),
@@ -497,6 +502,8 @@ export default function RecipesPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1,2].map(i => <Skeleton key={i} className="h-44 rounded-xl" />)}
             </div>
+          ) : socialQuery.isError ? (
+            <PageError reference="DATA-SOCIAL-RECIPES" onRetry={() => void socialQuery.refetch()} isRetrying={socialQuery.isFetching} />
           ) : importedSocialRecipes.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Link2 className="h-10 w-10 mx-auto mb-2 opacity-30" />
@@ -565,6 +572,8 @@ export default function RecipesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-64 rounded-xl" />)}
         </div>
+      ) : activeQuery.isError ? (
+        <PageError reference="DATA-RECIPES" onRetry={() => void activeQuery.refetch()} isRetrying={activeQuery.isFetching} />
       ) : (displayRecipes ?? []).length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <ChefHat className="h-10 w-10 mx-auto mb-2 opacity-30" />

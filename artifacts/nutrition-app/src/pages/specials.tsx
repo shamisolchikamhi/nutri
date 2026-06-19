@@ -7,24 +7,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tag, TrendingDown } from "lucide-react";
 import { formatMoney } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 export default function SpecialsPage() {
   const [retailerId, setRetailerId] = useState("all");
   const [goalFit, setGoalFit] = useState("all");
   const [tab, setTab] = useState<"all" | "best-value">("all");
 
-  const { data: retailers } = useListRetailers();
-  const { data: specials, isLoading } = useListSpecials(
+  const retailersQuery = useListRetailers();
+  const specialsQuery = useListSpecials(
     {
       retailerId: retailerId !== "all" ? parseInt(retailerId) : undefined,
       goalFit: goalFit !== "all" ? (goalFit as any) : undefined,
     },
     { query: { enabled: tab === "all" } as any }
   );
-  const { data: bestValue, isLoading: bvLoading } = useGetBestValueSpecials({ query: { enabled: tab === "best-value" } as any });
+  const bestValueQuery = useGetBestValueSpecials({ query: { enabled: tab === "best-value" } as any });
+  const { data: retailers } = retailersQuery;
+  const { data: specials, isLoading } = specialsQuery;
+  const { data: bestValue, isLoading: bvLoading } = bestValueQuery;
 
   const displaySpecials = tab === "best-value" ? bestValue : specials;
   const loading = tab === "best-value" ? bvLoading : isLoading;
+  const activeQuery = tab === "best-value" ? bestValueQuery : specialsQuery;
 
   return (
     <div className="space-y-5">
@@ -74,6 +79,8 @@ export default function SpecialsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1,2,3,4].map(i => <Skeleton key={i} className="h-32" />)}
         </div>
+      ) : activeQuery.isError || retailersQuery.isError ? (
+        <PageError reference="DATA-SPECIALS" onRetry={() => void (activeQuery.isError ? activeQuery.refetch() : retailersQuery.refetch())} isRetrying={activeQuery.isFetching || retailersQuery.isFetching} />
       ) : (displaySpecials ?? []).length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Tag className="h-10 w-10 mx-auto mb-2 opacity-30" />

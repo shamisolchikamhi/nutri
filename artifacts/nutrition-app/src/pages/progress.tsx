@@ -16,14 +16,18 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { TrendingDown, Target, Scale, Award } from "lucide-react";
+import { PageError } from "@/components/PageState";
 
 const today = new Date().toISOString().split("T")[0];
 
 export default function ProgressPage() {
   const qc = useQueryClient();
-  const { data: progress, isLoading } = useGetProgressSummary();
-  const { data: goalSummary } = useGetGoalSummary();
-  const { data: profile } = useGetProfile();
+  const progressQuery = useGetProgressSummary();
+  const goalQuery = useGetGoalSummary();
+  const profileQuery = useGetProfile();
+  const { data: progress, isLoading } = progressQuery;
+  const { data: goalSummary } = goalQuery;
+  const { data: profile } = profileQuery;
   const [weightInput, setWeightInput] = useState("");
 
   const logWeightMutation = useMutation({
@@ -36,6 +40,8 @@ export default function ProgressPage() {
   });
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-32" />)}</div>;
+  const failedQuery = [progressQuery, goalQuery, profileQuery].find((query) => query.isError);
+  if (failedQuery) return <PageError reference="DATA-PROGRESS" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   const chartData = progress?.weeklyTrend?.map((d) => ({
     date: new Date(d.date).toLocaleDateString("en-AU", { month: "short", day: "numeric" }),

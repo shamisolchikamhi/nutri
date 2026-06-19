@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, ShoppingCart, ArrowLeft, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 const today = new Date().toISOString().split("T")[0];
 const TRACKER_MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
@@ -61,7 +62,8 @@ export default function RecipeDetailPage() {
   const qc = useQueryClient();
   const id = parseInt(params?.id ?? "0");
 
-  const { data: recipe, isLoading } = useGetRecipe(id);
+  const recipeQuery = useGetRecipe(id);
+  const { data: recipe, isLoading } = recipeQuery;
   const [logMealType, setLogMealType] = useState<typeof TRACKER_MEAL_TYPES[number]>("dinner");
   const [logServings, setLogServings] = useState("1");
   const { data: relatedRecipes } = useQuery({
@@ -134,6 +136,8 @@ export default function RecipeDetailPage() {
       <Skeleton className="h-32" />
     </div>
   );
+
+  if (recipeQuery.isError) return <PageError reference="DATA-RECIPE" onRetry={() => void recipeQuery.refetch()} isRetrying={recipeQuery.isFetching} />;
 
   if (!recipe) return (
     <div className="text-center py-12 text-muted-foreground">

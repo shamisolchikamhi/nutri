@@ -17,11 +17,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, Plus, Trash2, ChevronRight } from "lucide-react";
 import { formatMoney } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 export default function BasketPage() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
-  const { data: baskets, isLoading } = useListBaskets();
+  const basketsQuery = useListBaskets();
+  const { data: baskets, isLoading } = basketsQuery;
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [mode, setMode] = useState<"cheapest" | "healthiest" | "highest_protein" | "lowest_calorie" | "budget">("cheapest");
@@ -42,6 +44,7 @@ export default function BasketPage() {
   });
 
   if (isLoading) return <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>;
+  if (basketsQuery.isError) return <PageError reference="DATA-BASKETS" onRetry={() => void basketsQuery.refetch()} isRetrying={basketsQuery.isFetching} />;
 
   return (
     <div className="space-y-5">

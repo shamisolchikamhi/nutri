@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Flame, Droplets, Zap, Target, TrendingDown, ShoppingCart, Tag, Clock } from "lucide-react";
 import { formatMoney } from "@/lib/market";
+import { PageError } from "@/components/PageState";
 
 function MacroRing({ value, max, color, label }: { value: number; max: number; color: string; label: string }) {
   const pct = Math.min(100, (value / Math.max(max, 1)) * 100);
@@ -37,11 +38,16 @@ function MacroRing({ value, max, color, label }: { value: number; max: number; c
 
 export default function DashboardPage() {
   const [, setLocation] = useLocation();
-  const { data: today, isLoading } = useGetDashboardToday();
-  const { data: snacks } = useGetSnackSuggestions();
-  const { data: mealSuggestion } = useGetMealSuggestion();
-  const { data: goalSummary } = useGetGoalSummary();
-  const { data: profile } = useGetProfile();
+  const todayQuery = useGetDashboardToday();
+  const snacksQuery = useGetSnackSuggestions();
+  const mealQuery = useGetMealSuggestion();
+  const goalQuery = useGetGoalSummary();
+  const profileQuery = useGetProfile();
+  const { data: today, isLoading } = todayQuery;
+  const { data: snacks } = snacksQuery;
+  const { data: mealSuggestion } = mealQuery;
+  const { data: goalSummary } = goalQuery;
+  const { data: profile } = profileQuery;
 
   const todayDate = new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
 
@@ -56,6 +62,9 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const failedQuery = [todayQuery, snacksQuery, mealQuery, goalQuery, profileQuery].find((query) => query.isError);
+  if (failedQuery) return <PageError reference="DATA-DASHBOARD" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   const calPct = today ? Math.min(100, (today.caloriesEaten / today.calorieTarget) * 100) : 0;
 
