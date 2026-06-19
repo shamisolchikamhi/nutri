@@ -75,3 +75,12 @@ _Populate as you build — explicit user instructions worth remembering across s
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+# Demo data
+
+After applying the database schema, populate an empty environment with a representative NutriBasket profile and catalogue:
+
+```sh
+pnpm seed:demo
+```
+
+The command is idempotent and does not clear existing records. Validate the dataset without connecting to a database with `pnpm seed:demo -- --dry-run`.

@@ -42,7 +42,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Replace raw HTTP messages with user-focused errors and stable error codes.
 - [x] Add accessible labels, validation announcements, and keyboard-flow tests.
 - [x] Test mobile layouts at 320, 390, 768, and desktop widths.
-- [ ] Add seeded demo data so a new user can understand the value immediately.
+- [x] Add seeded demo data so a new user can understand the value immediately.
 
 ## P1 - Remove Duplication and Redundancy
 
