@@ -33,7 +33,7 @@ should not be shipped on top of unreliable health data or silent failures.
 
 ## P1 - Complete and Test User Journeys
 
-- [ ] Add automated end-to-end tests for onboarding through first dashboard load.
+- [x] Add automated end-to-end tests for onboarding through first dashboard load.
 - [ ] Add end-to-end tests for logging a meal, water, activity, and weight.
 - [ ] Add end-to-end tests for saving a recipe and creating its grocery basket.
 - [ ] Add end-to-end tests for product filters, specials, and basket comparison.
