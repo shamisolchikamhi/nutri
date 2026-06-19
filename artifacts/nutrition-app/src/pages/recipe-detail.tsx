@@ -24,6 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, ShoppingCart, ArrowLeft, Users } from "lucide-react";
 import { formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 
 const today = new Date().toISOString().split("T")[0];
 const TRACKER_MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
@@ -56,6 +58,7 @@ function defaultTrackerMealType(recipe: unknown): typeof TRACKER_MEAL_TYPES[numb
 }
 
 export default function RecipeDetailPage() {
+  const scheduleUndoable = useUndoableAction();
   const [, params] = useRoute("/recipes/:id");
   const [, setLocation] = useLocation();
   const id = parseInt(params?.id ?? "0");
@@ -154,16 +157,21 @@ export default function RecipeDetailPage() {
           className="w-full h-56 object-cover"
           onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600"; }}
         />
-        <button
-          aria-label={recipe.isSaved ? "Remove recipe from saved" : "Save recipe"}
-          className="absolute top-3 right-3 h-9 w-9 bg-background/80 backdrop-blur rounded-full flex items-center justify-center"
-          onClick={() => recipe.isSaved ? unsaveMutation.mutate() : saveMutation.mutate()}
-        >
-          {recipe.isSaved
-            ? <BookmarkCheck className="h-5 w-5 text-primary" />
-            : <Bookmark className="h-5 w-5" />
-          }
-        </button>
+        {recipe.isSaved ? (
+          <ConfirmAction
+            title="Remove this recipe from Saved?"
+            description="You can save this recipe again later."
+            onConfirm={() => scheduleUndoable({ label: "Saved recipe removal", onCommit: () => unsaveMutation.mutate() })}
+          >
+            <button aria-label="Remove recipe from saved" className="absolute top-3 right-3 h-9 w-9 bg-background/80 backdrop-blur rounded-full flex items-center justify-center">
+              <BookmarkCheck className="h-5 w-5 text-primary" />
+            </button>
+          </ConfirmAction>
+        ) : (
+          <button aria-label="Save recipe" className="absolute top-3 right-3 h-9 w-9 bg-background/80 backdrop-blur rounded-full flex items-center justify-center" onClick={() => saveMutation.mutate()}>
+            <Bookmark className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {/* Title & Tags */}

@@ -203,6 +203,12 @@ const server = createServer((req, res) => {
     });
     return;
   }
+  const mealDeleteMatch = req.url.match(/^\/api\/logs\/daily\/([^/]+)\/meals\/(\d+)$/);
+  if (mealDeleteMatch && req.method === "DELETE") {
+    meals = meals.filter((meal) => meal.id !== Number(mealDeleteMatch[2]));
+    res.writeHead(204);
+    return res.end();
+  }
   const dailyMatch = req.url.match(/^\/api\/logs\/daily\/([^/]+)$/);
   if (dailyMatch && req.method === "GET") return send(res, 200, dailyLog(dailyMatch[1]));
   if (dailyMatch && req.method === "PUT") {

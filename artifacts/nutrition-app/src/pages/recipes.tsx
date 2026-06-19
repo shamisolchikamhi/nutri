@@ -22,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Bookmark, BookmarkCheck, Clock, Flame, ChefHat, DollarSign, Link2, ShoppingCart, ExternalLink, Upload } from "lucide-react";
 import { formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 
 const GOALS = [
   { value: "all", label: "All Goals" },
@@ -192,6 +194,7 @@ async function processRecipeMediaFiles(files: FileList | null) {
 }
 
 export default function RecipesPage() {
+  const scheduleUndoable = useUndoableAction();
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
   const [goal, setGoal] = useState("all");
@@ -596,18 +599,21 @@ export default function RecipesPage() {
                   className="w-full h-40 object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400"; }}
                 />
-                <button
-                  className="absolute top-2 right-2 h-8 w-8 bg-background/80 backdrop-blur rounded-full flex items-center justify-center hover:bg-background transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    recipe.isSaved ? unsaveMutation.mutate(recipe.id) : saveMutation.mutate(recipe.id);
-                  }}
-                >
-                  {recipe.isSaved
-                    ? <BookmarkCheck className="h-4 w-4 text-primary" />
-                    : <Bookmark className="h-4 w-4 text-muted-foreground" />
-                  }
-                </button>
+                {recipe.isSaved ? (
+                  <ConfirmAction
+                    title={`Remove ${recipe.name} from Saved?`}
+                    description="You can save this recipe again later."
+                    onConfirm={() => scheduleUndoable({ label: "Saved recipe removal", onCommit: () => unsaveMutation.mutate(recipe.id) })}
+                  >
+                    <button aria-label={`Remove ${recipe.name} from saved`} className="absolute top-2 right-2 h-8 w-8 bg-background/80 backdrop-blur rounded-full flex items-center justify-center hover:bg-background transition-colors" onClick={(event) => event.stopPropagation()}>
+                      <BookmarkCheck className="h-4 w-4 text-primary" />
+                    </button>
+                  </ConfirmAction>
+                ) : (
+                  <button aria-label={`Save ${recipe.name}`} className="absolute top-2 right-2 h-8 w-8 bg-background/80 backdrop-blur rounded-full flex items-center justify-center hover:bg-background transition-colors" onClick={(event) => { event.stopPropagation(); saveMutation.mutate(recipe.id); }}>
+                    <Bookmark className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                )}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
                   <h3 className="text-white font-semibold leading-tight text-sm">{recipe.name}</h3>
                 </div>

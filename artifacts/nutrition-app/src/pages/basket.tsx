@@ -18,8 +18,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShoppingCart, Plus, Trash2, ChevronRight } from "lucide-react";
 import { formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 
 export default function BasketPage() {
+  const scheduleUndoable = useUndoableAction();
   const [, setLocation] = useLocation();
   const basketsQuery = useListBaskets();
   const { data: baskets, isLoading } = basketsQuery;
@@ -118,12 +121,15 @@ export default function BasketPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(basket.id); }}
-                    className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-colors"
+                  <ConfirmAction
+                    title={`Delete ${basket.name}?`}
+                    description="This basket and its items will be deleted."
+                    onConfirm={() => scheduleUndoable({ label: "Basket deletion", onCommit: () => deleteMutation.mutate(basket.id) })}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    <button aria-label={`Delete ${basket.name}`} onClick={(event) => event.stopPropagation()} className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-colors">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </ConfirmAction>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardContent>

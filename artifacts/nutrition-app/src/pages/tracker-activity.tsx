@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Plus, Zap, Footprints } from "lucide-react";
 import { PageError } from "@/components/PageState";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 
 const ACTIVITY_TYPES = [
   { value: "walking", label: "Walking" },
@@ -32,6 +34,7 @@ const ACTIVITY_TYPES = [
 const today = new Date().toISOString().split("T")[0];
 
 export default function ActivityPage() {
+  const scheduleUndoable = useUndoableAction();
   const logsQuery = useListActivityLogs();
   const { data: logs, isLoading } = logsQuery;
   const [open, setOpen] = useState(false);
@@ -181,14 +184,15 @@ export default function ActivityPage() {
                   </div>
                   {log.notes && <p className="text-xs text-muted-foreground mt-0.5 italic">{log.notes}</p>}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteMutation.mutate(log.id)}
+                <ConfirmAction
+                  title="Remove this activity?"
+                  description="This workout will be removed from your activity totals."
+                  onConfirm={() => scheduleUndoable({ label: "Activity removal", onCommit: () => deleteMutation.mutate(log.id) })}
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  <Button aria-label={`Remove ${log.workoutType ?? "activity"}`} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </ConfirmAction>
               </CardContent>
             </Card>
           ))

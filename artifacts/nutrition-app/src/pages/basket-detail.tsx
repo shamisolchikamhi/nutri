@@ -19,8 +19,11 @@ import { ExternalLink, Trash2, Plus, Minus, ArrowLeft, ShoppingBag, Tag } from "
 import { useState } from "react";
 import { formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 
 export default function BasketDetailPage() {
+  const scheduleUndoable = useUndoableAction();
   const [, params] = useRoute("/basket/:id");
   const [, setLocation] = useLocation();
   const id = parseInt(params?.id ?? "0");
@@ -244,12 +247,21 @@ export default function BasketDetailPage() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <button
-                        className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
-                        onClick={() => item.quantity > 1 ? updateMutation.mutate({ itemId: item.id, productId: item.productId, quantity: item.quantity - 1 }) : deleteMutation.mutate(item.id)}
-                      >
-                        <Minus className="h-3 w-3" />
-                      </button>
+                      {item.quantity > 1 ? (
+                        <button aria-label={`Decrease ${item.productName}`} className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors" onClick={() => updateMutation.mutate({ itemId: item.id, productId: item.productId, quantity: item.quantity - 1 })}>
+                          <Minus className="h-3 w-3" />
+                        </button>
+                      ) : (
+                        <ConfirmAction
+                          title={`Remove ${item.productName}?`}
+                          description="Reducing the quantity below one removes this item from the basket."
+                          onConfirm={() => scheduleUndoable({ label: "Basket item removal", onCommit: () => deleteMutation.mutate(item.id) })}
+                        >
+                          <button aria-label={`Remove ${item.productName}`} className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors">
+                            <Minus className="h-3 w-3" />
+                          </button>
+                        </ConfirmAction>
+                      )}
                       <span className="w-14 text-center text-sm font-medium">{item.quantity} pack{item.quantity === 1 ? "" : "s"}</span>
                       <button
                         className="h-7 w-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
@@ -258,12 +270,15 @@ export default function BasketDetailPage() {
                         <Plus className="h-3 w-3" />
                       </button>
                     </div>
-                    <button
-                      className="h-7 w-7 rounded-lg hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-colors"
-                      onClick={() => deleteMutation.mutate(item.id)}
+                    <ConfirmAction
+                      title={`Remove ${item.productName}?`}
+                      description="This item will be removed from the basket."
+                      onConfirm={() => scheduleUndoable({ label: "Basket item removal", onCommit: () => deleteMutation.mutate(item.id) })}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                      <button aria-label={`Delete ${item.productName}`} className="h-7 w-7 rounded-lg hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition-colors">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </ConfirmAction>
                   </CardContent>
                 </Card>
               ))

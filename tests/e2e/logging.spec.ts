@@ -12,6 +12,21 @@ test("logs a meal, water, activity, and weight", async ({ page }) => {
   await page.getByRole("button", { name: "+250ml" }).click();
   await expect(page.getByText("250 / 2500 ml", { exact: true })).toBeVisible();
 
+  await page.getByRole("button", { name: "Remove Egg (1 large)" }).click();
+  await expect(page.getByRole("alertdialog")).toContainText("Remove Egg (1 large)?");
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByText("Egg (1 large)", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Remove Egg (1 large)" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await page.waitForTimeout(5_200);
+  await expect(page.getByText("Egg (1 large)", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Remove Egg (1 large)" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("Egg (1 large)", { exact: true })).toHaveCount(0, { timeout: 8_000 });
+
   await page.goto("/tracker/activity");
   await page.getByRole("button", { name: "Add Activity" }).click();
   await page.getByPlaceholder("30").fill("30");

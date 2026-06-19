@@ -21,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Plus, Droplets } from "lucide-react";
 import { PageError } from "@/components/PageState";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -40,6 +42,7 @@ const COMMON_FOODS = [
 ];
 
 export default function TrackerPage() {
+  const scheduleUndoable = useUndoableAction();
   const logQuery = useGetDailyLog(today);
   const mealsQuery = useGetMealEntries(today);
   const { data: log, isLoading } = logQuery;
@@ -252,14 +255,15 @@ export default function TrackerPage() {
                         <span>F: {entry.fatG}g</span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteMutation.mutate({ date: today, id: entry.id })}
+                    <ConfirmAction
+                      title={`Remove ${entry.name}?`}
+                      description="This meal will be removed from today's nutrition totals."
+                      onConfirm={() => scheduleUndoable({ label: "Meal removal", onCommit: () => deleteMutation.mutate({ date: today, id: entry.id }) })}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button aria-label={`Remove ${entry.name}`} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ConfirmAction>
                   </CardContent>
                 </Card>
               ))}

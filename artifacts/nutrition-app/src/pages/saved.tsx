@@ -16,8 +16,11 @@ import { Bookmark, BookmarkX, Flame, Clock, DollarSign, ChefHat } from "lucide-r
 import { useState } from "react";
 import { formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
+import { ConfirmAction } from "@/components/ConfirmAction";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 
 export default function SavedPage() {
+  const scheduleUndoable = useUndoableAction();
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<"recipes" | "snacks">("recipes");
 
@@ -88,12 +91,15 @@ export default function SavedPage() {
                         <h3 className="font-medium text-sm leading-tight line-clamp-2 cursor-pointer hover:text-primary" onClick={() => setLocation(`/recipes/${recipe.id}`)}>
                           {recipe.name}
                         </h3>
-                        <button
-                          className="ml-2 flex-shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => unsaveRecipeMutation.mutate(recipe.id)}
+                        <ConfirmAction
+                          title={`Remove ${recipe.name} from Saved?`}
+                          description="You can save this recipe again later."
+                          onConfirm={() => scheduleUndoable({ label: "Saved recipe removal", onCommit: () => unsaveRecipeMutation.mutate(recipe.id) })}
                         >
-                          <BookmarkX className="h-4 w-4" />
-                        </button>
+                          <button aria-label={`Remove ${recipe.name} from saved`} className="ml-2 flex-shrink-0 text-muted-foreground hover:text-destructive">
+                            <BookmarkX className="h-4 w-4" />
+                          </button>
+                        </ConfirmAction>
                       </div>
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Flame className="h-3 w-3" />{recipe.caloriesPerServing} kcal</span>
@@ -137,12 +143,15 @@ export default function SavedPage() {
                       className="w-full h-28 object-cover"
                       onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1547592180-85f173990554?w=200"; }}
                     />
-                    <button
-                      className="absolute top-2 right-2 h-7 w-7 bg-background/80 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive"
-                      onClick={() => unsaveSnackMutation.mutate(snack.productId)}
+                    <ConfirmAction
+                      title={`Remove ${snack.name} from Saved?`}
+                      description="You can save this snack again later."
+                      onConfirm={() => scheduleUndoable({ label: "Saved snack removal", onCommit: () => unsaveSnackMutation.mutate(snack.productId) })}
                     >
-                      <BookmarkX className="h-3.5 w-3.5" />
-                    </button>
+                      <button aria-label={`Remove ${snack.name} from saved`} className="absolute top-2 right-2 h-7 w-7 bg-background/80 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive">
+                        <BookmarkX className="h-3.5 w-3.5" />
+                      </button>
+                    </ConfirmAction>
                     {snack.isOnSpecial && <Badge className="absolute top-2 left-2 bg-red-500 text-white text-xs py-0">SPECIAL</Badge>}
                   </div>
                   <CardContent className="p-2.5">
