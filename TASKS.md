@@ -15,7 +15,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Cover profile, settings, meals, water, activity, weight, saves, and baskets.
   - Preserve user input after failure and provide an explicit retry action.
   - Show success only after the server confirms persistence.
-- [ ] Add schema-based profile validation to onboarding and settings.
+- [x] Add schema-based profile validation to onboarding and settings.
   - Require age, height, current weight, target weight, and valid ranges.
   - Do not replace missing health data with invented defaults.
   - Show field-level errors and block progression/submission until valid.
@@ -46,7 +46,7 @@ should not be shipped on top of unreliable health data or silent failures.
 
 ## P1 - Remove Duplication and Redundancy
 
-- [ ] Extract one shared profile schema, form model, and serializer.
+- [x] Extract one shared profile schema, form model, and serializer.
   - Reuse it in onboarding and settings.
   - Centralize diet-selection and retailer-selection helpers.
 - [x] Create shared `PageState` components for loading, error, empty, and retry UI.

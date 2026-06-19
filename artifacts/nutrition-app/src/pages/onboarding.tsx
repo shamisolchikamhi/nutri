@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAppMutation } from "@/hooks/use-app-mutation";
-import { upsertProfile, getGetProfileQueryKey } from "@workspace/api-client-react";
+import { upsertProfile, getGetProfileQueryKey, type UserProfileInput } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,85 +9,68 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { formatMoney, getBudgetLabel } from "@/lib/market";
+import {
+  ACTIVITY_OPTIONS,
+  DIET_OPTIONS,
+  createEmptyProfileForm,
+  toggleDiet,
+  validateProfile,
+  type ProfileErrors,
+  type ProfileField,
+  type ProfileForm,
+} from "@/lib/profile-form";
 
 const STEPS = ["Welcome", "Body Stats", "Diet & Activity", "Done"];
 
-const DIETS = [
-  { value: "standard", label: "Standard", emoji: "🍽", desc: "Balanced nutrition" },
-  { value: "high_protein", label: "High Protein", emoji: "💪", desc: "Build muscle & recover" },
-  { value: "low_calorie", label: "Low Calorie", emoji: "🔥", desc: "Lose fat efficiently" },
-  { value: "low_carb", label: "Low Carb", emoji: "🥑", desc: "Reduce carbohydrates" },
-  { value: "vegan", label: "Vegan", emoji: "🌿", desc: "Plant-based only" },
-  { value: "vegetarian", label: "Vegetarian", emoji: "🥗", desc: "No meat" },
-];
+const DIET_DETAILS: Record<string, { emoji: string; desc: string }> = {
+  standard: { emoji: "🍽", desc: "Balanced nutrition" },
+  high_protein: { emoji: "💪", desc: "Build muscle & recover" },
+  low_calorie: { emoji: "🔥", desc: "Lose fat efficiently" },
+  low_carb: { emoji: "🥑", desc: "Reduce carbohydrates" },
+  vegan: { emoji: "🌿", desc: "Plant-based only" },
+  vegetarian: { emoji: "🥗", desc: "No meat" },
+  halal: { emoji: "🍲", desc: "Halal food choices" },
+};
 
-const ACTIVITY = [
-  { value: "sedentary", label: "Sedentary", desc: "Little or no exercise" },
-  { value: "lightly_active", label: "Lightly Active", desc: "Exercise 1-3 days/week" },
-  { value: "moderately_active", label: "Moderately Active", desc: "Exercise 3-5 days/week" },
-  { value: "very_active", label: "Very Active", desc: "Hard exercise 6-7 days" },
-  { value: "extra_active", label: "Extra Active", desc: "Very hard exercise daily" },
-];
+const ACTIVITY_DETAILS: Record<string, string> = {
+  sedentary: "Little or no exercise",
+  lightly_active: "Exercise 1-3 days/week",
+  moderately_active: "Exercise 3-5 days/week",
+  very_active: "Hard exercise 6-7 days",
+  extra_active: "Very hard exercise daily",
+};
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [, setLocation] = useLocation();
 
-  const [form, setForm] = useState({
-    sex: "male",
-    ageYears: "",
-    currentWeightKg: "",
-    targetWeightKg: "",
-    heightCm: "",
-    dietPreference: "standard",
-    dietPreferences: ["standard"],
-    activityLevel: "moderately_active",
-    budgetWeekly: "150",
-    mealFrequency: "3",
-    retailerPreferences: [] as number[],
-  });
+  const [form, setForm] = useState<ProfileForm>(createEmptyProfileForm);
+  const [errors, setErrors] = useState<ProfileErrors>({});
 
   const mutation = useAppMutation({
     operation: "Save profile",
     reference: "WRITE-PROFILE-ONBOARDING",
     successMessage: "Your profile is ready.",
     invalidate: [getGetProfileQueryKey()],
-    mutationFn: () =>
-      upsertProfile({
-        sex: form.sex as "male" | "female" | "other",
-        ageYears: parseInt(form.ageYears) || 30,
-        currentWeightKg: parseFloat(form.currentWeightKg) || 75,
-        targetWeightKg: parseFloat(form.targetWeightKg) || 70,
-        heightCm: parseFloat(form.heightCm) || 170,
-        dietPreference: (form.dietPreferences[0] ?? form.dietPreference) as any,
-        activityLevel: form.activityLevel as any,
-        budgetWeekly: parseFloat(form.budgetWeekly) || 150,
-        mealFrequency: parseInt(form.mealFrequency) || 3,
-        retailerPreferences: form.retailerPreferences,
-      }),
+    mutationFn: (input: UserProfileInput) => upsertProfile(input),
     onSuccess: () => {
       setStep(3);
     },
   });
 
-  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
-  const toggleDietPreference = (value: string) => {
-    setForm((f) => {
-      if (value === "standard") {
-        return { ...f, dietPreference: "standard", dietPreferences: ["standard"] };
-      }
-
-      const withoutStandard = f.dietPreferences.filter((preference) => preference !== "standard");
-      const selected = withoutStandard.includes(value)
-        ? withoutStandard.filter((preference) => preference !== value)
-        : [...withoutStandard, value];
-      const dietPreferences = selected.length > 0 ? selected : ["standard"];
-      return {
-        ...f,
-        dietPreference: dietPreferences[0],
-        dietPreferences,
-      };
-    });
+  const set = <K extends ProfileField>(key: K, value: ProfileForm[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => ({ ...current, [key]: undefined }));
+  };
+  const validateStep = (fields: ProfileField[], nextStep: number) => {
+    const result = validateProfile(form, fields);
+    setErrors(result.errors);
+    if (Object.keys(result.errors).length === 0) setStep(nextStep);
+  };
+  const submitProfile = () => {
+    const result = validateProfile(form);
+    setErrors(result.errors);
+    if (result.input) mutation.mutate(result.input);
   };
   const progress = ((step + 1) / STEPS.length) * 100;
 
@@ -124,7 +107,7 @@ export default function OnboardingPage() {
                 <div className="space-y-2">
                   <Label>Sex</Label>
                   <div className="flex gap-3">
-                    {["male", "female", "other"].map((s) => (
+                    {(["male", "female", "other"] as const).map((s) => (
                       <button
                         key={s}
                         onClick={() => set("sex", s)}
@@ -140,9 +123,10 @@ export default function OnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Age</Label>
-                  <Input type="number" placeholder="30" value={form.ageYears} onChange={(e) => set("ageYears", e.target.value)} />
+                  <Input type="number" placeholder="30" value={form.ageYears} onChange={(e) => set("ageYears", e.target.value)} aria-invalid={Boolean(errors.ageYears)} />
+                  {errors.ageYears && <p className="text-xs text-destructive" role="alert">{errors.ageYears}</p>}
                 </div>
-                <Button className="w-full" onClick={() => setStep(1)}>Continue →</Button>
+                <Button className="w-full" onClick={() => validateStep(["ageYears"], 1)}>Continue →</Button>
               </div>
             )}
 
@@ -155,20 +139,23 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-2">
                     <Label>Height (cm)</Label>
-                    <Input type="number" placeholder="170" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} />
+                    <Input type="number" placeholder="170" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} aria-invalid={Boolean(errors.heightCm)} />
+                    {errors.heightCm && <p className="text-xs text-destructive" role="alert">{errors.heightCm}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label>Weight (kg)</Label>
-                    <Input type="number" placeholder="75" value={form.currentWeightKg} onChange={(e) => set("currentWeightKg", e.target.value)} />
+                    <Input type="number" placeholder="75" value={form.currentWeightKg} onChange={(e) => set("currentWeightKg", e.target.value)} aria-invalid={Boolean(errors.currentWeightKg)} />
+                    {errors.currentWeightKg && <p className="text-xs text-destructive" role="alert">{errors.currentWeightKg}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label>Target (kg)</Label>
-                    <Input type="number" placeholder="70" value={form.targetWeightKg} onChange={(e) => set("targetWeightKg", e.target.value)} />
+                    <Input type="number" placeholder="70" value={form.targetWeightKg} onChange={(e) => set("targetWeightKg", e.target.value)} aria-invalid={Boolean(errors.targetWeightKg)} />
+                    {errors.targetWeightKg && <p className="text-xs text-destructive" role="alert">{errors.targetWeightKg}</p>}
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <Button variant="outline" className="flex-1" onClick={() => setStep(0)}>Back</Button>
-                  <Button className="flex-1" onClick={() => setStep(2)}>Continue →</Button>
+                  <Button className="flex-1" onClick={() => validateStep(["heightCm", "currentWeightKg", "targetWeightKg"], 2)}>Continue →</Button>
                 </div>
               </div>
             )}
@@ -182,18 +169,18 @@ export default function OnboardingPage() {
                 <div className="space-y-2">
                   <Label>Diet Preference</Label>
                   <div className="grid grid-cols-2 gap-2">
-                    {DIETS.map((d) => (
+                    {DIET_OPTIONS.map((d) => (
                       <button
                         key={d.value}
-                        onClick={() => toggleDietPreference(d.value)}
+                        onClick={() => setForm((current) => toggleDiet(current, d.value))}
                         className={cn(
                           "p-3 rounded-xl border-2 text-left text-sm transition-all",
                           form.dietPreferences.includes(d.value) ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
                         )}
                       >
-                        <div className="text-lg mb-0.5">{d.emoji}</div>
+                        <div className="text-lg mb-0.5">{DIET_DETAILS[d.value].emoji}</div>
                         <div className="font-medium">{d.label}</div>
-                        <div className="text-xs text-muted-foreground">{d.desc}</div>
+                        <div className="text-xs text-muted-foreground">{DIET_DETAILS[d.value].desc}</div>
                       </button>
                     ))}
                   </div>
@@ -201,7 +188,7 @@ export default function OnboardingPage() {
                 <div className="space-y-2">
                   <Label>Activity Level</Label>
                   <div className="space-y-1.5">
-                    {ACTIVITY.map((a) => (
+                    {ACTIVITY_OPTIONS.map((a) => (
                       <button
                         key={a.value}
                         onClick={() => set("activityLevel", a.value)}
@@ -211,7 +198,7 @@ export default function OnboardingPage() {
                         )}
                       >
                         <span className="font-medium">{a.label}</span>
-                        <span className="text-muted-foreground ml-2 text-xs">{a.desc}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{ACTIVITY_DETAILS[a.value]}</span>
                       </button>
                     ))}
                   </div>
@@ -219,16 +206,18 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label>{getBudgetLabel()}</Label>
-                    <Input type="number" placeholder="150" value={form.budgetWeekly} onChange={(e) => set("budgetWeekly", e.target.value)} />
+                    <Input type="number" placeholder="150" value={form.budgetWeekly} onChange={(e) => set("budgetWeekly", e.target.value)} aria-invalid={Boolean(errors.budgetWeekly)} />
+                    {errors.budgetWeekly && <p className="text-xs text-destructive" role="alert">{errors.budgetWeekly}</p>}
                   </div>
                   <div className="space-y-1">
                     <Label>Meals per day</Label>
-                    <Input type="number" placeholder="3" min="1" max="6" value={form.mealFrequency} onChange={(e) => set("mealFrequency", e.target.value)} />
+                    <Input type="number" placeholder="3" min="1" max="6" value={form.mealFrequency} onChange={(e) => set("mealFrequency", e.target.value)} aria-invalid={Boolean(errors.mealFrequency)} />
+                    {errors.mealFrequency && <p className="text-xs text-destructive" role="alert">{errors.mealFrequency}</p>}
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>Back</Button>
-                  <Button className="flex-1" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+                  <Button className="flex-1" onClick={submitProfile} disabled={mutation.isPending}>
                     {mutation.isPending ? "Saving..." : "Complete Setup"}
                   </Button>
                 </div>
