@@ -6,3 +6,4 @@ export * from "./recipes";
 export * from "./logs";
 export * from "./baskets";
 export * from "./saved";
+export * from "./nutrition_catalog";

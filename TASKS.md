@@ -86,7 +86,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Add scraper contract tests using versioned HTML/catalogue fixtures.
   - Verify product name, pack size, price, promotion, dates, and retailer.
   - Fail the job when a previously healthy source unexpectedly extracts zero.
-- [ ] Separate retailer pricing from Open Food Facts nutrition records.
+- [x] Separate retailer pricing from Open Food Facts nutrition records.
   - Use Open Food Facts for product identity and nutrition where reliable.
   - Never present generated test prices as observed retailer prices.
   - Add a reviewed product-matching process using barcode first and normalized

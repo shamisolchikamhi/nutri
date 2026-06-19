@@ -35,7 +35,6 @@ type NormalizedProduct = {
   name: string;
   brand: string | null;
   category: string;
-  priceAud: number;
   packSize: number;
   packUnit: string;
   caloriesPer100g: number;
@@ -143,32 +142,7 @@ function parsePack(quantity: string | undefined): { packSize: number; packUnit: 
   return { packSize: amount, packUnit: unit };
 }
 
-function estimateTestPrice(product: Pick<NormalizedProduct, "category" | "packSize" | "proteinPer100g">, market: ScrapeConfig) {
-  const categoryBaseZar: Record<string, number> = {
-    protein: 75,
-    dairy: 38,
-    grains: 32,
-    fruit_veg: 28,
-    snacks: 25,
-    drinks: 20,
-    condiments: 34,
-    frozen: 55,
-    pantry: 30,
-    other: 30,
-  };
-  const currencyMultiplier: Record<string, number> = {
-    ZAR: 1,
-    AUD: 0.085,
-    GBP: 0.043,
-    USD: 0.055,
-  };
-  const base = categoryBaseZar[product.category] ?? categoryBaseZar.other;
-  const packMultiplier = Math.min(3, Math.max(0.6, product.packSize || 1));
-  const proteinPremium = product.proteinPer100g >= 15 ? 1.18 : 1;
-  return Math.round(base * packMultiplier * proteinPremium * currencyMultiplier[market.currencyCode] * 100) / 100;
-}
-
-function normalize(product: OpenFoodFactsProduct, market: ScrapeConfig): NormalizedProduct | null {
+function normalize(product: OpenFoodFactsProduct): NormalizedProduct | null {
   const name = cleanName(product);
   if (!name || !product.code) return null;
 
@@ -185,7 +159,6 @@ function normalize(product: OpenFoodFactsProduct, market: ScrapeConfig): Normali
     name,
     brand: product.brands?.split(",")[0]?.trim() || null,
     category: mapCategory(product),
-    priceAud: 0,
     packSize: pack.packSize,
     packUnit: pack.packUnit,
     caloriesPer100g: Math.round(calories),
@@ -197,10 +170,7 @@ function normalize(product: OpenFoodFactsProduct, market: ScrapeConfig): Normali
     imageUrl: product.image_url ?? "",
   };
 
-  return {
-    ...normalized,
-    priceAud: estimateTestPrice(normalized, market),
-  };
+  return normalized;
 }
 
 async function fetchProductsForQuery(query: string, market: ScrapeConfig, pageSize: number) {
@@ -244,56 +214,19 @@ async function fetchProductsForQuery(query: string, market: ScrapeConfig, pageSi
   throw new Error(`Open Food Facts search failed for "${query}" (${lastStatus})`);
 }
 
-async function getOrCreateRetailer(market: ScrapeConfig) {
-  const [{ and, eq }, { db, retailersTable }] = await Promise.all([
-    import("drizzle-orm"),
-    import("@workspace/db"),
-  ]);
-
-  const existing = await db
-    .select()
-    .from(retailersTable)
-    .where(and(eq(retailersTable.name, market.retailerName), eq(retailersTable.marketCode, market.marketCode)))
-    .limit(1);
-
-  if (existing[0]) return existing[0];
-
-  const [created] = await db
-    .insert(retailersTable)
-    .values({
-      name: market.retailerName,
-      marketCode: market.marketCode,
-      logoUrl: "",
-      isActive: true,
-    })
-    .returning();
-
-  return created;
-}
-
-async function writeProducts(products: NormalizedProduct[], market: ScrapeConfig) {
-  const [{ and, eq }, { db, productsTable, pool }] = await Promise.all([
-    import("drizzle-orm"),
-    import("@workspace/db"),
-  ]);
-  const retailer = await getOrCreateRetailer(market);
+async function writeProducts(products: NormalizedProduct[]) {
+  const { db, nutritionCatalogTable, pool } = await import("@workspace/db");
   let inserted = 0;
   let updated = 0;
 
   for (const product of products) {
-    const existing = await db
-      .select()
-      .from(productsTable)
-      .where(and(eq(productsTable.name, product.name), eq(productsTable.retailerId, retailer.id)))
-      .limit(1);
-
     const values = {
+      barcode: product.externalId,
+      source: "open_food_facts",
+      sourceUrl: product.sourceUrl,
       name: product.name,
       brand: product.brand,
-      retailerId: retailer.id,
       category: product.category,
-      priceAud: product.priceAud,
-      regularPriceAud: null,
       packSize: product.packSize,
       packUnit: product.packUnit,
       caloriesPer100g: product.caloriesPer100g,
@@ -302,22 +235,18 @@ async function writeProducts(products: NormalizedProduct[], market: ScrapeConfig
       fatPer100g: product.fatPer100g,
       fiberPer100g: product.fiberPer100g,
       sugarPer100g: product.sugarPer100g,
-      isOnSpecial: false,
       imageUrl: product.imageUrl,
+      lastSyncedAt: new Date(),
     };
-
-    if (existing[0]) {
-      await db.update(productsTable).set(values).where(eq(productsTable.id, existing[0].id));
-      updated += 1;
-    } else {
-      await db.insert(productsTable).values(values);
-      inserted += 1;
-    }
+    const existing = await db.select({ barcode: nutritionCatalogTable.barcode }).from(nutritionCatalogTable).where((await import("drizzle-orm")).eq(nutritionCatalogTable.barcode, product.externalId)).limit(1);
+    await db.insert(nutritionCatalogTable).values(values).onConflictDoUpdate({ target: nutritionCatalogTable.barcode, set: values });
+    if (existing[0]) updated += 1;
+    else inserted += 1;
   }
 
   await pool.end();
 
-  return { inserted, updated, retailerId: retailer.id };
+  return { inserted, updated };
 }
 
 async function main() {
@@ -346,7 +275,7 @@ async function main() {
         continue;
       }
       for (const rawProduct of rawProducts) {
-        const product = normalize(rawProduct, market);
+        const product = normalize(rawProduct);
         if (product && !byCode.has(product.externalId)) {
           byCode.set(product.externalId, product);
         }
@@ -364,8 +293,7 @@ async function main() {
         source: "Open Food Facts",
         sourceUrl: "https://world.openfoodfacts.org",
         marketCode,
-        currencyCode: market.currencyCode,
-        note: "Nutrition/product metadata is sourced from Open Food Facts. Prices are deterministic test estimates until retailer price feeds are connected.",
+        note: "Nutrition and product identity are sourced from Open Food Facts. This catalogue contains no retailer price observations.",
         scrapedAt: new Date().toISOString(),
         products,
       }, null, 2),
@@ -374,7 +302,7 @@ async function main() {
 
   let writeResult: Awaited<ReturnType<typeof writeProducts>> | null = null;
   if (shouldWrite) {
-    writeResult = await writeProducts(products, market);
+    writeResult = await writeProducts(products);
   }
 
   console.log(JSON.stringify({
