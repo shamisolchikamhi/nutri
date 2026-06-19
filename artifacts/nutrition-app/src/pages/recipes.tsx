@@ -491,13 +491,6 @@ export default function RecipesPage() {
                 />
                 Create a grocery basket from matched local-store ingredients
               </label>
-              {importSocialMutation.error && (
-                <p className="text-sm text-destructive">
-                  {(importSocialMutation.error as Error).message === "ingredientsText or caption is required"
-                    ? "The API server needs to be restarted or redeployed to use URL-only AI extraction."
-                    : (importSocialMutation.error as Error).message}
-                </p>
-              )}
               <Button
                 onClick={() => importSocialMutation.mutate()}
                 disabled={importSocialMutation.isPending || !canImportSocial}
