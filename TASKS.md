@@ -100,7 +100,7 @@ should not be shipped on top of unreliable health data or silent failures.
     multibuy quantity and price, percentage discount, loyalty requirement,
     stock status, region/store scope, terms, and source URL.
   - Support single-price, percentage, multibuy, bundle, and loyalty-card offers.
-- [ ] Build promotion ingestion and reconciliation.
+- [x] Build promotion ingestion and reconciliation.
   - Upsert promotions using stable retailer IDs and source identifiers.
   - Mark promotions stale when they disappear from a successful scrape.
   - Expire promotions automatically after `validUntil`.

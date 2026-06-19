@@ -18,6 +18,9 @@ type ScrapedProduct = {
   category: string;
   priceAud: number;
   regularPriceAud: number | null;
+  promotionType: "single_price" | "percentage" | "multibuy" | "loyalty" | null;
+  validFrom: string | null;
+  validUntil: string | null;
   packSize: number;
   packUnit: string;
   caloriesPer100g: number;
@@ -198,6 +201,9 @@ function extractProductsFromHtml(html: string, retailer: RetailerConfig, sourceU
         category,
         priceAud: listing.price,
         regularPriceAud: listing.regularPrice,
+        promotionType: listing.promotionType,
+        validFrom: listing.validFrom,
+        validUntil: listing.validUntil,
         packSize: listing.packSize,
         packUnit: listing.packUnit,
         ...nutritionEstimate(listing.name, category),
@@ -232,6 +238,9 @@ function extractProductsFromHtml(html: string, retailer: RetailerConfig, sourceU
       category,
       priceAud: price,
       regularPriceAud: null,
+      promotionType: null,
+      validFrom: null,
+      validUntil: null,
       packSize: pack.packSize,
       packUnit: pack.packUnit,
       ...nutritionEstimate(name, category),
@@ -307,13 +316,14 @@ async function getOrCreateRetailer(retailer: RetailerConfig) {
 }
 
 async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfig) {
-  const [{ and, eq }, { db, productsTable }] = await Promise.all([
+  const [{ and, eq, lt }, { db, productsTable, productPriceHistoryTable, specialsTable }] = await Promise.all([
     import("drizzle-orm"),
     import("@workspace/db"),
   ]);
   const row = await getOrCreateRetailer(retailer);
   let inserted = 0;
   let updated = 0;
+  const seenPromotionIds = new Set<string>();
 
   for (const product of products) {
     const existing = await db
@@ -349,14 +359,50 @@ async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfi
       lastVerifiedAt: new Date(),
     };
 
+    let productRow;
     if (existing[0]) {
-      await db.update(productsTable).set(values).where(eq(productsTable.id, existing[0].id));
+      [productRow] = await db.update(productsTable).set(values).where(eq(productsTable.id, existing[0].id)).returning();
       updated += 1;
     } else {
-      await db.insert(productsTable).values(values);
+      [productRow] = await db.insert(productsTable).values(values).returning();
       inserted += 1;
     }
+    await db.insert(productPriceHistoryTable).values({ productId: productRow.id, price: product.priceAud, regularPrice: product.regularPriceAud, currency: "ZAR", sourceUrl: product.sourceUrl });
+
+    if (product.regularPriceAud && product.regularPriceAud > product.priceAud) {
+      const externalId = `${product.externalId}:offer`;
+      seenPromotionIds.add(externalId);
+      const savings = Math.round((product.regularPriceAud - product.priceAud) * 100) / 100;
+      await db.insert(specialsTable).values({
+        externalId,
+        productId: productRow.id,
+        retailerId: row.id,
+        promotionType: product.promotionType ?? "single_price",
+        regularPriceAud: product.regularPriceAud,
+        specialPriceAud: product.priceAud,
+        savingsAud: savings,
+        savingsPercent: Math.round((savings / product.regularPriceAud) * 1000) / 10,
+        sourceUrl: product.sourceUrl,
+        currency: "ZAR",
+        validFrom: product.validFrom,
+        validUntil: product.validUntil,
+        isStale: false,
+        lastSeenAt: new Date(),
+        scrapedAt: new Date(),
+        lastVerifiedAt: new Date(),
+      }).onConflictDoUpdate({
+        target: [specialsTable.retailerId, specialsTable.externalId],
+        set: { specialPriceAud: product.priceAud, regularPriceAud: product.regularPriceAud, savingsAud: savings, validFrom: product.validFrom, validUntil: product.validUntil, isStale: false, lastSeenAt: new Date(), scrapedAt: new Date(), lastVerifiedAt: new Date() },
+      });
+    }
   }
+
+  const knownPromotions = await db.select().from(specialsTable).where(eq(specialsTable.retailerId, row.id));
+  for (const promotion of knownPromotions) {
+    if (promotion.externalId && !seenPromotionIds.has(promotion.externalId)) await db.update(specialsTable).set({ isStale: true }).where(eq(specialsTable.id, promotion.id));
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  await db.update(specialsTable).set({ isStale: true }).where(and(eq(specialsTable.retailerId, row.id), lt(specialsTable.validUntil, today)));
 
   return { retailer: retailer.name, retailerId: row.id, inserted, updated };
 }
