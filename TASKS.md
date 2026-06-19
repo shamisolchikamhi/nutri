@@ -26,7 +26,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Add an API health check and configuration diagnostics.
   - Document local database/API setup and avoid silently proxying to another
     service occupying port 5000.
-- [ ] Restore cross-platform dependency installation.
+- [x] Restore cross-platform dependency installation.
   - Stop excluding the native macOS packages required by Rollup, Lightning CSS,
     and Tailwind on Apple Silicon.
   - Verify clean installs and startup on macOS and Linux in CI.
