@@ -1,7 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-
-type RetailerKey = "woolworths" | "pick-n-pay" | "checkers";
+import { retailerAdapters, type RetailerKey } from "./retailers";
 
 type RetailerConfig = {
   key: RetailerKey;
@@ -186,6 +185,26 @@ function looksLikeProductName(line: string) {
 }
 
 function extractProductsFromHtml(html: string, retailer: RetailerConfig, sourceUrl: string, limit: number) {
+  const structured = retailerAdapters[retailer.key].parse(html, sourceUrl).slice(0, limit);
+  if (structured.length > 0) {
+    return structured.map((listing): ScrapedProduct => {
+      const category = mapCategory(listing.name, listing.sourceUrl);
+      return {
+        externalId: listing.externalId,
+        sourceUrl: listing.sourceUrl,
+        name: listing.name,
+        brand: listing.brand,
+        category,
+        priceAud: listing.price,
+        regularPriceAud: listing.regularPrice,
+        packSize: listing.packSize,
+        packUnit: listing.packUnit,
+        ...nutritionEstimate(listing.name, category),
+        imageUrl: listing.imageUrl,
+      };
+    });
+  }
+
   const lines = htmlToLines(html);
   const products: ScrapedProduct[] = [];
   const seen = new Set<string>();

@@ -75,7 +75,7 @@ should not be shipped on top of unreliable health data or silent failures.
 
 ## P1 - Live Retailer Data and Promotions
 
-- [ ] Replace the generic retailer HTML parser with retailer-specific adapters.
+- [x] Replace the generic retailer HTML parser with retailer-specific adapters.
   - Start with Pick n Pay catalogue pages and Checkers catalogue content.
   - Add a dedicated Woolworths adapter for its current product and promotion
     page structure.
@@ -83,7 +83,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [ ] Add browser-rendered extraction for JavaScript-dependent retailer pages.
   - Respect retailer terms, robots directives, rate limits, and access controls.
   - Do not attempt to bypass retailer bot protection or authentication.
-- [ ] Add scraper contract tests using versioned HTML/catalogue fixtures.
+- [x] Add scraper contract tests using versioned HTML/catalogue fixtures.
   - Verify product name, pack size, price, promotion, dates, and retailer.
   - Fail the job when a previously healthy source unexpectedly extracts zero.
 - [ ] Separate retailer pricing from Open Food Facts nutrition records.

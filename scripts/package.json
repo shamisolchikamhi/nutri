@@ -8,6 +8,7 @@
     "seed:demo": "tsx ./src/seed-demo.ts",
     "scrape:open-food-facts": "tsx ./src/scrape-open-food-facts.ts",
     "scrape:za-retailers": "tsx ./src/scrape-za-retailers.ts",
+    "test:retailers": "tsx --test ./src/retailers/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
