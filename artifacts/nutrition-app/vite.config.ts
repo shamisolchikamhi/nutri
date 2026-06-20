@@ -60,13 +60,7 @@ function apiPreflightPlugin(apiTarget: string): Plugin {
 }
 
 export default defineConfig(async ({ command }) => {
-  const apiTarget = process.env.VITE_API_TARGET;
-  if (command === "serve" && !apiTarget) {
-    throw new Error(
-      "VITE_API_TARGET is required. Set it to the NutriBasket API origin, for example http://127.0.0.1:5000.",
-    );
-  }
-  const resolvedApiTarget = apiTarget ?? "http://127.0.0.1:5000";
+  const resolvedApiTarget = process.env.VITE_API_TARGET ?? "http://127.0.0.1:8080";
 
   return {
   base: basePath,

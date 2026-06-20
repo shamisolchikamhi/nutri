@@ -29,3 +29,4 @@ to = "/index.html"
 [services.env]
 PORT = "25134"
 BASE_PATH = "/"
+VITE_API_TARGET = "http://127.0.0.1:8080"

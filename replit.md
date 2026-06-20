@@ -14,9 +14,8 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
   other response means the frontend must not be started against that port.
 - In another terminal, start the web app with
   `PORT=5173 BASE_PATH=/ VITE_API_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/nutrition-app run dev`.
-  `VITE_API_TARGET` is intentionally required: startup checks the health and
-  identity of that service instead of silently proxying to whatever occupies
-  port 5000.
+  `VITE_API_TARGET` overrides the hosted default (`http://127.0.0.1:8080`):
+  startup still checks the health and identity of that service before proxying.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -27,7 +26,7 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --limit=80 --write` — seed scraped product/nutrition data into the DB
 - `pnpm --filter @workspace/scripts run scrape:open-food-facts -- --market=ZA --from=scripts/out/open-food-facts-ZA.json --write` — seed from a cached scrape fixture
 - Required API env: `DATABASE_URL` — Postgres connection string
-- Required web env: `VITE_API_TARGET` — explicit NutriBasket API origin
+- Optional web env: `VITE_API_TARGET` — NutriBasket API origin; defaults to the hosted API on port 8080
 - Optional env: `OPENAI_API_KEY` — enables URL-only AI extraction for social recipes
 - Optional env: `OPENAI_MODEL` — overrides the social recipe extraction model; defaults to `gpt-4o-mini`
 
