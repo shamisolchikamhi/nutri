@@ -579,6 +579,24 @@ paths:
                   $ref: "#/components/schemas/PantrySuggestion"
 
   # ---- Products ----
+  /market-intelligence:
+    get:
+      operationId: getMarketIntelligence
+      tags: [products]
+      summary: Get local-market staples, retailer strengths, pack-size notes, and seasonal shopping context
+      parameters:
+        - name: marketCode
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Local market intelligence
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketIntelligence"
+
   /retailers:
     get:
       operationId: listRetailers
@@ -1756,6 +1774,46 @@ components:
           type: boolean
         isBestValue:
           type: boolean
+
+    MarketIntelligence:
+      type: object
+      required: [marketCode, season, stapleCategories, retailerHighlights, packSizeNotes, seasonalNotes, updatedAt]
+      properties:
+        marketCode:
+          type: string
+        season:
+          type: string
+        stapleCategories:
+          type: array
+          items:
+            type: string
+        retailerHighlights:
+          type: array
+          items:
+            type: object
+            required: [retailerId, retailerName, productCount, activeSpecialCount, strength]
+            properties:
+              retailerId:
+                type: integer
+              retailerName:
+                type: string
+              productCount:
+                type: integer
+              activeSpecialCount:
+                type: integer
+              strength:
+                type: string
+        packSizeNotes:
+          type: array
+          items:
+            type: string
+        seasonalNotes:
+          type: array
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
 
     # ---- Basket ----
     Basket:

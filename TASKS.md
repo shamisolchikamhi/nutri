@@ -154,7 +154,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Add a transparent value score for products and specials.
   - Combine normalized price, protein/fibre density, goal fit, pack size, and waste.
   - Show the calculation instead of presenting an unexplained AI score.
-- [ ] Add local-market intelligence.
+- [x] Add local-market intelligence.
   - Retailer-specific specials, realistic pack sizes, local staples, and seasonal
     availability should be a core advantage in every supported market.
 - [ ] Add outcome-focused weekly reviews.

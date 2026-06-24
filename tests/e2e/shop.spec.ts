@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 test("filters products, views specials, and compares a basket", async ({ page }) => {
   await page.goto("/products");
   await expect(page.getByText("Chicken Breast 500g", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Local market intelligence" })).toBeVisible();
+  await expect(page.getByText("Staples to watch")).toBeVisible();
   await expect(page.getByText("Value score").first()).toBeVisible();
   await expect(page.getByText(/Verified \d+ hours ago/).first()).toBeVisible();
   await expect(page.getByText("Gauteng / Online / delivery")).toBeVisible();

@@ -32,6 +32,7 @@ import type {
   DailyLog,
   DailyLogInput,
   DashboardToday,
+  GetMarketIntelligenceParams,
   GoalSummary,
   HealthStatus,
   ListActivityLogsParams,
@@ -40,6 +41,7 @@ import type {
   ListRecipesParams,
   ListRetailersParams,
   ListSpecialsParams,
+  MarketIntelligence,
   MealEntry,
   MealEntryInput,
   PantryCaptureInput,
@@ -2089,6 +2091,90 @@ export function useListPantrySuggestions<TData = Awaited<ReturnType<typeof listP
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListPantrySuggestionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetMarketIntelligenceUrl = (params?: GetMarketIntelligenceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/market-intelligence?${stringifiedParams}` : `/api/market-intelligence`
+}
+
+/**
+ * @summary Get local-market staples, retailer strengths, pack-size notes, and seasonal shopping context
+ */
+export const getMarketIntelligence = async (params?: GetMarketIntelligenceParams, options?: RequestInit): Promise<MarketIntelligence> => {
+
+  return customFetch<MarketIntelligence>(getGetMarketIntelligenceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMarketIntelligenceQueryKey = (params?: GetMarketIntelligenceParams,) => {
+    return [
+    `/api/market-intelligence`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMarketIntelligenceQueryOptions = <TData = Awaited<ReturnType<typeof getMarketIntelligence>>, TError = ErrorType<unknown>>(params?: GetMarketIntelligenceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMarketIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMarketIntelligenceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMarketIntelligence>>> = ({ signal }) => getMarketIntelligence(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMarketIntelligence>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMarketIntelligenceQueryResult = NonNullable<Awaited<ReturnType<typeof getMarketIntelligence>>>
+export type GetMarketIntelligenceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get local-market staples, retailer strengths, pack-size notes, and seasonal shopping context
+ */
+
+export function useGetMarketIntelligence<TData = Awaited<ReturnType<typeof getMarketIntelligence>>, TError = ErrorType<unknown>>(
+ params?: GetMarketIntelligenceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMarketIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMarketIntelligenceQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

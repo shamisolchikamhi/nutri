@@ -595,6 +595,30 @@ export const ListPantrySuggestionsResponse = zod.array(ListPantrySuggestionsResp
 
 
 /**
+ * @summary Get local-market staples, retailer strengths, pack-size notes, and seasonal shopping context
+ */
+export const GetMarketIntelligenceQueryParams = zod.object({
+  "marketCode": zod.coerce.string().optional()
+})
+
+export const GetMarketIntelligenceResponse = zod.object({
+  "marketCode": zod.string(),
+  "season": zod.string(),
+  "stapleCategories": zod.array(zod.string()),
+  "retailerHighlights": zod.array(zod.object({
+  "retailerId": zod.number(),
+  "retailerName": zod.string(),
+  "productCount": zod.number(),
+  "activeSpecialCount": zod.number(),
+  "strength": zod.string()
+})),
+  "packSizeNotes": zod.array(zod.string()),
+  "seasonalNotes": zod.array(zod.string()),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List supported retailers
  */
 export const ListRetailersQueryParams = zod.object({

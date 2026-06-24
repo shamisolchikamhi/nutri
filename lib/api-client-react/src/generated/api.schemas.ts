@@ -501,6 +501,24 @@ export interface ProductComparison {
   isBestValue: boolean;
 }
 
+export type MarketIntelligenceRetailerHighlightsItem = {
+  retailerId: number;
+  retailerName: string;
+  productCount: number;
+  activeSpecialCount: number;
+  strength: string;
+};
+
+export interface MarketIntelligence {
+  marketCode: string;
+  season: string;
+  stapleCategories: string[];
+  retailerHighlights: MarketIntelligenceRetailerHighlightsItem[];
+  packSizeNotes: string[];
+  seasonalNotes: string[];
+  updatedAt: string;
+}
+
 export type BasketMode = typeof BasketMode[keyof typeof BasketMode];
 
 
@@ -837,6 +855,10 @@ export type CreateBasketFromSocialRecipe201 = {
   basketName: string;
   itemCount: number;
   unmatchedIngredients: string[];
+};
+
+export type GetMarketIntelligenceParams = {
+marketCode?: string;
 };
 
 export type ListRetailersParams = {

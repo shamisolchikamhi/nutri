@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useListProducts, useListRetailers, useCompareProduct } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Tag } from "lucide-react";
+import { MapPin, Search, Tag } from "lucide-react";
 import { formatMoney } from "@/lib/market";
 import { PageEmpty, PageError } from "@/components/PageState";
 import { ProductCard } from "@/components/content/ProductCard";
@@ -21,6 +22,22 @@ const CATEGORIES = [
   { value: "pantry", label: "Pantry" },
 ];
 
+type MarketIntelligence = {
+  marketCode: string;
+  season: string;
+  stapleCategories: string[];
+  retailerHighlights: Array<{ retailerId: number; retailerName: string; productCount: number; activeSpecialCount: number; strength: string }>;
+  packSizeNotes: string[];
+  seasonalNotes: string[];
+  updatedAt: string;
+};
+
+async function fetchMarketIntelligence(): Promise<MarketIntelligence> {
+  const response = await fetch("/api/market-intelligence?marketCode=ZA");
+  if (!response.ok) throw new Error(`Request failed with ${response.status}`);
+  return response.json() as Promise<MarketIntelligence>;
+}
+
 export default function ProductsPage() {
   const [query, setQuery] = useState("");
   const [retailerId, setRetailerId] = useState("all");
@@ -29,6 +46,7 @@ export default function ProductsPage() {
   const [compareId, setCompareId] = useState<number | null>(null);
 
   const retailersQuery = useListRetailers();
+  const marketQuery = useQuery({ queryKey: ["market-intelligence", "ZA"], queryFn: fetchMarketIntelligence });
   const productsQuery = useListProducts({
     query: query || undefined,
     retailerId: retailerId !== "all" ? parseInt(retailerId) : undefined,
@@ -48,6 +66,34 @@ export default function ProductsPage() {
         </h1>
         <p className="text-muted-foreground text-sm">Compare nutrition and recently observed prices across all retailers</p>
       </div>
+
+      {marketQuery.data && (
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold">Local market intelligence</h2>
+            <Badge variant="secondary">{marketQuery.data.marketCode}</Badge>
+            <Badge variant="outline" className="capitalize">{marketQuery.data.season}</Badge>
+          </div>
+          <div className="mt-3 grid gap-3 text-sm md:grid-cols-3">
+            <div>
+              <p className="font-medium">Staples to watch</p>
+              <p className="text-muted-foreground">{marketQuery.data.stapleCategories.map((category) => category.replace("_", " ")).join(", ")}</p>
+            </div>
+            <div>
+              <p className="font-medium">Retailer signal</p>
+              <p className="text-muted-foreground">{marketQuery.data.retailerHighlights[0]?.strength ?? "No retailer coverage yet."}</p>
+            </div>
+            <div>
+              <p className="font-medium">Seasonal note</p>
+              <p className="text-muted-foreground">{marketQuery.data.seasonalNotes[0]}</p>
+            </div>
+          </div>
+          {marketQuery.data.packSizeNotes.length > 0 && (
+            <p className="mt-3 text-xs text-muted-foreground">Pack-size reality: {marketQuery.data.packSizeNotes[0]}</p>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="space-y-2">

@@ -11,6 +11,7 @@ import savedRouter from "./saved";
 import socialRecipesRouter from "./social-recipes";
 import retailerStatusRouter from "./retailer-status";
 import pantryRouter from "./pantry";
+import marketIntelligenceRouter from "./market-intelligence";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(savedRouter);
 router.use(socialRecipesRouter);
 router.use(retailerStatusRouter);
 router.use(pantryRouter);
+router.use(marketIntelligenceRouter);
 
 export default router;

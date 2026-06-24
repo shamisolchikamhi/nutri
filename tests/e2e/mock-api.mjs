@@ -497,6 +497,23 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/saved/recipes") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/saved/snacks") return send(res, 200, []);
+  if (req.method === "GET" && req.url.startsWith("/api/market-intelligence")) {
+    return send(res, 200, {
+      marketCode: "ZA",
+      season: "winter",
+      stapleCategories: ["protein", "pantry", "fruit_veg", "dairy"],
+      retailerHighlights: [{
+        retailerId: 1,
+        retailerName: "Test Market",
+        productCount: 12,
+        activeSpecialCount: 3,
+        strength: "Test Market currently has 3 observed offer(s), strongest around protein.",
+      }],
+      packSizeNotes: ["Chicken Breast 500g: 500g at Test Market"],
+      seasonalNotes: ["Soups, stews, legumes, citrus, oats, and frozen vegetables usually support budget and nutrition goals."],
+      updatedAt: "2026-06-24T12:00:00.000Z",
+    });
+  }
   if (req.method === "GET" && req.url === "/api/pantry/items") return send(res, 200, pantryItems);
   if (req.method === "GET" && req.url === "/api/pantry/suggestions") return send(res, 200, mockPantrySuggestions());
   if (req.method === "POST" && req.url === "/api/pantry/capture") {
