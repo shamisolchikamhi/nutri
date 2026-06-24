@@ -119,7 +119,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Reject invalid prices, impossible savings, missing dates, mismatched currency,
     duplicate products, and ambiguous pack sizes.
   - Send uncertain product matches to a review queue.
-- [ ] Add scraper observability and operations.
+- [x] Add scraper observability and operations.
   - Schedule retailer-specific jobs with conservative rate limits.
   - Track requests, extraction counts, changed prices, new/expired promotions,
     parse failures, blocked requests, and last successful run.

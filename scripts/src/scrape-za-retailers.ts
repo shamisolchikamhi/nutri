@@ -10,6 +10,19 @@ type RetailerConfig = {
   urls: string[];
 };
 
+export type RetailerScrapeMetrics = {
+  requests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  blockedRequests: number;
+  extractionCount: number;
+  parseFailures: number;
+  changedPrices: number;
+  newPromotions: number;
+  expiredPromotions: number;
+  lastSuccessfulRun: string | null;
+};
+
 export type ScrapedProduct = {
   externalId: string;
   sourceUrl: string;
@@ -91,6 +104,33 @@ function getArg(name: string, fallback?: string) {
 
 function hasFlag(name: string) {
   return process.argv.includes(`--${name}`);
+}
+
+function createMetrics(): RetailerScrapeMetrics {
+  return {
+    requests: 0,
+    successfulRequests: 0,
+    failedRequests: 0,
+    blockedRequests: 0,
+    extractionCount: 0,
+    parseFailures: 0,
+    changedPrices: 0,
+    newPromotions: 0,
+    expiredPromotions: 0,
+    lastSuccessfulRun: null,
+  };
+}
+
+function sleep(ms: number) {
+  return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+}
+
+export function buildScraperAlerts(metrics: RetailerScrapeMetrics, expectedMinimumExtractions: number) {
+  const alerts: string[] = [];
+  if (metrics.blockedRequests > 0) alerts.push(`blocked requests detected: ${metrics.blockedRequests}`);
+  if (metrics.extractionCount < expectedMinimumExtractions) alerts.push(`extraction count below threshold: ${metrics.extractionCount}/${expectedMinimumExtractions}`);
+  if (!metrics.lastSuccessfulRun) alerts.push("no successful scrape run");
+  return alerts;
 }
 
 function decodeHtml(value: string) {
@@ -280,21 +320,31 @@ async function fetchHtml(url: string, render = false) {
   return response.text();
 }
 
-async function scrapeRetailer(retailer: RetailerConfig, limit: number, render = false) {
+async function scrapeRetailer(retailer: RetailerConfig, limit: number, render = false, delayMs = 1500) {
   const productsByKey = new Map<string, ScrapedProduct>();
+  const metrics = createMetrics();
   for (const url of retailer.urls) {
     try {
+      metrics.requests += 1;
       const html = await fetchHtml(url, render);
       const products = extractProductsFromHtml(html, retailer, url, Math.max(10, limit - productsByKey.size));
+      metrics.successfulRequests += 1;
+      metrics.extractionCount += products.length;
+      if (products.length === 0) metrics.parseFailures += 1;
+      metrics.lastSuccessfulRun = new Date().toISOString();
       for (const product of products) {
         productsByKey.set(`${retailer.key}:${product.name.toLowerCase()}`, product);
       }
     } catch (error) {
-      console.warn(`${retailer.name}: failed ${url}: ${error instanceof Error ? error.message : String(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      metrics.failedRequests += 1;
+      if (/\b(401|403|429)\b|blocked|captcha/i.test(message)) metrics.blockedRequests += 1;
+      console.warn(`${retailer.name}: failed ${url}: ${message}`);
     }
     if (productsByKey.size >= limit) break;
+    if (delayMs > 0) await sleep(delayMs);
   }
-  return [...productsByKey.values()].slice(0, limit);
+  return { products: [...productsByKey.values()].slice(0, limit), metrics };
 }
 
 function isIsoDate(value: string | null) {
@@ -386,7 +436,7 @@ async function getOrCreateRetailer(retailer: RetailerConfig) {
   return created;
 }
 
-async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfig) {
+async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfig, metrics = createMetrics()) {
   const [{ and, eq, lt }, { db, productsTable, productPriceHistoryTable, specialsTable }] = await Promise.all([
     import("drizzle-orm"),
     import("@workspace/db"),
@@ -432,6 +482,7 @@ async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfi
 
     let productRow;
     if (existing[0]) {
+      if (existing[0].priceAud !== product.priceAud || existing[0].regularPriceAud !== product.regularPriceAud) metrics.changedPrices += 1;
       [productRow] = await db.update(productsTable).set(values).where(eq(productsTable.id, existing[0].id)).returning();
       updated += 1;
     } else {
@@ -443,6 +494,12 @@ async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfi
     if (product.regularPriceAud && product.regularPriceAud > product.priceAud) {
       const externalId = `${product.externalId}:offer`;
       seenPromotionIds.add(externalId);
+      const existingPromotion = await db
+        .select()
+        .from(specialsTable)
+        .where(and(eq(specialsTable.retailerId, row.id), eq(specialsTable.externalId, externalId)))
+        .limit(1);
+      if (!existingPromotion[0]) metrics.newPromotions += 1;
       const savings = Math.round((product.regularPriceAud - product.priceAud) * 100) / 100;
       await db.insert(specialsTable).values({
         externalId,
@@ -470,12 +527,15 @@ async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfi
 
   const knownPromotions = await db.select().from(specialsTable).where(eq(specialsTable.retailerId, row.id));
   for (const promotion of knownPromotions) {
-    if (promotion.externalId && !seenPromotionIds.has(promotion.externalId)) await db.update(specialsTable).set({ isStale: true }).where(eq(specialsTable.id, promotion.id));
+    if (promotion.externalId && !seenPromotionIds.has(promotion.externalId)) {
+      metrics.expiredPromotions += 1;
+      await db.update(specialsTable).set({ isStale: true }).where(eq(specialsTable.id, promotion.id));
+    }
   }
   const today = new Date().toISOString().slice(0, 10);
   await db.update(specialsTable).set({ isStale: true }).where(and(eq(specialsTable.retailerId, row.id), lt(specialsTable.validUntil, today)));
 
-  return { retailer: retailer.name, retailerId: row.id, inserted, updated };
+  return { retailer: retailer.name, retailerId: row.id, inserted, updated, metrics };
 }
 
 async function closePool() {
@@ -493,19 +553,31 @@ async function main() {
   const limit = Number.parseInt(getArg("limit", "60") ?? "60", 10);
   const shouldWrite = hasFlag("write");
   const render = hasFlag("render");
+  const delayMs = Number.parseInt(getArg("delay-ms", "1500") ?? "1500", 10);
   const fixturePath = getArg("from");
   const outPath = resolve(getArg("out", "scripts/out/za-retailers.json") ?? "");
   const reviewOutPath = resolve(getArg("review-out", "scripts/out/retailer-review-queue.json") ?? "");
+  const statusOutPath = resolve(getArg("status-out", "scripts/out/retailer-run-status.json") ?? "");
 
   let productsByRetailer: Record<string, ScrapedProduct[]> = {};
+  const metricsByRetailer: Record<string, RetailerScrapeMetrics> = {};
   if (fixturePath) {
     const fixture = JSON.parse(await readFile(resolve(fixturePath), "utf8")) as { productsByRetailer?: Record<string, ScrapedProduct[]> };
     productsByRetailer = fixture.productsByRetailer ?? {};
+    for (const [retailerName, products] of Object.entries(productsByRetailer)) {
+      metricsByRetailer[retailerName] = {
+        ...createMetrics(),
+        extractionCount: products.length,
+        lastSuccessfulRun: products.length > 0 ? new Date().toISOString() : null,
+      };
+    }
   } else {
     for (const key of retailerKeys) {
       const retailer = RETAILERS[key];
       if (!retailer) throw new Error(`Unsupported retailer "${key}". Use all, woolworths, pick-n-pay, or checkers.`);
-      productsByRetailer[retailer.name] = await scrapeRetailer(retailer, limit, render);
+      const result = await scrapeRetailer(retailer, limit, render, Number.isFinite(delayMs) ? delayMs : 1500);
+      productsByRetailer[retailer.name] = result.products;
+      metricsByRetailer[retailer.name] = result.metrics;
     }
   }
 
@@ -543,8 +615,8 @@ async function main() {
         currencyCode: "ZAR",
         note: "Prices and product names are scraped from public retailer pages. Nutrition is estimated from product/category heuristics until package nutrition labels are parsed.",
         scrapedAt: new Date().toISOString(),
-        productsByRetailer,
-        quality: Object.fromEntries(Object.entries(qualityByRetailer).map(([retailer, quality]) => [retailer, {
+      productsByRetailer,
+      quality: Object.fromEntries(Object.entries(qualityByRetailer).map(([retailer, quality]) => [retailer, {
           accepted: quality.accepted.length,
           rejected: quality.rejected.length,
           reviewQueued: quality.reviewQueue.length,
@@ -554,20 +626,40 @@ async function main() {
     );
   }
 
-  const writeResults: Array<{ retailer: string; retailerId: number; inserted: number; updated: number }> = [];
+  const writeResults: Array<{ retailer: string; retailerId: number; inserted: number; updated: number; metrics: RetailerScrapeMetrics }> = [];
   if (shouldWrite) {
     for (const key of retailerKeys) {
       const retailer = RETAILERS[key];
       const products = productsByRetailer[retailer.name] ?? [];
-      writeResults.push(await writeProducts(products, retailer));
+      writeResults.push(await writeProducts(products, retailer, metricsByRetailer[retailer.name] ?? createMetrics()));
     }
     await closePool();
   }
+
+  const status = {
+    marketCode: "ZA",
+    createdAt: new Date().toISOString(),
+    schedule: {
+      mode: "retailer-specific",
+      recommendedCadence: "hourly during retailer trading hours",
+      minimumDelayMsBetweenRequests: Number.isFinite(delayMs) ? delayMs : 1500,
+    },
+    retailers: Object.fromEntries(Object.entries(metricsByRetailer).map(([retailer, metrics]) => {
+      const expectedMinimumExtractions = fixturePath ? Math.min(1, limit) : Math.min(5, limit);
+      return [retailer, {
+        ...metrics,
+        alerts: buildScraperAlerts(metrics, expectedMinimumExtractions),
+      }];
+    })),
+  };
+  await mkdir(dirname(statusOutPath), { recursive: true });
+  await writeFile(statusOutPath, JSON.stringify(status, null, 2));
 
   console.log(JSON.stringify({
     marketCode: "ZA",
     output: fixturePath ? resolve(fixturePath) : outPath,
     reviewQueue: reviewQueue.length > 0 ? reviewOutPath : null,
+    status: statusOutPath,
     wroteToDatabase: shouldWrite,
     counts: Object.fromEntries(Object.entries(productsByRetailer).map(([retailer, products]) => [retailer, products.length])),
     quality: Object.fromEntries(Object.entries(qualityByRetailer).map(([retailer, quality]) => [retailer, {

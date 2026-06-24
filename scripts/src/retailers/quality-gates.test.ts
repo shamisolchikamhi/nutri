@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyDataQualityGates, type ScrapedProduct } from "../scrape-za-retailers";
+import { applyDataQualityGates, buildScraperAlerts, type ScrapedProduct } from "../scrape-za-retailers";
 
 function product(overrides: Partial<ScrapedProduct> = {}): ScrapedProduct {
   return {
@@ -61,4 +61,24 @@ test("data-quality gates reject duplicate products", () => {
   assert.equal(result.accepted.length, 1);
   assert.equal(result.rejected.length, 1);
   assert.ok(result.rejected[0].reasons.includes("duplicate product"));
+});
+
+test("scraper observability alerts on blocked or sharply low extraction runs", () => {
+  const alerts = buildScraperAlerts({
+    requests: 3,
+    successfulRequests: 1,
+    failedRequests: 2,
+    blockedRequests: 1,
+    extractionCount: 1,
+    parseFailures: 1,
+    changedPrices: 0,
+    newPromotions: 0,
+    expiredPromotions: 0,
+    lastSuccessfulRun: "2026-06-24T10:00:00.000Z",
+  }, 5);
+
+  assert.deepEqual(alerts, [
+    "blocked requests detected: 1",
+    "extraction count below threshold: 1/5",
+  ]);
 });
