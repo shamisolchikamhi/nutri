@@ -12,6 +12,7 @@ import RecipesPage from "@/pages/recipes";
 import RecipeDetailPage from "@/pages/recipe-detail";
 import MealPlanPage from "@/pages/meal-plan";
 import PantryPage from "@/pages/pantry";
+import AgentPage from "@/pages/agent";
 import BasketPage from "@/pages/basket";
 import BasketDetailPage from "@/pages/basket-detail";
 import SpecialsPage from "@/pages/specials";
@@ -59,6 +60,9 @@ function Router() {
       </Route>
       <Route path="/pantry">
         <AppLayout><PantryPage /></AppLayout>
+      </Route>
+      <Route path="/agent">
+        <AppLayout><AgentPage /></AppLayout>
       </Route>
       <Route path="/basket/:id">
         <AppLayout><BasketDetailPage /></AppLayout>

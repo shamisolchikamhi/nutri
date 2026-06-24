@@ -163,7 +163,7 @@ should not be shipped on top of unreliable health data or silent failures.
 
 ## P2 - Nutri Agent
 
-- [ ] Add an agent entry point focused on actions, not open-ended chat.
+- [x] Add an agent entry point focused on actions, not open-ended chat.
   - Example prompts: `Plan my week under R900`, `Use what is in my pantry`,
     `Swap tonight's dinner`, and `Make my basket cheaper without losing protein`.
 - [ ] Give the agent typed tools for profile, logs, recipes, meal plans, pantry,

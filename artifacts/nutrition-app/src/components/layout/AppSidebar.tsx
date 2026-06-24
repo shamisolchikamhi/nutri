@@ -1,6 +1,7 @@
 import { 
   Home, 
   Activity, 
+  Bot,
   Utensils, 
   CalendarDays,
   PackagePlus,
@@ -55,6 +56,11 @@ const navItems = [
     title: "Pantry",
     url: "/pantry",
     icon: PackagePlus,
+  },
+  {
+    title: "Agent",
+    url: "/agent",
+    icon: Bot,
   },
   {
     title: "Basket",
