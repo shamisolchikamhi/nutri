@@ -43,6 +43,13 @@
       "when": 1782326898987,
       "tag": "0005_acoustic_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782328582067,
+      "tag": "0006_quiet_dreaming_celestial",
+      "breakpoints": true
     }
   ]
 }

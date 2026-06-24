@@ -10,6 +10,7 @@ import dashboardRouter from "./dashboard";
 import savedRouter from "./saved";
 import socialRecipesRouter from "./social-recipes";
 import retailerStatusRouter from "./retailer-status";
+import pantryRouter from "./pantry";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(dashboardRouter);
 router.use(savedRouter);
 router.use(socialRecipesRouter);
 router.use(retailerStatusRouter);
+router.use(pantryRouter);
 
 export default router;

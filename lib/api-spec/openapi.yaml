@@ -31,6 +31,8 @@ tags:
     description: Saved items (recipes, baskets, snacks)
   - name: social-recipes
     description: Social recipe imports and local product matching
+  - name: pantry
+    description: Receipt, pantry capture, expiry-aware inventory, and meal suggestions
 paths:
   /healthz:
     get:
@@ -470,6 +472,111 @@ paths:
                     type: array
                     items:
                       type: string
+
+  # ---- Pantry ----
+  /pantry/items:
+    get:
+      operationId: listPantryItems
+      tags: [pantry]
+      summary: List captured pantry inventory items
+      responses:
+        "200":
+          description: Pantry items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PantryItem"
+    post:
+      operationId: createPantryItem
+      tags: [pantry]
+      summary: Manually add a confirmed pantry item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PantryItemInput"
+      responses:
+        "201":
+          description: Created pantry item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PantryItem"
+
+  /pantry/capture:
+    post:
+      operationId: capturePantryItems
+      tags: [pantry]
+      summary: Capture pantry items from receipt text, pantry text, or uploaded media
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PantryCaptureInput"
+      responses:
+        "201":
+          description: Captured pantry items requiring confirmation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PantryCaptureResult"
+
+  /pantry/items/{id}:
+    put:
+      operationId: updatePantryItem
+      tags: [pantry]
+      summary: Confirm or edit a captured pantry item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PantryItemInput"
+      responses:
+        "200":
+          description: Updated pantry item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PantryItem"
+    delete:
+      operationId: deletePantryItem
+      tags: [pantry]
+      summary: Remove a pantry item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /pantry/suggestions:
+    get:
+      operationId: listPantrySuggestions
+      tags: [pantry]
+      summary: Suggest meals using pantry items that will expire first
+      responses:
+        "200":
+          description: Pantry-based meal suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PantrySuggestion"
 
   # ---- Products ----
   /retailers:
@@ -1467,6 +1574,97 @@ components:
           anyOf:
             - $ref: "#/components/schemas/Recipe"
             - type: "null"
+
+    PantryItem:
+      type: object
+      required: [id, name, quantity, unit, category, source, confirmed, capturedAt, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        category:
+          type: string
+        source:
+          type: string
+          enum: [manual, receipt, pantry_photo]
+        expiresOn:
+          type: ["string", "null"]
+          format: date
+        confirmed:
+          type: boolean
+        capturedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PantryItemInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        category:
+          type: string
+        expiresOn:
+          type: ["string", "null"]
+          format: date
+        confirmed:
+          type: boolean
+
+    PantryCaptureInput:
+      type: object
+      properties:
+        rawText:
+          type: string
+        mediaDataUrls:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+          enum: [receipt, pantry_photo]
+
+    PantryCaptureResult:
+      type: object
+      required: [items, suggestedMeals]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PantryItem"
+        suggestedMeals:
+          type: array
+          items:
+            $ref: "#/components/schemas/PantrySuggestion"
+
+    PantrySuggestion:
+      type: object
+      required: [recipeId, name, matchedPantryItems, reason]
+      properties:
+        recipeId:
+          type: integer
+        name:
+          type: string
+        matchedPantryItems:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
 
     # ---- Products ----
     Retailer:

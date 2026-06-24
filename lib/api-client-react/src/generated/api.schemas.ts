@@ -369,6 +369,66 @@ export interface SocialRecipe {
   recipe?: Recipe | null;
 }
 
+export type PantryItemSource = typeof PantryItemSource[keyof typeof PantryItemSource];
+
+
+export const PantryItemSource = {
+  manual: 'manual',
+  receipt: 'receipt',
+  pantry_photo: 'pantry_photo',
+} as const;
+
+export interface PantryItem {
+  id: number;
+  name: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  source: PantryItemSource;
+  /** @nullable */
+  expiresOn?: string | null;
+  confirmed: boolean;
+  capturedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PantryItemInput {
+  name: string;
+  quantity?: number;
+  unit?: string;
+  category?: string;
+  /** @nullable */
+  expiresOn?: string | null;
+  confirmed?: boolean;
+}
+
+export type PantryCaptureInputSource = typeof PantryCaptureInputSource[keyof typeof PantryCaptureInputSource];
+
+
+export const PantryCaptureInputSource = {
+  receipt: 'receipt',
+  pantry_photo: 'pantry_photo',
+} as const;
+
+export interface PantryCaptureInput {
+  rawText?: string;
+  mediaDataUrls?: string[];
+  source?: PantryCaptureInputSource;
+}
+
+export interface PantrySuggestion {
+  recipeId: number;
+  name: string;
+  matchedPantryItems: string[];
+  reason: string;
+}
+
+export interface PantryCaptureResult {
+  items: PantryItem[];
+  suggestedMeals: PantrySuggestion[];
+}
+
 export interface Retailer {
   id: number;
   name: string;

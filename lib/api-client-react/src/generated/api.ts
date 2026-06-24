@@ -42,6 +42,11 @@ import type {
   ListSpecialsParams,
   MealEntry,
   MealEntryInput,
+  PantryCaptureInput,
+  PantryCaptureResult,
+  PantryItem,
+  PantryItemInput,
+  PantrySuggestion,
   Product,
   ProductComparison,
   ProgressSummary,
@@ -1657,6 +1662,444 @@ export const useCreateBasketFromSocialRecipe = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateBasketFromSocialRecipeMutationOptions(options));
     }
+
+export const getListPantryItemsUrl = () => {
+
+
+
+
+  return `/api/pantry/items`
+}
+
+/**
+ * @summary List captured pantry inventory items
+ */
+export const listPantryItems = async ( options?: RequestInit): Promise<PantryItem[]> => {
+
+  return customFetch<PantryItem[]>(getListPantryItemsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPantryItemsQueryKey = () => {
+    return [
+    `/api/pantry/items`
+    ] as const;
+    }
+
+
+export const getListPantryItemsQueryOptions = <TData = Awaited<ReturnType<typeof listPantryItems>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPantryItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPantryItemsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPantryItems>>> = ({ signal }) => listPantryItems({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPantryItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPantryItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listPantryItems>>>
+export type ListPantryItemsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List captured pantry inventory items
+ */
+
+export function useListPantryItems<TData = Awaited<ReturnType<typeof listPantryItems>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPantryItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPantryItemsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreatePantryItemUrl = () => {
+
+
+
+
+  return `/api/pantry/items`
+}
+
+/**
+ * @summary Manually add a confirmed pantry item
+ */
+export const createPantryItem = async (pantryItemInput: PantryItemInput, options?: RequestInit): Promise<PantryItem> => {
+
+  return customFetch<PantryItem>(getCreatePantryItemUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      pantryItemInput,)
+  }
+);}
+
+
+
+
+export const getCreatePantryItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPantryItem>>, TError,{data: BodyType<PantryItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPantryItem>>, TError,{data: BodyType<PantryItemInput>}, TContext> => {
+
+const mutationKey = ['createPantryItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPantryItem>>, {data: BodyType<PantryItemInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPantryItem(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePantryItemMutationResult = NonNullable<Awaited<ReturnType<typeof createPantryItem>>>
+    export type CreatePantryItemMutationBody = BodyType<PantryItemInput>
+    export type CreatePantryItemMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Manually add a confirmed pantry item
+ */
+export const useCreatePantryItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPantryItem>>, TError,{data: BodyType<PantryItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPantryItem>>,
+        TError,
+        {data: BodyType<PantryItemInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePantryItemMutationOptions(options));
+    }
+
+export const getCapturePantryItemsUrl = () => {
+
+
+
+
+  return `/api/pantry/capture`
+}
+
+/**
+ * @summary Capture pantry items from receipt text, pantry text, or uploaded media
+ */
+export const capturePantryItems = async (pantryCaptureInput: PantryCaptureInput, options?: RequestInit): Promise<PantryCaptureResult> => {
+
+  return customFetch<PantryCaptureResult>(getCapturePantryItemsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      pantryCaptureInput,)
+  }
+);}
+
+
+
+
+export const getCapturePantryItemsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof capturePantryItems>>, TError,{data: BodyType<PantryCaptureInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof capturePantryItems>>, TError,{data: BodyType<PantryCaptureInput>}, TContext> => {
+
+const mutationKey = ['capturePantryItems'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof capturePantryItems>>, {data: BodyType<PantryCaptureInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  capturePantryItems(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CapturePantryItemsMutationResult = NonNullable<Awaited<ReturnType<typeof capturePantryItems>>>
+    export type CapturePantryItemsMutationBody = BodyType<PantryCaptureInput>
+    export type CapturePantryItemsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Capture pantry items from receipt text, pantry text, or uploaded media
+ */
+export const useCapturePantryItems = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof capturePantryItems>>, TError,{data: BodyType<PantryCaptureInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof capturePantryItems>>,
+        TError,
+        {data: BodyType<PantryCaptureInput>},
+        TContext
+      > => {
+      return useMutation(getCapturePantryItemsMutationOptions(options));
+    }
+
+export const getUpdatePantryItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/pantry/items/${id}`
+}
+
+/**
+ * @summary Confirm or edit a captured pantry item
+ */
+export const updatePantryItem = async (id: number,
+    pantryItemInput: PantryItemInput, options?: RequestInit): Promise<PantryItem> => {
+
+  return customFetch<PantryItem>(getUpdatePantryItemUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      pantryItemInput,)
+  }
+);}
+
+
+
+
+export const getUpdatePantryItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePantryItem>>, TError,{id: number;data: BodyType<PantryItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePantryItem>>, TError,{id: number;data: BodyType<PantryItemInput>}, TContext> => {
+
+const mutationKey = ['updatePantryItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePantryItem>>, {id: number;data: BodyType<PantryItemInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePantryItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePantryItemMutationResult = NonNullable<Awaited<ReturnType<typeof updatePantryItem>>>
+    export type UpdatePantryItemMutationBody = BodyType<PantryItemInput>
+    export type UpdatePantryItemMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Confirm or edit a captured pantry item
+ */
+export const useUpdatePantryItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePantryItem>>, TError,{id: number;data: BodyType<PantryItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePantryItem>>,
+        TError,
+        {id: number;data: BodyType<PantryItemInput>},
+        TContext
+      > => {
+      return useMutation(getUpdatePantryItemMutationOptions(options));
+    }
+
+export const getDeletePantryItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/pantry/items/${id}`
+}
+
+/**
+ * @summary Remove a pantry item
+ */
+export const deletePantryItem = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeletePantryItemUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeletePantryItemMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePantryItem>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePantryItem>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deletePantryItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePantryItem>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePantryItem(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePantryItemMutationResult = NonNullable<Awaited<ReturnType<typeof deletePantryItem>>>
+
+    export type DeletePantryItemMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove a pantry item
+ */
+export const useDeletePantryItem = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePantryItem>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePantryItem>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeletePantryItemMutationOptions(options));
+    }
+
+export const getListPantrySuggestionsUrl = () => {
+
+
+
+
+  return `/api/pantry/suggestions`
+}
+
+/**
+ * @summary Suggest meals using pantry items that will expire first
+ */
+export const listPantrySuggestions = async ( options?: RequestInit): Promise<PantrySuggestion[]> => {
+
+  return customFetch<PantrySuggestion[]>(getListPantrySuggestionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPantrySuggestionsQueryKey = () => {
+    return [
+    `/api/pantry/suggestions`
+    ] as const;
+    }
+
+
+export const getListPantrySuggestionsQueryOptions = <TData = Awaited<ReturnType<typeof listPantrySuggestions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPantrySuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPantrySuggestionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPantrySuggestions>>> = ({ signal }) => listPantrySuggestions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPantrySuggestions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPantrySuggestionsQueryResult = NonNullable<Awaited<ReturnType<typeof listPantrySuggestions>>>
+export type ListPantrySuggestionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Suggest meals using pantry items that will expire first
+ */
+
+export function useListPantrySuggestions<TData = Awaited<ReturnType<typeof listPantrySuggestions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPantrySuggestions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPantrySuggestionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListRetailersUrl = (params?: ListRetailersParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -3,6 +3,7 @@ import {
   Activity, 
   Utensils, 
   CalendarDays,
+  PackagePlus,
   ShoppingCart, 
   Tag, 
   Settings, 
@@ -49,6 +50,11 @@ const navItems = [
     title: "Meal Plan",
     url: "/meal-plan",
     icon: CalendarDays,
+  },
+  {
+    title: "Pantry",
+    url: "/pantry",
+    icon: PackagePlus,
   },
   {
     title: "Basket",

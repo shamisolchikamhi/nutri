@@ -148,7 +148,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Rebalance the remaining day after a logged meal or workout.
   - Replace unavailable/expensive ingredients without breaking macros or budget.
   - Turn leftovers into the next meal and flag ingredients likely to be wasted.
-- [ ] Add receipt and pantry capture.
+- [x] Add receipt and pantry capture.
   - Scan a receipt or pantry photo, confirm extracted items, then update inventory.
   - Suggest meals using what will expire first.
 - [ ] Add a transparent value score for products and specials.

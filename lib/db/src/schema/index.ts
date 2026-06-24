@@ -8,3 +8,4 @@ export * from "./baskets";
 export * from "./saved";
 export * from "./nutrition_catalog";
 export * from "./price_history";
+export * from "./pantry";

@@ -20,6 +20,7 @@ let weightKg = 86;
 let bodyFatPercent = 24;
 let activities = [];
 let socialRecipes = [];
+let pantryItems = [];
 let recipeSaved = false;
 const recentlyVerifiedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 
@@ -258,6 +259,40 @@ const goal = {
   progressPercent: 0,
 };
 
+function parseMockPantryItems(rawText) {
+  return String(rawText)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*•\d.)\s]+/, "").replace(/\s{2,}/g, " "))
+    .filter((line) => line.length > 2)
+    .slice(0, 10)
+    .map((name, index) => ({
+      id: pantryItems.length + index + 1,
+      name,
+      quantity: 1,
+      unit: "item",
+      category: /yoghurt|milk|cheese/i.test(name) ? "dairy" : /banana|spinach|broccoli/i.test(name) ? "fruit_veg" : "pantry",
+      source: "receipt",
+      expiresOn: "2026-06-28",
+      confirmed: false,
+      capturedAt: "2026-06-24T12:00:00.000Z",
+      createdAt: "2026-06-24T12:00:00.000Z",
+      updatedAt: "2026-06-24T12:00:00.000Z",
+    }));
+}
+
+function mockPantrySuggestions() {
+  const names = pantryItems.map((item) => item.name.toLowerCase());
+  if (!names.some((name) => name.includes("rice") || name.includes("spinach") || name.includes("yoghurt"))) return [];
+  return [{
+    recipeId: recipe.id,
+    name: recipe.name,
+    matchedPantryItems: pantryItems.filter((item) => /rice|spinach|yoghurt/i.test(item.name)).map((item) => item.name),
+    reason: "Uses pantry items before they expire.",
+  }];
+}
+
 function send(res, status, body) {
   res.writeHead(status, { "content-type": "application/json" });
   res.end(JSON.stringify(body));
@@ -457,6 +492,33 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/saved/recipes") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/saved/snacks") return send(res, 200, []);
+  if (req.method === "GET" && req.url === "/api/pantry/items") return send(res, 200, pantryItems);
+  if (req.method === "GET" && req.url === "/api/pantry/suggestions") return send(res, 200, mockPantrySuggestions());
+  if (req.method === "POST" && req.url === "/api/pantry/capture") {
+    readJson(req).then((body) => {
+      if (!body.rawText) {
+        send(res, 400, { error: "Paste receipt or pantry text, or start the real API with OPENAI_API_KEY to analyze uploaded photos." });
+        return;
+      }
+      const items = parseMockPantryItems(body.rawText);
+      pantryItems = [...pantryItems, ...items];
+      send(res, 201, { items, suggestedMeals: mockPantrySuggestions() });
+    });
+    return;
+  }
+  const pantryItemMatch = req.url.match(/^\/api\/pantry\/items\/(\d+)$/);
+  if (pantryItemMatch && req.method === "PUT") {
+    readJson(req).then((body) => {
+      pantryItems = pantryItems.map((item) => item.id === Number(pantryItemMatch[1]) ? { ...item, ...body, updatedAt: "2026-06-24T12:05:00.000Z" } : item);
+      send(res, 200, pantryItems.find((item) => item.id === Number(pantryItemMatch[1])));
+    });
+    return;
+  }
+  if (pantryItemMatch && req.method === "DELETE") {
+    pantryItems = pantryItems.filter((item) => item.id !== Number(pantryItemMatch[1]));
+    res.writeHead(204);
+    return res.end();
+  }
   if (req.method === "GET" && req.url === "/api/social-recipes") return send(res, 200, socialRecipes);
   if (req.method === "POST" && req.url === "/api/social-recipes") {
     readJson(req).then((body) => {

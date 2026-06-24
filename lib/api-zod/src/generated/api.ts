@@ -502,6 +502,99 @@ export const CreateBasketFromSocialRecipeParams = zod.object({
 
 
 /**
+ * @summary List captured pantry inventory items
+ */
+export const ListPantryItemsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "category": zod.string(),
+  "source": zod.enum(['manual', 'receipt', 'pantry_photo']),
+  "expiresOn": zod.coerce.date().nullish(),
+  "confirmed": zod.boolean(),
+  "capturedAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListPantryItemsResponse = zod.array(ListPantryItemsResponseItem)
+
+
+/**
+ * @summary Manually add a confirmed pantry item
+ */
+export const CreatePantryItemBody = zod.object({
+  "name": zod.string(),
+  "quantity": zod.number().optional(),
+  "unit": zod.string().optional(),
+  "category": zod.string().optional(),
+  "expiresOn": zod.coerce.date().nullish(),
+  "confirmed": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Capture pantry items from receipt text, pantry text, or uploaded media
+ */
+export const CapturePantryItemsBody = zod.object({
+  "rawText": zod.string().optional(),
+  "mediaDataUrls": zod.array(zod.string()).optional(),
+  "source": zod.enum(['receipt', 'pantry_photo']).optional()
+})
+
+
+/**
+ * @summary Confirm or edit a captured pantry item
+ */
+export const UpdatePantryItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdatePantryItemBody = zod.object({
+  "name": zod.string(),
+  "quantity": zod.number().optional(),
+  "unit": zod.string().optional(),
+  "category": zod.string().optional(),
+  "expiresOn": zod.coerce.date().nullish(),
+  "confirmed": zod.boolean().optional()
+})
+
+export const UpdatePantryItemResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "category": zod.string(),
+  "source": zod.enum(['manual', 'receipt', 'pantry_photo']),
+  "expiresOn": zod.coerce.date().nullish(),
+  "confirmed": zod.boolean(),
+  "capturedAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a pantry item
+ */
+export const DeletePantryItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Suggest meals using pantry items that will expire first
+ */
+export const ListPantrySuggestionsResponseItem = zod.object({
+  "recipeId": zod.number(),
+  "name": zod.string(),
+  "matchedPantryItems": zod.array(zod.string()),
+  "reason": zod.string()
+})
+export const ListPantrySuggestionsResponse = zod.array(ListPantrySuggestionsResponseItem)
+
+
+/**
  * @summary List supported retailers
  */
 export const ListRetailersQueryParams = zod.object({
