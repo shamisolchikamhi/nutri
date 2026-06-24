@@ -5,15 +5,21 @@
  * NutriBasket API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BodyFatEntry } from './bodyFatEntry';
 import type { WeightEntry } from './weightEntry';
 
 export interface ProgressSummary {
   currentWeightKg: number;
   targetWeightKg: number;
   startWeightKg: number;
+  /** @nullable */
+  currentBodyFatPercent?: number | null;
+  /** @nullable */
+  startBodyFatPercent?: number | null;
   kgLost: number;
   kgToGo: number;
   progressPercent: number;
   estimatedWeeksRemaining: number;
   weeklyTrend: WeightEntry[];
+  bodyFatTrend?: BodyFatEntry[];
 }

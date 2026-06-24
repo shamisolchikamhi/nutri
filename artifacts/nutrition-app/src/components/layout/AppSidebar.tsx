@@ -5,11 +5,8 @@ import {
   CalendarDays,
   ShoppingCart, 
   Tag, 
-  LineChart, 
   Settings, 
   Search,
-  History,
-  Dumbbell,
   Library,
   Database
 } from "lucide-react";
@@ -42,12 +39,6 @@ const navItems = [
     url: "/tracker",
     icon: Activity,
     routes: ["/tracker", "/tracker/activity", "/tracker/history", "/progress"],
-    children: [
-      { title: "Today", url: "/tracker", icon: Activity },
-      { title: "Activity", url: "/tracker/activity", icon: Dumbbell },
-      { title: "History", url: "/tracker/history", icon: History },
-      { title: "Progress", url: "/progress", icon: LineChart },
-    ],
   },
   {
     title: "Recipes",

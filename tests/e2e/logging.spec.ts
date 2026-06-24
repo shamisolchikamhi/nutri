@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("logs a meal, water, activity, and weight", async ({ page }) => {
   await page.goto("/tracker");
-  await expect(page.getByRole("heading", { name: "Meal Tracker" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Track" })).toBeVisible();
 
   await page.getByRole("button", { name: "Log Meal" }).click();
   await page.getByRole("button", { name: "Egg (1 large)" }).click();
@@ -27,7 +27,6 @@ test("logs a meal, water, activity, and weight", async ({ page }) => {
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("Egg (1 large)", { exact: true })).toHaveCount(0, { timeout: 8_000 });
 
-  await page.goto("/tracker/activity");
   await page.getByRole("button", { name: "Add Activity" }).click();
   await page.getByPlaceholder("30").fill("30");
   await page.getByPlaceholder("200").fill("200");
@@ -36,9 +35,13 @@ test("logs a meal, water, activity, and weight", async ({ page }) => {
   await expect(page.getByText("walking", { exact: true })).toBeVisible();
   await expect(page.getByText("8,000 steps", { exact: true })).toBeVisible();
 
-  await page.goto("/progress");
-  await page.getByRole("spinbutton").fill("85");
-  await page.getByRole("button", { name: "Log" }).click();
+  await page.getByLabel("Log Today's Weight").fill("85");
+  await page.getByRole("button", { name: "Log", exact: true }).click();
   await expect(page.getByText("85", { exact: true })).toBeVisible();
   await expect(page.getByText("Your weight entry was saved.", { exact: true })).toBeVisible();
+
+  await page.getByLabel("Log Body Fat %").fill("23.5");
+  await page.getByRole("button", { name: "Log %" }).click();
+  await expect(page.getByText("23.5", { exact: true })).toBeVisible();
+  await expect(page.getByText("Your body fat entry was saved.", { exact: true })).toBeVisible();
 });

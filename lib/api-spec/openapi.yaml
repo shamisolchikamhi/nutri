@@ -1143,6 +1143,8 @@ components:
           type: integer
         weightKg:
           type: ["number", "null"]
+        bodyFatPercent:
+          type: ["number", "null"]
         notes:
           type: ["string", "null"]
 
@@ -1152,6 +1154,8 @@ components:
         waterMl:
           type: integer
         weightKg:
+          type: ["number", "null"]
+        bodyFatPercent:
           type: ["number", "null"]
         notes:
           type: ["string", "null"]
@@ -1905,6 +1909,10 @@ components:
           type: number
         startWeightKg:
           type: number
+        currentBodyFatPercent:
+          type: ["number", "null"]
+        startBodyFatPercent:
+          type: ["number", "null"]
         kgLost:
           type: number
         kgToGo:
@@ -1917,6 +1925,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/WeightEntry"
+        bodyFatTrend:
+          type: array
+          items:
+            $ref: "#/components/schemas/BodyFatEntry"
 
     WeightEntry:
       type: object
@@ -1926,6 +1938,16 @@ components:
           type: string
           format: date
         weightKg:
+          type: number
+
+    BodyFatEntry:
+      type: object
+      required: [date, bodyFatPercent]
+      properties:
+        date:
+          type: string
+          format: date
+        bodyFatPercent:
           type: number
 
     # ---- Saved Items ----

@@ -113,6 +113,7 @@ export const ListDailyLogsResponseItem = zod.object({
   "adherencePercent": zod.number(),
   "streak": zod.number(),
   "weightKg": zod.number().nullish(),
+  "bodyFatPercent": zod.number().nullish(),
   "notes": zod.string().nullish()
 })
 export const ListDailyLogsResponse = zod.array(ListDailyLogsResponseItem)
@@ -139,6 +140,7 @@ export const GetDailyLogResponse = zod.object({
   "adherencePercent": zod.number(),
   "streak": zod.number(),
   "weightKg": zod.number().nullish(),
+  "bodyFatPercent": zod.number().nullish(),
   "notes": zod.string().nullish()
 })
 
@@ -153,6 +155,7 @@ export const UpsertDailyLogParams = zod.object({
 export const UpsertDailyLogBody = zod.object({
   "waterMl": zod.number().optional(),
   "weightKg": zod.number().nullish(),
+  "bodyFatPercent": zod.number().nullish(),
   "notes": zod.string().nullish()
 })
 
@@ -170,6 +173,7 @@ export const UpsertDailyLogResponse = zod.object({
   "adherencePercent": zod.number(),
   "streak": zod.number(),
   "weightKg": zod.number().nullish(),
+  "bodyFatPercent": zod.number().nullish(),
   "notes": zod.string().nullish()
 })
 
@@ -254,6 +258,7 @@ export const GetWeeklySummaryResponse = zod.object({
   "adherencePercent": zod.number(),
   "streak": zod.number(),
   "weightKg": zod.number().nullish(),
+  "bodyFatPercent": zod.number().nullish(),
   "notes": zod.string().nullish()
 }))
 })
@@ -1015,6 +1020,8 @@ export const GetProgressSummaryResponse = zod.object({
   "currentWeightKg": zod.number(),
   "targetWeightKg": zod.number(),
   "startWeightKg": zod.number(),
+  "currentBodyFatPercent": zod.number().nullish(),
+  "startBodyFatPercent": zod.number().nullish(),
   "kgLost": zod.number(),
   "kgToGo": zod.number(),
   "progressPercent": zod.number(),
@@ -1022,7 +1029,11 @@ export const GetProgressSummaryResponse = zod.object({
   "weeklyTrend": zod.array(zod.object({
   "date": zod.coerce.date(),
   "weightKg": zod.number()
-}))
+})),
+  "bodyFatTrend": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "bodyFatPercent": zod.number()
+})).optional()
 })
 
 

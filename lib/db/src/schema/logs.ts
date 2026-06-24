@@ -7,6 +7,7 @@ export const dailyLogsTable = pgTable("daily_logs", {
   date: date("date").notNull().unique(),
   waterMl: integer("water_ml").notNull().default(0),
   weightKg: real("weight_kg"),
+  bodyFatPercent: real("body_fat_percent"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

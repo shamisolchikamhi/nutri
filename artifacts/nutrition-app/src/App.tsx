@@ -8,8 +8,6 @@ import IndexPage from "@/pages/index";
 import OnboardingPage from "@/pages/onboarding";
 import DashboardPage from "@/pages/dashboard";
 import TrackerPage from "@/pages/tracker";
-import ActivityPage from "@/pages/tracker-activity";
-import HistoryPage from "@/pages/tracker-history";
 import RecipesPage from "@/pages/recipes";
 import RecipeDetailPage from "@/pages/recipe-detail";
 import MealPlanPage from "@/pages/meal-plan";
@@ -18,7 +16,6 @@ import BasketDetailPage from "@/pages/basket-detail";
 import SpecialsPage from "@/pages/specials";
 import ProductsPage from "@/pages/products";
 import RetailerStatusPage from "@/pages/retailer-status";
-import ProgressPage from "@/pages/progress";
 import SavedPage from "@/pages/saved";
 import SettingsPage from "@/pages/settings";
 import AppLayout from "@/components/layout/AppLayout";
@@ -45,10 +42,10 @@ function Router() {
         <AppLayout><TrackerPage /></AppLayout>
       </Route>
       <Route path="/tracker/activity">
-        <AppLayout><ActivityPage /></AppLayout>
+        <AppLayout><TrackerPage /></AppLayout>
       </Route>
       <Route path="/tracker/history">
-        <AppLayout><HistoryPage /></AppLayout>
+        <AppLayout><TrackerPage /></AppLayout>
       </Route>
       <Route path="/recipes/:id">
         <AppLayout><RecipeDetailPage /></AppLayout>
@@ -75,7 +72,7 @@ function Router() {
         <AppLayout><RetailerStatusPage /></AppLayout>
       </Route>
       <Route path="/progress">
-        <AppLayout><ProgressPage /></AppLayout>
+        <AppLayout><TrackerPage /></AppLayout>
       </Route>
       <Route path="/saved">
         <AppLayout><SavedPage /></AppLayout>

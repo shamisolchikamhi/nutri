@@ -36,6 +36,13 @@
       "when": 1781906247187,
       "tag": "0004_bent_energizer",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782326898987,
+      "tag": "0005_acoustic_wolfsbane",
+      "breakpoints": true
     }
   ]
 }

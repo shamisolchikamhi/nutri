@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { TrendingDown, Target, Scale, Award } from "lucide-react";
+import { Percent, TrendingDown, Target, Scale, Award } from "lucide-react";
 import { PageError } from "@/components/PageState";
 import { formatDate } from "@/lib/market";
 
@@ -29,6 +29,7 @@ export default function ProgressPage() {
   const { data: goalSummary } = goalQuery;
   const { data: profile } = profileQuery;
   const [weightInput, setWeightInput] = useState("");
+  const [bodyFatInput, setBodyFatInput] = useState("");
 
   const logWeightMutation = useAppMutation({
     operation: "Log weight",
@@ -41,6 +42,17 @@ export default function ProgressPage() {
     },
   });
 
+  const logBodyFatMutation = useAppMutation({
+    operation: "Log body fat",
+    reference: "WRITE-BODY-FAT",
+    successMessage: "Your body fat entry was saved.",
+    invalidate: [getGetProgressSummaryQueryKey(), getGetDailyLogQueryKey(today)],
+    mutationFn: (bodyFatPercent: number) => upsertDailyLog(today, { bodyFatPercent }),
+    onSuccess: () => {
+      setBodyFatInput("");
+    },
+  });
+
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-32" />)}</div>;
   const failedQuery = [progressQuery, goalQuery, profileQuery].find((query) => query.isError);
   if (failedQuery) return <PageError reference="DATA-PROGRESS" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
@@ -48,6 +60,11 @@ export default function ProgressPage() {
   const chartData = progress?.weeklyTrend?.map((d) => ({
     date: formatDate(d.date, { month: "short", day: "numeric" }),
     weight: d.weightKg,
+  })) ?? [];
+
+  const bodyFatChartData = progress?.bodyFatTrend?.map((d) => ({
+    date: formatDate(d.date, { month: "short", day: "numeric" }),
+    bodyFat: d.bodyFatPercent,
   })) ?? [];
 
   const progressPercent = progress?.progressPercent ?? 0;
@@ -61,23 +78,44 @@ export default function ProgressPage() {
 
       {/* Weight Logger */}
       <Card>
-        <CardContent className="p-4">
-          <Label htmlFor="progress-weight" className="text-sm font-medium mb-2 block">Log Today's Weight</Label>
-          <div className="flex gap-2">
-            <Input
-              id="progress-weight"
-              type="number"
-              placeholder={`${progress?.currentWeightKg ?? 75} kg`}
-              value={weightInput}
-              onChange={(e) => setWeightInput(e.target.value)}
-              className="flex-1"
-            />
-            <Button
-              onClick={() => weightInput && logWeightMutation.mutate(parseFloat(weightInput))}
-              disabled={!weightInput || logWeightMutation.isPending}
-            >
-              {logWeightMutation.isPending ? "Saving..." : "Log"}
-            </Button>
+        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
+          <div>
+            <Label htmlFor="progress-weight" className="text-sm font-medium mb-2 block">Log Today's Weight</Label>
+            <div className="flex gap-2">
+              <Input
+                id="progress-weight"
+                type="number"
+                placeholder={`${progress?.currentWeightKg ?? 75} kg`}
+                value={weightInput}
+                onChange={(e) => setWeightInput(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => weightInput && logWeightMutation.mutate(parseFloat(weightInput))}
+                disabled={!weightInput || logWeightMutation.isPending}
+              >
+                {logWeightMutation.isPending ? "Saving..." : "Log"}
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="progress-body-fat" className="text-sm font-medium mb-2 block">Log Body Fat %</Label>
+            <div className="flex gap-2">
+              <Input
+                id="progress-body-fat"
+                type="number"
+                placeholder={`${progress?.currentBodyFatPercent ?? profile?.bodyFatPercent ?? 24}%`}
+                value={bodyFatInput}
+                onChange={(e) => setBodyFatInput(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => bodyFatInput && logBodyFatMutation.mutate(parseFloat(bodyFatInput))}
+                disabled={!bodyFatInput || logBodyFatMutation.isPending}
+              >
+                {logBodyFatMutation.isPending ? "Saving..." : "Log %"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -100,7 +138,7 @@ export default function ProgressPage() {
             </div>
           </div>
           <CardContent className="p-4">
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
               <div>
                 <p className="text-2xl font-bold">{progress.currentWeightKg}</p>
                 <p className="text-xs text-muted-foreground">Current (kg)</p>
@@ -112,6 +150,10 @@ export default function ProgressPage() {
               <div>
                 <p className="text-2xl font-bold text-amber-500">{progress.kgToGo}</p>
                 <p className="text-xs text-muted-foreground">To go (kg)</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-600">{progress.currentBodyFatPercent ?? "—"}</p>
+                <p className="text-xs text-muted-foreground">Body fat (%)</p>
               </div>
             </div>
           </CardContent>
@@ -175,6 +217,37 @@ export default function ProgressPage() {
             <div className="text-center text-muted-foreground text-sm py-8 space-y-3">
               <p>Log your first weight before a trend can be calculated.</p>
               <Button variant="outline" onClick={() => document.querySelector<HTMLInputElement>('input[type="number"]')?.focus()}>Log first weight</Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Body Fat Chart */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2"><Percent className="h-4 w-4 text-purple-600" /> Body Fat Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {bodyFatChartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={bodyFatChartData}>
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis
+                  domain={["auto", "auto"]}
+                  tick={{ fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={35}
+                  tickFormatter={(v) => `${v}%`}
+                />
+                <Tooltip formatter={(v) => [`${v}%`, "Body fat"]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Line type="monotone" dataKey="bodyFat" stroke="#9333ea" strokeWidth={2} dot={{ r: 4, fill: "#9333ea" }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center text-muted-foreground text-sm py-8 space-y-3">
+              <p>Log body fat percentage to start tracking composition changes.</p>
+              <Button variant="outline" onClick={() => document.querySelector<HTMLInputElement>("#progress-body-fat")?.focus()}>Log body fat</Button>
             </div>
           )}
         </CardContent>

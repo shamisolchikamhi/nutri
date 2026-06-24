@@ -4,9 +4,12 @@ test("groups tracking, shopping, and saved routes into workspaces", async ({ pag
   await page.goto("/dashboard");
 
   await expect(page.getByRole("link", { name: "Track", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Activity", exact: true }).click();
-  await expect(page).toHaveURL(/\/tracker\/activity$/);
+  await page.getByRole("link", { name: "Track", exact: true }).click();
+  await expect(page).toHaveURL(/\/tracker$/);
+  await expect(page.getByRole("heading", { name: "Track" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Activity Log" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Progress" })).toBeVisible();
 
   await expect(page.getByRole("link", { name: "Shop", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Specials", exact: true }).click();

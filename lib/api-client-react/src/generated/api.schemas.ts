@@ -146,6 +146,8 @@ export interface DailyLog {
   /** @nullable */
   weightKg?: number | null;
   /** @nullable */
+  bodyFatPercent?: number | null;
+  /** @nullable */
   notes?: string | null;
 }
 
@@ -153,6 +155,8 @@ export interface DailyLogInput {
   waterMl?: number;
   /** @nullable */
   weightKg?: number | null;
+  /** @nullable */
+  bodyFatPercent?: number | null;
   /** @nullable */
   notes?: string | null;
 }
@@ -691,15 +695,25 @@ export interface WeightEntry {
   weightKg: number;
 }
 
+export interface BodyFatEntry {
+  date: string;
+  bodyFatPercent: number;
+}
+
 export interface ProgressSummary {
   currentWeightKg: number;
   targetWeightKg: number;
   startWeightKg: number;
+  /** @nullable */
+  currentBodyFatPercent?: number | null;
+  /** @nullable */
+  startBodyFatPercent?: number | null;
   kgLost: number;
   kgToGo: number;
   progressPercent: number;
   estimatedWeeksRemaining: number;
   weeklyTrend: WeightEntry[];
+  bodyFatTrend?: BodyFatEntry[];
 }
 
 export interface SaveItemInput {

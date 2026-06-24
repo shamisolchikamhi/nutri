@@ -22,5 +22,7 @@ export interface DailyLog {
   /** @nullable */
   weightKg?: number | null;
   /** @nullable */
+  bodyFatPercent?: number | null;
+  /** @nullable */
   notes?: string | null;
 }

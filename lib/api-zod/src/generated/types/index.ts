@@ -18,6 +18,7 @@ export * from './basketInputMode';
 export * from './basketItem';
 export * from './basketItemInput';
 export * from './basketMode';
+export * from './bodyFatEntry';
 export * from './createBasketFromSocialRecipe201';
 export * from './dailyLog';
 export * from './dailyLogInput';

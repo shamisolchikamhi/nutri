@@ -101,6 +101,7 @@ async function buildDailyLogResponse(date: string) {
     adherencePercent: roundNutrition(adherencePercent),
     streak,
     weightKg: log.weightKg ?? null,
+    bodyFatPercent: log.bodyFatPercent ?? null,
     notes: log.notes ?? null,
   };
 }

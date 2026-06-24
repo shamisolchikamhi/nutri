@@ -17,6 +17,7 @@ let profile = {
 let meals = [];
 let waterMl = 0;
 let weightKg = 86;
+let bodyFatPercent = 24;
 let activities = [];
 let recipeSaved = false;
 const recentlyVerifiedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
@@ -200,6 +201,7 @@ function dailyLog(date) {
     adherencePercent: 0,
     streak: 1,
     weightKg,
+    bodyFatPercent,
     notes: null,
   };
 }
@@ -236,6 +238,7 @@ const server = createServer((req, res) => {
     readJson(req).then((body) => {
       if (typeof body.waterMl === "number") waterMl = body.waterMl;
       if (typeof body.weightKg === "number") weightKg = body.weightKg;
+      if (typeof body.bodyFatPercent === "number") bodyFatPercent = body.bodyFatPercent;
       send(res, 200, dailyLog(dailyMatch[1]));
     });
     return;
@@ -261,11 +264,14 @@ const server = createServer((req, res) => {
       currentWeightKg: weightKg,
       targetWeightKg: 78,
       startWeightKg: 86,
+      currentBodyFatPercent: bodyFatPercent,
+      startBodyFatPercent: 24,
       kgLost: 86 - weightKg,
       kgToGo: weightKg - 78,
       progressPercent: ((86 - weightKg) / 8) * 100,
       estimatedWeeksRemaining: 14,
       weeklyTrend: [{ date: "2026-06-19", weightKg }],
+      bodyFatTrend: [{ date: "2026-06-19", bodyFatPercent }],
     });
   }
   if (req.method === "GET" && req.url === "/api/recipes/1") return send(res, 200, { ...recipe, isSaved: recipeSaved });

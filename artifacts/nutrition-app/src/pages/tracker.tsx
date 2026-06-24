@@ -25,6 +25,9 @@ import { ConfirmAction } from "@/components/ConfirmAction";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 import { DEFAULT_HYDRATION_TARGET_ML, DEFAULT_NUTRITION_TARGETS } from "@workspace/nutrition";
 import { formatDate } from "@/lib/market";
+import ActivityPage from "./tracker-activity";
+import HistoryPage from "./tracker-history";
+import ProgressPage from "./progress";
 
 const today = new Date().toISOString().split("T")[0];
 
@@ -117,8 +120,10 @@ export default function TrackerPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Meal Tracker</h1>
-          <p className="text-muted-foreground text-sm">{formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" })}</p>
+          <h1 className="text-2xl font-bold">Track</h1>
+          <p className="text-muted-foreground text-sm">
+            Meals, water, activity, history, weight, and body fat for {formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" })}
+          </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -274,6 +279,18 @@ export default function TrackerPage() {
           )}
         </div>
       ))}
+
+      <section className="border-t pt-6">
+        <ActivityPage />
+      </section>
+
+      <section className="border-t pt-6">
+        <HistoryPage />
+      </section>
+
+      <section className="border-t pt-6">
+        <ProgressPage />
+      </section>
     </div>
   );
 }

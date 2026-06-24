@@ -219,8 +219,15 @@ router.get("/dashboard/progress", async (_req, res): Promise<void> => {
     .map((l) => ({ date: l.date, weightKg: l.weightKg as number }))
     .reverse();
 
+  const bodyFatTrend = logs
+    .filter((l) => l.bodyFatPercent != null)
+    .map((l) => ({ date: l.date, bodyFatPercent: l.bodyFatPercent as number }))
+    .reverse();
+
   const latestWeight = weeklyTrend[weeklyTrend.length - 1]?.weightKg ?? profile.currentWeightKg;
   const startWeight = weeklyTrend[0]?.weightKg ?? profile.currentWeightKg;
+  const currentBodyFatPercent = bodyFatTrend[bodyFatTrend.length - 1]?.bodyFatPercent ?? profile.bodyFatPercent ?? null;
+  const startBodyFatPercent = bodyFatTrend[0]?.bodyFatPercent ?? profile.bodyFatPercent ?? null;
   const kgLost = Math.max(0, startWeight - latestWeight);
   const kgToGo = Math.abs(latestWeight - profile.targetWeightKg);
   const totalToLose = Math.abs(profile.currentWeightKg - profile.targetWeightKg);
@@ -233,11 +240,14 @@ router.get("/dashboard/progress", async (_req, res): Promise<void> => {
     currentWeightKg: latestWeight,
     targetWeightKg: profile.targetWeightKg,
     startWeightKg: startWeight,
+    currentBodyFatPercent,
+    startBodyFatPercent,
     kgLost: roundMoney(kgLost),
     kgToGo: roundMoney(kgToGo),
     progressPercent: roundNutrition(progressPercent),
     estimatedWeeksRemaining: roundNutrition(estimatedWeeksRemaining),
     weeklyTrend,
+    bodyFatTrend,
   });
 });
 
