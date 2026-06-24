@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { evaluateLiveDataLaunch, type RetailerLaunchSignal } from "./launch-readiness";
 import { applyDataQualityGates, buildScraperAlerts, type ScrapedProduct } from "../scrape-za-retailers";
 
 function product(overrides: Partial<ScrapedProduct> = {}): ScrapedProduct {
@@ -81,4 +82,34 @@ test("scraper observability alerts on blocked or sharply low extraction runs", (
     "blocked requests detected: 1",
     "extraction count below threshold: 1/5",
   ]);
+});
+
+function launchSignal(overrides: Partial<RetailerLaunchSignal> = {}): RetailerLaunchSignal {
+  return {
+    retailer: "Retailer",
+    scheduledExtractionSucceeded: true,
+    reliabilityDays: 7,
+    hasFreshness: true,
+    hasExpiry: true,
+    hasProvenance: true,
+    hasMonitoring: true,
+    ...overrides,
+  };
+}
+
+test("live-data launch requires two reliable monitored retailers", () => {
+  const blocked = evaluateLiveDataLaunch([
+    launchSignal({ retailer: "Retailer A" }),
+    launchSignal({ retailer: "Retailer B", reliabilityDays: 3 }),
+  ]);
+  assert.equal(blocked.canEnableLiveBadge, false);
+  assert.equal(blocked.displayLabel, "Recently observed prices");
+  assert.ok(blocked.reasons.some((reason) => reason.includes("seven-day reliability run incomplete")));
+
+  const ready = evaluateLiveDataLaunch([
+    launchSignal({ retailer: "Retailer A" }),
+    launchSignal({ retailer: "Retailer B" }),
+  ]);
+  assert.equal(ready.canEnableLiveBadge, true);
+  assert.deepEqual(ready.readyRetailers, ["Retailer A", "Retailer B"]);
 });

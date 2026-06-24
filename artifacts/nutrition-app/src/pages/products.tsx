@@ -46,7 +46,7 @@ export default function ProductsPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Search className="h-6 w-6 text-primary" /> Products
         </h1>
-        <p className="text-muted-foreground text-sm">Compare nutrition and prices across all retailers</p>
+        <p className="text-muted-foreground text-sm">Compare nutrition and recently observed prices across all retailers</p>
       </div>
 
       {/* Filters */}

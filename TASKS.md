@@ -131,7 +131,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Use retailer-approved feeds, affiliate/catalogue providers, or manual catalogue
     ingestion where direct scraping is not permitted or technically reliable.
   - Document source terms and permitted refresh frequency per retailer.
-- [ ] Establish a live-data launch threshold.
+- [x] Establish a live-data launch threshold.
   - Require successful scheduled extraction for at least two retailers.
   - Require freshness, expiry, provenance, and monitoring coverage.
   - Require a seven-day reliability run before enabling the `Live` badge.

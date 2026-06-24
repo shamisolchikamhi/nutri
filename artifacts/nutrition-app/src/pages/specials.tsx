@@ -35,7 +35,7 @@ export default function SpecialsPage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Tag className="h-6 w-6 text-amber-500" /> Weekly Specials
         </h1>
-        <p className="text-muted-foreground text-sm">Save money on your favourite health foods</p>
+        <p className="text-muted-foreground text-sm">Catalogue offers with freshness and source details</p>
       </div>
 
       {/* Tabs & Filters */}
