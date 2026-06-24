@@ -95,7 +95,23 @@ export default function ProductsPage() {
           {(products ?? []).map((product) => (
             <ProductCard
               key={product.id}
-              product={{ id: product.id, name: product.name, imageUrl: product.imageUrl, retailerName: product.retailerName, price: product.priceAud, regularPrice: product.regularPriceAud, isOnSpecial: product.isOnSpecial, calories: product.caloriesPer100g, proteinG: product.proteinPer100g }}
+              product={{
+                id: product.id,
+                name: product.name,
+                imageUrl: product.imageUrl,
+                retailerName: product.retailerName,
+                price: product.priceAud,
+                regularPrice: product.regularPriceAud,
+                isOnSpecial: product.isOnSpecial,
+                calories: product.caloriesPer100g,
+                proteinG: product.proteinPer100g,
+                region: product.region,
+                store: product.store,
+                channel: product.channel,
+                stockStatus: product.stockStatus,
+                sourceUrl: product.canonicalSourceUrl,
+                lastVerifiedAt: product.lastVerifiedAt,
+              }}
               onCompare={() => setCompareId(product.id)}
             />
           ))}

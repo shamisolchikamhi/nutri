@@ -19,6 +19,7 @@ let waterMl = 0;
 let weightKg = 86;
 let activities = [];
 let recipeSaved = false;
+const recentlyVerifiedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 
 const recipe = {
   id: 1,
@@ -87,6 +88,11 @@ const product = {
   category: "protein",
   priceAud: 35,
   regularPriceAud: 42,
+  canonicalSourceUrl: "https://example.test/chicken",
+  region: "Gauteng",
+  store: "Online",
+  channel: "delivery",
+  currency: "ZAR",
   packSize: 500,
   packUnit: "g",
   caloriesPer100g: 165,
@@ -96,8 +102,10 @@ const product = {
   fiberPer100g: 0,
   sugarPer100g: 0,
   isOnSpecial: true,
+  stockStatus: "in_stock",
   savingsPercent: 17,
   savingsAud: 7,
+  lastVerifiedAt: recentlyVerifiedAt,
   imageUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
 };
 
@@ -114,7 +122,20 @@ const special = {
   category: "protein",
   imageUrl: product.imageUrl,
   goalFit: ["high_protein", "budget"],
+  promotionType: "multibuy",
+  multibuyQuantity: 2,
+  multibuyPrice: 60,
+  loyaltyRequired: true,
+  stockStatus: "limited_stock",
+  region: "Gauteng",
+  store: "Online",
+  channel: "delivery",
+  currency: "ZAR",
+  terms: "While stocks last",
+  sourceUrl: "https://example.test/specials/chicken",
+  validFrom: "2026-06-01",
   validUntil: "2026-06-30",
+  lastVerifiedAt: recentlyVerifiedAt,
 };
 
 const dashboard = {

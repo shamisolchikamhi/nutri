@@ -529,8 +529,13 @@ export const ListProductsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "brand": zod.string().nullish(),
+  "canonicalSourceUrl": zod.string().nullish(),
   "retailerId": zod.number(),
   "retailerName": zod.string(),
+  "region": zod.string().nullish(),
+  "store": zod.string().nullish(),
+  "channel": zod.string(),
+  "currency": zod.string(),
   "category": zod.enum(['protein', 'dairy', 'pantry', 'fruit_veg', 'snacks', 'drinks', 'grains', 'condiments', 'frozen', 'other']),
   "priceAud": zod.number(),
   "regularPriceAud": zod.number().nullish(),
@@ -543,9 +548,11 @@ export const ListProductsResponseItem = zod.object({
   "fiberPer100g": zod.number().nullish(),
   "sugarPer100g": zod.number().nullish(),
   "isOnSpecial": zod.boolean(),
+  "stockStatus": zod.string(),
   "savingsPercent": zod.number().nullish(),
   "savingsAud": zod.number().nullish(),
-  "imageUrl": zod.string()
+  "imageUrl": zod.string(),
+  "lastVerifiedAt": zod.coerce.date().nullish()
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
 
@@ -561,8 +568,13 @@ export const GetProductResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "brand": zod.string().nullish(),
+  "canonicalSourceUrl": zod.string().nullish(),
   "retailerId": zod.number(),
   "retailerName": zod.string(),
+  "region": zod.string().nullish(),
+  "store": zod.string().nullish(),
+  "channel": zod.string(),
+  "currency": zod.string(),
   "category": zod.enum(['protein', 'dairy', 'pantry', 'fruit_veg', 'snacks', 'drinks', 'grains', 'condiments', 'frozen', 'other']),
   "priceAud": zod.number(),
   "regularPriceAud": zod.number().nullish(),
@@ -575,9 +587,11 @@ export const GetProductResponse = zod.object({
   "fiberPer100g": zod.number().nullish(),
   "sugarPer100g": zod.number().nullish(),
   "isOnSpecial": zod.boolean(),
+  "stockStatus": zod.string(),
   "savingsPercent": zod.number().nullish(),
   "savingsAud": zod.number().nullish(),
-  "imageUrl": zod.string()
+  "imageUrl": zod.string(),
+  "lastVerifiedAt": zod.coerce.date().nullish()
 })
 
 
@@ -593,8 +607,13 @@ export const CompareProductResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "brand": zod.string().nullish(),
+  "canonicalSourceUrl": zod.string().nullish(),
   "retailerId": zod.number(),
   "retailerName": zod.string(),
+  "region": zod.string().nullish(),
+  "store": zod.string().nullish(),
+  "channel": zod.string(),
+  "currency": zod.string(),
   "category": zod.enum(['protein', 'dairy', 'pantry', 'fruit_veg', 'snacks', 'drinks', 'grains', 'condiments', 'frozen', 'other']),
   "priceAud": zod.number(),
   "regularPriceAud": zod.number().nullish(),
@@ -607,9 +626,11 @@ export const CompareProductResponseItem = zod.object({
   "fiberPer100g": zod.number().nullish(),
   "sugarPer100g": zod.number().nullish(),
   "isOnSpecial": zod.boolean(),
+  "stockStatus": zod.string(),
   "savingsPercent": zod.number().nullish(),
   "savingsAud": zod.number().nullish(),
-  "imageUrl": zod.string()
+  "imageUrl": zod.string(),
+  "lastVerifiedAt": zod.coerce.date().nullish()
 }),
   "pricePerUnit": zod.number(),
   "isCheapest": zod.boolean(),

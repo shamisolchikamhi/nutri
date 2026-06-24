@@ -1468,7 +1468,7 @@ components:
 
     Product:
       type: object
-      required: [id, name, retailerId, retailerName, category, priceAud, packSize, packUnit, caloriesPer100g, proteinPer100g, carbsPer100g, fatPer100g, isOnSpecial, imageUrl]
+      required: [id, name, retailerId, retailerName, category, priceAud, packSize, packUnit, caloriesPer100g, proteinPer100g, carbsPer100g, fatPer100g, isOnSpecial, imageUrl, channel, currency, stockStatus]
       properties:
         id:
           type: integer
@@ -1476,9 +1476,19 @@ components:
           type: string
         brand:
           type: ["string", "null"]
+        canonicalSourceUrl:
+          type: ["string", "null"]
         retailerId:
           type: integer
         retailerName:
+          type: string
+        region:
+          type: ["string", "null"]
+        store:
+          type: ["string", "null"]
+        channel:
+          type: string
+        currency:
           type: string
         category:
           type: string
@@ -1505,12 +1515,17 @@ components:
           type: ["number", "null"]
         isOnSpecial:
           type: boolean
+        stockStatus:
+          type: string
         savingsPercent:
           type: ["number", "null"]
         savingsAud:
           type: ["number", "null"]
         imageUrl:
           type: string
+        lastVerifiedAt:
+          type: ["string", "null"]
+          format: date-time
 
     ProductComparison:
       type: object

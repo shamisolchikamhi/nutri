@@ -395,8 +395,16 @@ export interface Product {
   name: string;
   /** @nullable */
   brand?: string | null;
+  /** @nullable */
+  canonicalSourceUrl?: string | null;
   retailerId: number;
   retailerName: string;
+  /** @nullable */
+  region?: string | null;
+  /** @nullable */
+  store?: string | null;
+  channel: string;
+  currency: string;
   category: ProductCategory;
   priceAud: number;
   /** @nullable */
@@ -412,11 +420,14 @@ export interface Product {
   /** @nullable */
   sugarPer100g?: number | null;
   isOnSpecial: boolean;
+  stockStatus: string;
   /** @nullable */
   savingsPercent?: number | null;
   /** @nullable */
   savingsAud?: number | null;
   imageUrl: string;
+  /** @nullable */
+  lastVerifiedAt?: string | null;
 }
 
 export interface ProductComparison {

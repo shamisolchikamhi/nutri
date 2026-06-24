@@ -87,7 +87,30 @@ export default function SpecialsPage() {
             <ProductCard
               key={special.id}
               variant="special"
-              product={{ id: special.productId, name: special.productName, imageUrl: special.imageUrl, retailerName: special.retailerName, price: special.specialPriceAud, regularPrice: special.regularPriceAud, savings: special.savingsAud, savingsPercent: special.savingsPercent, tags: special.goalFit }}
+              product={{
+                id: special.productId,
+                name: special.productName,
+                imageUrl: special.imageUrl,
+                retailerName: special.retailerName,
+                price: special.specialPriceAud,
+                regularPrice: special.regularPriceAud,
+                savings: special.savingsAud,
+                savingsPercent: special.savingsPercent,
+                tags: special.goalFit,
+                validFrom: special.validFrom,
+                validUntil: special.validUntil,
+                promotionType: special.promotionType,
+                multibuyQuantity: special.multibuyQuantity,
+                multibuyPrice: special.multibuyPrice,
+                loyaltyRequired: special.loyaltyRequired,
+                stockStatus: special.stockStatus,
+                region: special.region,
+                store: special.store,
+                channel: special.channel,
+                terms: special.terms,
+                sourceUrl: special.sourceUrl,
+                lastVerifiedAt: special.lastVerifiedAt,
+              }}
             />
           ))}
         </div>

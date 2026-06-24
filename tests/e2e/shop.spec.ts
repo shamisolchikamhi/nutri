@@ -3,6 +3,10 @@ import { expect, test } from "@playwright/test";
 test("filters products, views specials, and compares a basket", async ({ page }) => {
   await page.goto("/products");
   await expect(page.getByText("Chicken Breast 500g", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Verified \d+ hours ago/).first()).toBeVisible();
+  await expect(page.getByText("Gauteng / Online / delivery")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Source/ })).toBeVisible();
+  await expect(page.getByText("Live", { exact: true })).toHaveCount(0);
 
   await page.getByPlaceholder("Search products...").fill("chicken");
   await expect(page.getByText("Chicken Breast 500g", { exact: true })).toBeVisible();
@@ -24,6 +28,12 @@ test("filters products, views specials, and compares a basket", async ({ page })
 
   await page.goto("/specials");
   await expect(page.getByText("Chicken Breast 500g", { exact: true })).toBeVisible();
+  await expect(page.getByText("Valid Jun 1 to Jun 30")).toBeVisible();
+  await expect(page.getByText("Loyalty card required")).toBeVisible();
+  await expect(page.getByText("2 for R 60")).toBeVisible();
+  await expect(page.getByText("Stock: limited stock")).toBeVisible();
+  await expect(page.getByText("While stocks last")).toBeVisible();
+  await expect(page.getByRole("link", { name: /Source/ })).toBeVisible();
   await page.getByRole("button", { name: "Best Value" }).click();
   await expect(page.getByText("Best Value Chicken", { exact: true })).toBeVisible();
 

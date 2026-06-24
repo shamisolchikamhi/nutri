@@ -110,7 +110,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Add explicit filters for expired, upcoming, region, store, channel, and
     loyalty-only promotions.
   - Avoid N+1 retailer/product queries when building promotion responses.
-- [ ] Make freshness and conditions visible in the app.
+- [x] Make freshness and conditions visible in the app.
   - Display validity dates, participating region/store, channel, loyalty-card
     requirement, multibuy conditions, stock caveats, and source link.
   - Display `Verified X hours ago` on every price and promotion.

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { BarChart2 } from "lucide-react";
+import { BarChart2, ExternalLink } from "lucide-react";
 import { ContentImage } from "./ContentImage";
 import { SaveControl } from "./SaveControl";
 import { formatMoney } from "@/lib/market";
@@ -20,6 +20,19 @@ export type ProductCardData = {
   savings?: number;
   savingsPercent?: number;
   tags?: string[];
+  validFrom?: string | null;
+  validUntil?: string | null;
+  promotionType?: string;
+  multibuyQuantity?: number | null;
+  multibuyPrice?: number | null;
+  loyaltyRequired?: boolean;
+  stockStatus?: string;
+  region?: string | null;
+  store?: string | null;
+  channel?: string;
+  terms?: string | null;
+  sourceUrl?: string | null;
+  lastVerifiedAt?: string | null;
 };
 
 type ProductCardProps = {
@@ -31,8 +44,47 @@ type ProductCardProps = {
   action?: ReactNode;
 };
 
+function formatDate(value?: string | null) {
+  if (!value) return null;
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(value));
+}
+
+function formatVerified(value?: string | null) {
+  if (!value) return "Verification pending";
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return "Verification pending";
+
+  const diffMs = Date.now() - timestamp;
+  if (diffMs < 0) return "Verified just now";
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHours < 1) return "Verified under 1 hour ago";
+  if (diffHours < 48) return `Verified ${diffHours} hours ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `Verified ${diffDays} days ago`;
+}
+
+function promotionConditionLabels(product: ProductCardData) {
+  const labels: string[] = [];
+  const from = formatDate(product.validFrom);
+  const until = formatDate(product.validUntil);
+  if (from && until) labels.push(`Valid ${from} to ${until}`);
+  else if (until) labels.push(`Valid until ${until}`);
+  else if (from) labels.push(`Valid from ${from}`);
+
+  const scope = [product.region, product.store].filter(Boolean).join(" / ");
+  if (scope) labels.push(scope);
+  if (product.channel) labels.push(product.channel.replace("_", " "));
+  if (product.loyaltyRequired) labels.push("Loyalty card required");
+  if (product.multibuyQuantity && product.multibuyPrice) labels.push(`${product.multibuyQuantity} for ${formatMoney(product.multibuyPrice)}`);
+  if (product.stockStatus && product.stockStatus !== "in_stock") labels.push(`Stock: ${product.stockStatus.replace("_", " ")}`);
+  if (product.terms) labels.push(product.terms);
+  return labels;
+}
+
 export function ProductCard({ product, variant = "grid", saved, onRemove, onCompare, action }: ProductCardProps) {
   if (variant === "special") {
+    const conditionLabels = promotionConditionLabels(product);
+
     return (
       <Card className="overflow-hidden">
         <CardContent className="flex p-0">
@@ -44,8 +96,17 @@ export function ProductCard({ product, variant = "grid", saved, onRemove, onComp
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">{product.retailerName}</p>
             <div className="mt-2 flex items-baseline gap-2"><span className="text-xl font-bold text-primary">{formatMoney(product.price)}</span>{product.regularPrice != null && <span className="text-sm text-muted-foreground line-through">{formatMoney(product.regularPrice)}</span>}</div>
+            <p className="text-xs text-muted-foreground">{formatVerified(product.lastVerifiedAt)}</p>
             {product.savings != null && <p className="text-xs font-medium text-emerald-600">Save {formatMoney(product.savings)}</p>}
             <div className="mt-2 flex flex-wrap gap-1">{(product.tags ?? []).slice(0, 2).map((tag) => <Badge key={tag} variant="outline" className="py-0 text-xs capitalize">{tag.replace("_", " ")}</Badge>)}</div>
+            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+              {conditionLabels.map((label) => <p key={label}>{label}</p>)}
+              {product.sourceUrl && (
+                <a href={product.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                  Source <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
             {action}
           </div>
         </CardContent>
@@ -64,8 +125,19 @@ export function ProductCard({ product, variant = "grid", saved, onRemove, onComp
         <p className="mb-1 line-clamp-2 text-xs font-medium leading-tight">{product.name}</p>
         <p className="mb-2 text-xs text-muted-foreground">{product.retailerName}</p>
         <div className="mb-2 flex items-baseline justify-between"><span className="text-base font-bold text-primary">{formatMoney(product.price)}</span>{product.regularPrice != null && <span className="text-xs text-muted-foreground line-through">{formatMoney(product.regularPrice)}</span>}</div>
+        <p className="mb-2 text-xs text-muted-foreground">{formatVerified(product.lastVerifiedAt)}</p>
+        {(product.region || product.store || product.channel || product.stockStatus) && (
+          <p className="mb-2 text-xs text-muted-foreground">
+            {[product.region, product.store, product.channel, product.stockStatus && product.stockStatus !== "in_stock" ? `Stock: ${product.stockStatus.replace("_", " ")}` : null].filter(Boolean).join(" / ")}
+          </p>
+        )}
         {product.proteinG != null && <div className="flex justify-between text-xs"><span>Protein</span><span className="font-medium text-emerald-600">{product.proteinG}g/100g</span></div>}
         {product.calories != null && <div className="flex justify-between text-xs text-muted-foreground"><span>Calories</span><span>{product.calories} kcal</span></div>}
+        {product.sourceUrl && (
+          <a href={product.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+            Source <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
         {onCompare && <Button variant="outline" size="sm" className="mt-2 h-7 w-full text-xs" onClick={onCompare}><BarChart2 className="mr-1 h-3 w-3" /> Compare</Button>}
         {action}
       </CardContent>
