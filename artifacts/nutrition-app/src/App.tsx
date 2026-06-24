@@ -17,6 +17,7 @@ import BasketPage from "@/pages/basket";
 import BasketDetailPage from "@/pages/basket-detail";
 import SpecialsPage from "@/pages/specials";
 import ProductsPage from "@/pages/products";
+import RetailerStatusPage from "@/pages/retailer-status";
 import ProgressPage from "@/pages/progress";
 import SavedPage from "@/pages/saved";
 import SettingsPage from "@/pages/settings";
@@ -69,6 +70,9 @@ function Router() {
       </Route>
       <Route path="/products">
         <AppLayout><ProductsPage /></AppLayout>
+      </Route>
+      <Route path="/retailer-status">
+        <AppLayout><RetailerStatusPage /></AppLayout>
       </Route>
       <Route path="/progress">
         <AppLayout><ProgressPage /></AppLayout>

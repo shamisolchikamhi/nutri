@@ -23,6 +23,8 @@ tags:
     description: Grocery basket management
   - name: specials
     description: Retailer specials and savings
+  - name: operations
+    description: Retailer data operations and freshness
   - name: dashboard
     description: Dashboard summaries and insights
   - name: saved
@@ -841,6 +843,19 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Special"
+
+  /retailer-status:
+    get:
+      operationId: getRetailerStatus
+      tags: [operations]
+      summary: Get retailer data freshness and publishing status for operators
+      responses:
+        "200":
+          description: Retailer data status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailerStatus"
 
   # ---- Dashboard ----
   /dashboard/today:
@@ -1761,6 +1776,50 @@ components:
         lastVerifiedAt:
           type: ["string", "null"]
           format: date-time
+
+    RetailerStatus:
+      type: object
+      required: [generatedAt, retailers]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        retailers:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetailerStatusItem"
+
+    RetailerStatusItem:
+      type: object
+      required: [retailerId, retailerName, marketCode, channel, isActive, productCount, activePromotionCount, stalePromotionCount, scrapedAt, lastVerifiedAt, verifiedHoursAgo, status]
+      properties:
+        retailerId:
+          type: integer
+        retailerName:
+          type: string
+        marketCode:
+          type: string
+        channel:
+          type: string
+        isActive:
+          type: boolean
+        productCount:
+          type: integer
+        activePromotionCount:
+          type: integer
+        stalePromotionCount:
+          type: integer
+        scrapedAt:
+          type: ["string", "null"]
+          format: date-time
+        lastVerifiedAt:
+          type: ["string", "null"]
+          format: date-time
+        verifiedHoursAgo:
+          type: ["integer", "null"]
+        status:
+          type: string
+          enum: [healthy, watch, stale, unverified]
 
     # ---- Dashboard ----
     DashboardToday:

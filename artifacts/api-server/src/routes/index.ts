@@ -9,6 +9,7 @@ import specialsRouter from "./specials";
 import dashboardRouter from "./dashboard";
 import savedRouter from "./saved";
 import socialRecipesRouter from "./social-recipes";
+import retailerStatusRouter from "./retailer-status";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(specialsRouter);
 router.use(dashboardRouter);
 router.use(savedRouter);
 router.use(socialRecipesRouter);
+router.use(retailerStatusRouter);
 
 export default router;

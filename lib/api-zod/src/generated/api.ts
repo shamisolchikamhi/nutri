@@ -918,6 +918,28 @@ export const GetBestValueSpecialsResponse = zod.array(GetBestValueSpecialsRespon
 
 
 /**
+ * @summary Get retailer data freshness and publishing status for operators
+ */
+export const GetRetailerStatusResponse = zod.object({
+  "generatedAt": zod.coerce.date(),
+  "retailers": zod.array(zod.object({
+  "retailerId": zod.number(),
+  "retailerName": zod.string(),
+  "marketCode": zod.string(),
+  "channel": zod.string(),
+  "isActive": zod.boolean(),
+  "productCount": zod.number(),
+  "activePromotionCount": zod.number(),
+  "stalePromotionCount": zod.number(),
+  "scrapedAt": zod.coerce.date().nullable(),
+  "lastVerifiedAt": zod.coerce.date().nullable(),
+  "verifiedHoursAgo": zod.number().nullable(),
+  "status": zod.enum(['healthy', 'watch', 'stale', 'unverified'])
+}))
+})
+
+
+/**
  * @summary Today's dashboard summary — calories, macros, net balance, basket cost, goal progress
  */
 export const GetDashboardTodayResponse = zod.object({

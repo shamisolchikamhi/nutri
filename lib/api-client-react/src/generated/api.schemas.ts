@@ -613,6 +613,39 @@ export interface Special {
   lastVerifiedAt?: string | null;
 }
 
+export type RetailerStatusItemStatus = typeof RetailerStatusItemStatus[keyof typeof RetailerStatusItemStatus];
+
+
+export const RetailerStatusItemStatus = {
+  healthy: 'healthy',
+  watch: 'watch',
+  stale: 'stale',
+  unverified: 'unverified',
+} as const;
+
+export interface RetailerStatusItem {
+  retailerId: number;
+  retailerName: string;
+  marketCode: string;
+  channel: string;
+  isActive: boolean;
+  productCount: number;
+  activePromotionCount: number;
+  stalePromotionCount: number;
+  /** @nullable */
+  scrapedAt: string | null;
+  /** @nullable */
+  lastVerifiedAt: string | null;
+  /** @nullable */
+  verifiedHoursAgo: number | null;
+  status: RetailerStatusItemStatus;
+}
+
+export interface RetailerStatus {
+  generatedAt: string;
+  retailers: RetailerStatusItem[];
+}
+
 export interface DashboardToday {
   date: string;
   caloriesEaten: number;

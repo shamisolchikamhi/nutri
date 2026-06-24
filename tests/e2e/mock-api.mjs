@@ -292,6 +292,25 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/specials/best-value") return send(res, 200, [{ ...special, id: 2, productName: "Best Value Chicken" }]);
   if (req.method === "GET" && req.url.startsWith("/api/specials")) return send(res, 200, [special]);
+  if (req.method === "GET" && req.url === "/api/retailer-status") {
+    return send(res, 200, {
+      generatedAt: new Date().toISOString(),
+      retailers: [{
+        retailerId: 1,
+        retailerName: "Test Market",
+        marketCode: "ZA",
+        channel: "delivery",
+        isActive: true,
+        productCount: 12,
+        activePromotionCount: 3,
+        stalePromotionCount: 1,
+        scrapedAt: recentlyVerifiedAt,
+        lastVerifiedAt: recentlyVerifiedAt,
+        verifiedHoursAgo: 3,
+        status: "healthy",
+      }],
+    });
+  }
   if (req.method === "GET" && req.url === "/api/saved/recipes") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/saved/snacks") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/social-recipes") return send(res, 200, []);

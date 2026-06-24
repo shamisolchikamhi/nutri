@@ -124,7 +124,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Track requests, extraction counts, changed prices, new/expired promotions,
     parse failures, blocked requests, and last successful run.
   - Alert when extraction drops sharply, a source is blocked, or data becomes stale.
-- [ ] Add a retailer-data status page for operators.
+- [x] Add a retailer-data status page for operators.
   - Show source health, last run, last successful extraction, current record count,
     stale records, blocked adapters, and recent parsing errors.
 - [ ] Define a lawful fallback for blocked sources.

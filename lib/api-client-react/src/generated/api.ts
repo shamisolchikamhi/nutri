@@ -48,6 +48,7 @@ import type {
   Recipe,
   RecipeDetail,
   Retailer,
+  RetailerStatus,
   SaveItemInput,
   ShoppingList,
   SnackSuggestion,
@@ -2861,6 +2862,83 @@ export function useGetBestValueSpecials<TData = Awaited<ReturnType<typeof getBes
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetBestValueSpecialsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetRetailerStatusUrl = () => {
+
+
+
+
+  return `/api/retailer-status`
+}
+
+/**
+ * @summary Get retailer data freshness and publishing status for operators
+ */
+export const getRetailerStatus = async ( options?: RequestInit): Promise<RetailerStatus> => {
+
+  return customFetch<RetailerStatus>(getGetRetailerStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRetailerStatusQueryKey = () => {
+    return [
+    `/api/retailer-status`
+    ] as const;
+    }
+
+
+export const getGetRetailerStatusQueryOptions = <TData = Awaited<ReturnType<typeof getRetailerStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRetailerStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRetailerStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRetailerStatus>>> = ({ signal }) => getRetailerStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRetailerStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRetailerStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getRetailerStatus>>>
+export type GetRetailerStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get retailer data freshness and publishing status for operators
+ */
+
+export function useGetRetailerStatus<TData = Awaited<ReturnType<typeof getRetailerStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRetailerStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRetailerStatusQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

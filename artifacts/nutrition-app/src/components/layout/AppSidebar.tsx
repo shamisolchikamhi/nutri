@@ -10,7 +10,8 @@ import {
   Search,
   History,
   Dumbbell,
-  Library
+  Library,
+  Database
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
@@ -67,10 +68,11 @@ const navItems = [
     title: "Shop",
     url: "/products",
     icon: Search,
-    routes: ["/products", "/specials"],
+    routes: ["/products", "/specials", "/retailer-status"],
     children: [
       { title: "Products", url: "/products", icon: Search },
       { title: "Specials", url: "/specials", icon: Tag },
+      { title: "Data status", url: "/retailer-status", icon: Database },
     ],
   },
   {
