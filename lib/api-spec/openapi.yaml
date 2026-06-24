@@ -1024,6 +1024,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/Recipe"
 
+  /dashboard/weekly-review:
+    get:
+      operationId: getWeeklyReview
+      tags: [dashboard]
+      summary: Get a concise outcome-focused weekly review
+      responses:
+        "200":
+          description: Weekly review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WeeklyReview"
+
   /dashboard/progress:
     get:
       operationId: getProgressSummary
@@ -2131,6 +2144,37 @@ components:
           type: integer
         currentWeightKg:
           type: ["number", "null"]
+
+    WeeklyReview:
+      type: object
+      required: [weekStart, weekEnd, adherencePercent, spend, wasteFlags, weightTrendKg, energy, preferredMeals, suggestions]
+      properties:
+        weekStart:
+          type: string
+          format: date
+        weekEnd:
+          type: string
+          format: date
+        adherencePercent:
+          type: number
+        spend:
+          type: number
+        wasteFlags:
+          type: array
+          items:
+            type: string
+        weightTrendKg:
+          type: ["number", "null"]
+        energy:
+          type: string
+        preferredMeals:
+          type: array
+          items:
+            type: string
+        suggestions:
+          type: array
+          items:
+            type: string
 
     SnackSuggestion:
       type: object

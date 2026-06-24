@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   useGetDashboardToday,
   useGetSnackSuggestions,
@@ -10,12 +11,30 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Flame, Droplets, Zap, Target, TrendingDown, ShoppingCart, Tag } from "lucide-react";
+import { Flame, Droplets, Zap, Target, TrendingDown, ShoppingCart, Tag, ClipboardList } from "lucide-react";
 import { formatDate, formatMoney } from "@/lib/market";
 import { PageError } from "@/components/PageState";
 import { DEFAULT_HYDRATION_TARGET_ML } from "@workspace/nutrition";
 import { RecipeCard } from "@/components/content/RecipeCard";
 import { ProductCard } from "@/components/content/ProductCard";
+
+type WeeklyReview = {
+  weekStart: string;
+  weekEnd: string;
+  adherencePercent: number;
+  spend: number;
+  wasteFlags: string[];
+  weightTrendKg: number | null;
+  energy: string;
+  preferredMeals: string[];
+  suggestions: string[];
+};
+
+async function fetchWeeklyReview(): Promise<WeeklyReview> {
+  const response = await fetch("/api/dashboard/weekly-review");
+  if (!response.ok) throw new Error(`Request failed with ${response.status}`);
+  return response.json() as Promise<WeeklyReview>;
+}
 
 function MacroRing({ value, max, color, label }: { value: number | null; max: number | null; color: string; label: string }) {
   const pct = value != null && max != null && max > 0 ? Math.min(100, (value / max) * 100) : null;
@@ -44,14 +63,15 @@ export default function DashboardPage() {
   const snacksQuery = useGetSnackSuggestions();
   const mealQuery = useGetMealSuggestion();
   const goalQuery = useGetGoalSummary();
-  const { data: today, isLoading } = todayQuery;
+  const weeklyReviewQuery = useQuery({ queryKey: ["dashboard-weekly-review"], queryFn: fetchWeeklyReview });
+  const { data: today } = todayQuery;
   const { data: snacks } = snacksQuery;
   const { data: mealSuggestion } = mealQuery;
   const { data: goalSummary } = goalQuery;
 
   const todayDate = formatDate(new Date(), { weekday: "long", day: "numeric", month: "long" });
 
-  if (isLoading) {
+  if (todayQuery.isLoading || weeklyReviewQuery.isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-56" />
@@ -63,7 +83,7 @@ export default function DashboardPage() {
     );
   }
 
-  const failedQuery = [todayQuery, snacksQuery, mealQuery, goalQuery].find((query) => query.isError);
+  const failedQuery = [todayQuery, snacksQuery, mealQuery, goalQuery, weeklyReviewQuery].find((query) => query.isError);
   if (failedQuery) return <PageError reference="DATA-DASHBOARD" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   const calorieTarget = today?.calorieTarget && today.calorieTarget > 0
@@ -223,6 +243,45 @@ export default function DashboardPage() {
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">Complete your health profile before using calorie and macro targets.</p>
             <Button variant="outline" size="sm" onClick={() => setLocation("/settings")}>Review profile</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {weeklyReviewQuery.data && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-primary" /> Weekly Review
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-muted-foreground">Adherence</p>
+                <p className="text-lg font-bold">{weeklyReviewQuery.data.adherencePercent}%</p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-muted-foreground">Spend</p>
+                <p className="text-lg font-bold">{formatMoney(weeklyReviewQuery.data.spend)}</p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-muted-foreground">Weight trend</p>
+                <p className="text-lg font-bold">{weeklyReviewQuery.data.weightTrendKg == null ? "—" : `${weeklyReviewQuery.data.weightTrendKg}kg`}</p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3">
+                <p className="text-muted-foreground">Energy</p>
+                <p className="text-sm font-medium">{weeklyReviewQuery.data.energy}</p>
+              </div>
+            </div>
+            {weeklyReviewQuery.data.preferredMeals.length > 0 && (
+              <p className="text-sm text-muted-foreground">Preferred meals: {weeklyReviewQuery.data.preferredMeals.join(", ")}</p>
+            )}
+            <div className="space-y-1">
+              {weeklyReviewQuery.data.suggestions.slice(0, 2).map((suggestion) => (
+                <p key={suggestion} className="text-sm">• {suggestion}</p>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Waste note: {weeklyReviewQuery.data.wasteFlags[0]}</p>
           </CardContent>
         </Card>
       )}

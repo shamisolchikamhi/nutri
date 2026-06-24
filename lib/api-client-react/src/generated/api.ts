@@ -64,6 +64,7 @@ import type {
   Special,
   UserProfile,
   UserProfileInput,
+  WeeklyReview,
   WeeklySummary
 } from './api.schemas';
 
@@ -3699,6 +3700,83 @@ export function useGetMealSuggestion<TData = Awaited<ReturnType<typeof getMealSu
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMealSuggestionQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetWeeklyReviewUrl = () => {
+
+
+
+
+  return `/api/dashboard/weekly-review`
+}
+
+/**
+ * @summary Get a concise outcome-focused weekly review
+ */
+export const getWeeklyReview = async ( options?: RequestInit): Promise<WeeklyReview> => {
+
+  return customFetch<WeeklyReview>(getGetWeeklyReviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWeeklyReviewQueryKey = () => {
+    return [
+    `/api/dashboard/weekly-review`
+    ] as const;
+    }
+
+
+export const getGetWeeklyReviewQueryOptions = <TData = Awaited<ReturnType<typeof getWeeklyReview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWeeklyReview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWeeklyReviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWeeklyReview>>> = ({ signal }) => getWeeklyReview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWeeklyReview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWeeklyReviewQueryResult = NonNullable<Awaited<ReturnType<typeof getWeeklyReview>>>
+export type GetWeeklyReviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a concise outcome-focused weekly review
+ */
+
+export function useGetWeeklyReview<TData = Awaited<ReturnType<typeof getWeeklyReview>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWeeklyReview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWeeklyReviewQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

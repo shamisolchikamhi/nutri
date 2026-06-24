@@ -564,6 +564,17 @@ const server = createServer((req, res) => {
     return send(res, 201, { basketId: createdBasket.id, basketName: createdBasket.name, itemCount: createdBasket.items.length, unmatchedIngredients: [] });
   }
   if (req.method === "GET" && req.url === "/api/dashboard/today") return send(res, 200, dashboard);
+  if (req.method === "GET" && req.url === "/api/dashboard/weekly-review") return send(res, 200, {
+    weekStart: "2026-06-18",
+    weekEnd: "2026-06-24",
+    adherencePercent: 71,
+    spend: 70,
+    wasteFlags: ["Repeated meals can be batch-prepped; check fresh ingredients before buying duplicate packs."],
+    weightTrendKg: -0.5,
+    energy: "220 active kcal/day average",
+    preferredMeals: ["Egg (1 large)"],
+    suggestions: ["Keep the current logging rhythm and review only the meals that missed your target.", "Before the next basket, swap one fresh bulk pack for a shelf-stable or frozen option if it will not be used twice."],
+  });
   if (req.method === "GET" && req.url === "/api/dashboard/snack-suggestions") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/meal-suggestion") return send(res, 200, null);
   if (req.method === "GET" && req.url === "/api/profile/goal-summary") return send(res, 200, goal);

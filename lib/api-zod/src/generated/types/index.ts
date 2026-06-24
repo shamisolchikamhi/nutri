@@ -82,5 +82,6 @@ export * from './userProfileInputActivityLevel';
 export * from './userProfileInputDietPreference';
 export * from './userProfileInputSex';
 export * from './userProfileSex';
+export * from './weeklyReview';
 export * from './weeklySummary';
 export * from './weightEntry';

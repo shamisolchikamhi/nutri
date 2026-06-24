@@ -760,6 +760,19 @@ export interface DashboardToday {
   currentWeightKg?: number | null;
 }
 
+export interface WeeklyReview {
+  weekStart: string;
+  weekEnd: string;
+  adherencePercent: number;
+  spend: number;
+  wasteFlags: string[];
+  /** @nullable */
+  weightTrendKg: number | null;
+  energy: string;
+  preferredMeals: string[];
+  suggestions: string[];
+}
+
 export interface SnackSuggestion {
   productId: number;
   name: string;

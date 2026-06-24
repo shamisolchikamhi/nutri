@@ -1141,6 +1141,22 @@ export const GetMealSuggestionResponse = zod.object({
 
 
 /**
+ * @summary Get a concise outcome-focused weekly review
+ */
+export const GetWeeklyReviewResponse = zod.object({
+  "weekStart": zod.coerce.date(),
+  "weekEnd": zod.coerce.date(),
+  "adherencePercent": zod.number(),
+  "spend": zod.number(),
+  "wasteFlags": zod.array(zod.string()),
+  "weightTrendKg": zod.number().nullable(),
+  "energy": zod.string(),
+  "preferredMeals": zod.array(zod.string()),
+  "suggestions": zod.array(zod.string())
+})
+
+
+/**
  * @summary Get weight progress toward goal with weekly trend data
  */
 export const GetProgressSummaryResponse = zod.object({

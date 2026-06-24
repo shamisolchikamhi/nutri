@@ -198,6 +198,64 @@ router.get("/dashboard/meal-suggestion", async (_req, res): Promise<void> => {
   res.json({ ...recipe, isSaved: false });
 });
 
+router.get("/dashboard/weekly-review", async (_req, res): Promise<void> => {
+  const today = new Date();
+  const from = new Date(today);
+  from.setDate(today.getDate() - 6);
+  const fromIso = from.toISOString().slice(0, 10);
+  const toIso = today.toISOString().slice(0, 10);
+
+  const [logs, meals, activities, baskets] = await Promise.all([
+    db.select().from(dailyLogsTable),
+    db.select().from(mealEntriesTable),
+    db.select().from(activityLogsTable),
+    db.select().from(basketsTable).orderBy(desc(basketsTable.createdAt)).limit(3),
+  ]);
+  const weekLogs = logs.filter((log) => log.date >= fromIso && log.date <= toIso);
+  const weekMeals = meals.filter((meal) => meal.date >= fromIso && meal.date <= toIso);
+  const weekActivities = activities.filter((activity) => activity.date >= fromIso && activity.date <= toIso);
+  const loggedDays = new Set(weekMeals.map((meal) => meal.date));
+  const adherencePercent = Math.round((loggedDays.size / 7) * 100);
+  const avgActiveCalories = weekActivities.length
+    ? Math.round(weekActivities.reduce((sum, activity) => sum + activity.activeCalories + Math.round(activity.workoutDurationMin * 6), 0) / weekActivities.length)
+    : 0;
+  const weights = weekLogs.filter((log) => log.weightKg != null).map((log) => ({ date: log.date, weightKg: log.weightKg as number })).sort((a, b) => a.date.localeCompare(b.date));
+  const weightTrendKg = weights.length >= 2 ? roundNutrition(weights[weights.length - 1].weightKg - weights[0].weightKg) : null;
+  const preferredMeals = Object.entries(weekMeals.reduce<Record<string, number>>((counts, meal) => {
+    counts[meal.name] = (counts[meal.name] ?? 0) + 1;
+    return counts;
+  }, {})).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name]) => name);
+
+  let spend = 0;
+  for (const basket of baskets) {
+    const items = await db.select().from(basketItemsTable).where(eq(basketItemsTable.basketId, basket.id));
+    for (const item of items) {
+      const product = (await db.select().from(productsTable).where(eq(productsTable.id, item.productId)).limit(1))[0];
+      if (product) spend += product.priceAud * item.quantity;
+    }
+  }
+
+  const wasteFlags = preferredMeals.length === 0
+    ? ["No repeated meals yet, so waste patterns are still unknown."]
+    : ["Repeated meals can be batch-prepped; check fresh ingredients before buying duplicate packs."];
+  const suggestions = [
+    adherencePercent < 60 ? "Log one anchor meal daily before adding more tracking detail." : "Keep the current logging rhythm and review only the meals that missed your target.",
+    spend > 0 ? "Before the next basket, swap one fresh bulk pack for a shelf-stable or frozen option if it will not be used twice." : "Create one basket this week so spend and waste trade-offs can be reviewed.",
+  ];
+
+  res.json({
+    weekStart: fromIso,
+    weekEnd: toIso,
+    adherencePercent,
+    spend: roundMoney(spend),
+    wasteFlags,
+    weightTrendKg,
+    energy: avgActiveCalories > 0 ? `${avgActiveCalories} active kcal/day average` : "Not enough activity data yet",
+    preferredMeals,
+    suggestions,
+  });
+});
+
 router.get("/dashboard/progress", async (_req, res): Promise<void> => {
   const profiles = await db.select().from(userProfileTable).limit(1);
   if (profiles.length === 0) {

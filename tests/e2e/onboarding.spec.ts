@@ -21,6 +21,8 @@ test("onboarding saves a valid profile and loads the dashboard", async ({ page }
   await page.getByRole("button", { name: "Go to Dashboard →" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("/ 2000 kcal", { exact: true })).toBeVisible();
+  await expect(page.getByText("Weekly Review", { exact: true })).toBeVisible();
+  await expect(page.getByText("Adherence")).toBeVisible();
   await expect(page.getByText("Nutrition targets unavailable", { exact: true })).toHaveCount(0);
 });
 

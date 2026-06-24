@@ -157,7 +157,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Add local-market intelligence.
   - Retailer-specific specials, realistic pack sizes, local staples, and seasonal
     availability should be a core advantage in every supported market.
-- [ ] Add outcome-focused weekly reviews.
+- [x] Add outcome-focused weekly reviews.
   - Compare adherence, spend, waste, weight trend, energy, and preferred meals.
   - Suggest one or two achievable changes rather than a dense analytics report.
 
