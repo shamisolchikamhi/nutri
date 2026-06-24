@@ -27,26 +27,35 @@ if (!basePath) {
 }
 
 function apiPreflightPlugin(apiTarget: string): Plugin {
+  const strictPreflight = process.env.STRICT_API_PREFLIGHT === "true";
+
+  const reportApiIssue = (message: string) => {
+    if (strictPreflight) throw new Error(message);
+    console.warn(`[nutribasket-api-preflight] ${message}`);
+  };
+
   const verifyApi = async () => {
     const healthUrl = new URL("/api/healthz", apiTarget).toString();
     let response: Response;
     try {
       response = await fetch(healthUrl, { signal: AbortSignal.timeout(3_000) });
     } catch {
-      throw new Error(
+      reportApiIssue(
         `NutriBasket API is unavailable at ${apiTarget}. Start the API and database first, then retry.`,
       );
+      return;
     }
 
     if (!response.ok) {
-      throw new Error(
+      reportApiIssue(
         `NutriBasket API health check failed with HTTP ${response.status} at ${healthUrl}. Check DATABASE_URL and the API logs.`,
       );
+      return;
     }
 
     const body = await response.json() as { status?: unknown; service?: unknown };
     if (body.status !== "ok" || body.service !== "nutribasket-api") {
-      throw new Error(
+      reportApiIssue(
         `The service at ${apiTarget} is not the NutriBasket API. Set VITE_API_TARGET to the correct API origin.`,
       );
     }
