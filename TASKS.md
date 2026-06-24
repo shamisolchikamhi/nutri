@@ -144,7 +144,7 @@ should not be shipped on top of unreliable health data or silent failures.
     dietary rules, pantry items, and preferred retailers.
   - Output: an editable meal plan, nutrition forecast, and priced basket.
   - Explain every substitution using cost, nutrition, time, and waste trade-offs.
-- [ ] Add adaptive replanning.
+- [x] Add adaptive replanning.
   - Rebalance the remaining day after a logged meal or workout.
   - Replace unavailable/expensive ingredients without breaking macros or budget.
   - Turn leftovers into the next meal and flag ingredients likely to be wasted.

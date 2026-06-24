@@ -306,6 +306,23 @@ const server = createServer((req, res) => {
       }],
     });
   }
+  if (req.method === "GET" && req.url.startsWith("/api/recipes/adaptive-replan")) {
+    return send(res, 200, {
+      remainingCalories: 1180,
+      remainingProteinG: 92,
+      recommendation: {
+        id: 1,
+        name: "High Protein Chicken Bowl",
+        caloriesPerServing: 520,
+        proteinPerServingG: 48,
+        estimatedCost: 92,
+        reason: "Rebalances the day toward 1180 kcal and 92g protein remaining after logged meals and workouts.",
+        substitutions: [{ ingredient: "Chicken breast", substitute: "firm tofu", reason: "Use firm tofu if Chicken breast is unavailable or too expensive; keeps the recipe role similar without changing the macro target materially." }],
+        leftovers: "Cook 2 servings and carry leftovers into tomorrow's lunch.",
+        wasteFlags: ["Brown rice may leave extra g; plan another meal using it this week."],
+      },
+    });
+  }
   if (req.method === "POST" && req.url === "/api/saved/recipes") {
     recipeSaved = true;
     res.writeHead(204);

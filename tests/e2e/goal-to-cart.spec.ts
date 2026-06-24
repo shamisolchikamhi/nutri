@@ -10,10 +10,15 @@ test("builds a weekly goal-to-cart plan with tradeoff explanations and basket ac
   await page.getByLabel("Pantry items").fill("rice");
 
   await expect(page.getByText("Weekly Goal-to-Cart planning")).toBeVisible();
-  await expect(page.getByText("High Protein Chicken Bowl", { exact: true })).toBeVisible();
+  await expect(page.getByText("High Protein Chicken Bowl", { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/Cost trade-off/)).toBeVisible();
   await expect(page.getByText(/Waste trade-off/)).toBeVisible();
   await expect(page.getByText("R 716 budget left")).toBeVisible();
+  await expect(page.getByText("Adaptive replan")).toBeVisible();
+  await expect(page.getByText(/Rebalances the day/)).toBeVisible();
+  await expect(page.getByText(/Use firm tofu/)).toBeVisible();
+  await expect(page.getByText(/carry leftovers into tomorrow/)).toBeVisible();
+  await expect(page.getByText(/plan another meal using it this week/)).toBeVisible();
 
   await page.getByRole("button", { name: "Basket" }).click();
   await expect(page).toHaveURL(/\/basket\/1$/);

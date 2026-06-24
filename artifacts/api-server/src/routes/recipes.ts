@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, sql } from "drizzle-orm";
-import { db, recipesTable, recipeIngredientsTable, savedRecipesTable, userProfileTable } from "@workspace/db";
+import { db, recipesTable, recipeIngredientsTable, savedRecipesTable, userProfileTable, mealEntriesTable, activityLogsTable } from "@workspace/db";
 import {
   GetRecipeParams,
   ListRecipesQueryParams,
@@ -290,6 +290,54 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
     preferredRetailers,
     days: dayPlans,
     savedRecipeCount: savedIds.size,
+  });
+});
+
+router.get("/recipes/adaptive-replan", async (req, res): Promise<void> => {
+  const date = String(req.query.date ?? new Date().toISOString().slice(0, 10));
+  const profiles = await db.select().from(userProfileTable).limit(1);
+  const metrics = profiles[0] ? calcGoalMetrics(profiles[0]) : null;
+  const calorieTarget = metrics?.dailyCalorieTarget ?? DEFAULT_NUTRITION_TARGETS.calories;
+  const proteinTargetG = metrics?.proteinTargetG ?? DEFAULT_NUTRITION_TARGETS.proteinG;
+  const [meals, activities, recipes] = await Promise.all([
+    db.select().from(mealEntriesTable).where(eq(mealEntriesTable.date, date)),
+    db.select().from(activityLogsTable).where(eq(activityLogsTable.date, date)),
+    db.select().from(recipesTable),
+  ]);
+  const consumedCalories = meals.reduce((sum, meal) => sum + meal.calories, 0);
+  const consumedProteinG = meals.reduce((sum, meal) => sum + meal.proteinG, 0);
+  const activeCalories = activities.reduce((sum, activity) => sum + activity.activeCalories, 0);
+  const remainingCalories = Math.max(0, calorieTarget + activeCalories - consumedCalories);
+  const remainingProteinG = Math.max(0, proteinTargetG - consumedProteinG);
+  const selectedRecipe = [...recipes].sort((a, b) => {
+    const aScore = Math.abs(a.caloriesPerServing - remainingCalories * 0.45) + Math.max(0, remainingProteinG * 0.45 - a.proteinPerServingG) * 10 + a.estimatedCost * 0.2;
+    const bScore = Math.abs(b.caloriesPerServing - remainingCalories * 0.45) + Math.max(0, remainingProteinG * 0.45 - b.proteinPerServingG) * 10 + b.estimatedCost * 0.2;
+    return aScore - bScore;
+  })[0];
+  const ingredients = selectedRecipe ? await db.select().from(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, selectedRecipe.id)) : [];
+
+  res.json({
+    date,
+    consumedCalories,
+    consumedProteinG: roundNutrition(consumedProteinG),
+    activeCalories,
+    remainingCalories,
+    remainingProteinG: roundNutrition(remainingProteinG),
+    recommendation: selectedRecipe ? {
+      id: selectedRecipe.id,
+      name: selectedRecipe.name,
+      caloriesPerServing: selectedRecipe.caloriesPerServing,
+      proteinPerServingG: selectedRecipe.proteinPerServingG,
+      estimatedCost: selectedRecipe.estimatedCost,
+      reason: `Rebalances the day toward ${remainingCalories} kcal and ${roundNutrition(remainingProteinG)}g protein remaining after logged meals and workouts.`,
+      substitutions: ingredients.flatMap((ingredient) => ingredient.substitutes.slice(0, 1).map((substitute) => ({
+        ingredient: ingredient.name,
+        substitute,
+        reason: `Use ${substitute} if ${ingredient.name} is unavailable or too expensive; keeps the recipe role similar without changing the macro target materially.`,
+      }))),
+      leftovers: selectedRecipe.servings > 1 ? `Cook ${selectedRecipe.servings} servings and carry leftovers into tomorrow's lunch.` : null,
+      wasteFlags: ingredients.filter((ingredient) => ingredient.quantity > 1).slice(0, 3).map((ingredient) => `${ingredient.name} may leave extra ${ingredient.unit}; plan another meal using it this week.`),
+    } : null,
   });
 });
 

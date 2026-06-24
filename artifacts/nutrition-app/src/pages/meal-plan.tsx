@@ -63,6 +63,22 @@ type MealPlan = {
   days: MealPlanDay[];
 };
 
+type AdaptiveReplan = {
+  remainingCalories: number;
+  remainingProteinG: number;
+  recommendation: null | {
+    id: number;
+    name: string;
+    caloriesPerServing: number;
+    proteinPerServingG: number;
+    estimatedCost: number;
+    reason: string;
+    substitutions: Array<{ ingredient: string; substitute: string; reason: string }>;
+    leftovers: string | null;
+    wasteFlags: string[];
+  };
+};
+
 type GoalToCartInputs = {
   householdSize: number;
   budgetWeekly: string;
@@ -88,6 +104,12 @@ async function fetchMealPlan(days: number, inputs: GoalToCartInputs): Promise<Me
   return response.json() as Promise<MealPlan>;
 }
 
+async function fetchAdaptiveReplan(): Promise<AdaptiveReplan> {
+  const response = await fetch("/api/recipes/adaptive-replan");
+  if (!response.ok) throw new Error(`Request failed with ${response.status}`);
+  return response.json() as Promise<AdaptiveReplan>;
+}
+
 export default function MealPlanPage() {
   const [, setLocation] = useLocation();
   const [days, setDays] = useState(7);
@@ -102,6 +124,10 @@ export default function MealPlanPage() {
   const { data: plan, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["meal-plan", days, inputs],
     queryFn: () => fetchMealPlan(days, inputs),
+  });
+  const replanQuery = useQuery({
+    queryKey: ["adaptive-replan"],
+    queryFn: fetchAdaptiveReplan,
   });
 
   const basketMutation = useAppMutation({
@@ -202,6 +228,33 @@ export default function MealPlanPage() {
           </div>
         </CardContent>
       </Card>
+
+      {replanQuery.data?.recommendation && (
+        <Card>
+          <CardContent className="space-y-3 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Adaptive replan</h2>
+                <p className="text-xs text-muted-foreground">
+                  {replanQuery.data.remainingCalories} kcal and {replanQuery.data.remainingProteinG}g protein remaining after today&apos;s logs.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setLocation(`/recipes/${replanQuery.data.recommendation!.id}`)}>
+                Review meal
+              </Button>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="font-medium text-sm">{replanQuery.data.recommendation.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{replanQuery.data.recommendation.reason}</p>
+              {replanQuery.data.recommendation.substitutions.slice(0, 2).map((item) => (
+                <p key={`${item.ingredient}-${item.substitute}`} className="mt-2 text-xs text-muted-foreground">{item.reason}</p>
+              ))}
+              {replanQuery.data.recommendation.leftovers && <p className="mt-2 text-xs text-muted-foreground">{replanQuery.data.recommendation.leftovers}</p>}
+              {replanQuery.data.recommendation.wasteFlags.slice(0, 2).map((flag) => <p key={flag} className="mt-2 text-xs text-muted-foreground">{flag}</p>)}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-4">
         {plan.days.map((day) => (
