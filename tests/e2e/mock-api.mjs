@@ -81,6 +81,9 @@ const basket = {
   ],
 };
 
+let importedRecipe = recipe;
+let activeBasket = basket;
+
 const product = {
   id: 10,
   name: "Chicken Breast 500g",
@@ -140,10 +143,29 @@ const special = {
   lastVerifiedAt: recentlyVerifiedAt,
 };
 
+function ingredientLinesFrom(body = {}) {
+  const sourceText = [body.ingredientsText, body.caption].filter((value) => typeof value === "string").join("\n");
+  return sourceText
+    .split(/\r?\n|,/)
+    .map((line) => line.replace(/^[-*•\d.)\s]+/, "").trim())
+    .filter((line) => line.length > 2)
+    .slice(0, 8);
+}
+
 function socialRecipeFixture(body = {}) {
   const sourceUrl = typeof body.sourceUrl === "string" && body.sourceUrl ? body.sourceUrl : "uploaded-media";
   const title = typeof body.title === "string" && body.title ? body.title : "Imported Social Chicken Bowl";
   const creatorHandle = typeof body.creatorHandle === "string" && body.creatorHandle ? body.creatorHandle : "@testcreator";
+  const ingredientLines = ingredientLinesFrom(body);
+  importedRecipe = {
+    ...recipe,
+    name: title,
+    description: body.caption || "Imported from a social recipe.",
+    ingredients: ingredientLines.length
+      ? ingredientLines.map((name, index) => ({ name, quantity: 1, unit: index === 0 ? "pack" : "item", estimatedCost: index === 0 ? 35 : 12 }))
+      : recipe.ingredients,
+    instructions: body.caption ? String(body.caption).split(/\r?\n/).filter(Boolean).slice(0, 6) : ["Prepare the ingredients from the imported recipe."],
+  };
   return {
     id: socialRecipes.length + 1,
     platform: body.platform || "tiktok",
@@ -154,15 +176,52 @@ function socialRecipeFixture(body = {}) {
     marketCode: body.marketCode || "ZA",
     status: "imported",
     importedRecipeId: recipe.id,
-    matchedCount: 2,
+    matchedCount: Math.max(1, ingredientLines.length),
     unmatchedIngredients: [],
-    recipe: { ...recipe, name: title, estimatedCost: 92 },
-    matches: [
-      { name: "Chicken breast", quantity: 500, unit: "g", productId: 10, estimatedCost: 70, calories: 825, proteinG: 155, carbsG: 0, fatG: 18 },
-      { name: "Brown rice", quantity: 1, unit: "pack", productId: null, estimatedCost: 22, calories: 375, proteinG: 7, carbsG: 78, fatG: 2 },
-    ],
+    recipe: { ...importedRecipe, estimatedCost: Math.max(35, ingredientLines.length * 18) },
+    matches: (ingredientLines.length ? ingredientLines : ["Imported ingredient"]).map((name, index) => ({
+      name,
+      quantity: 1,
+      unit: index === 0 ? "pack" : "item",
+      productId: index === 0 ? 10 : null,
+      estimatedCost: index === 0 ? 35 : 12,
+      calories: 120,
+      proteinG: index === 0 ? 20 : 3,
+      carbsG: index === 0 ? 0 : 18,
+      fatG: index === 0 ? 4 : 2,
+    })),
     aiExtractionUsed: false,
   };
+}
+
+function socialBasketFixture(imported) {
+  const items = imported.matches.filter((match) => match.productId).map((match, index) => ({
+    id: index + 1,
+    basketId: 1,
+    productId: match.productId,
+    productName: match.name,
+    retailerName: "Test Market",
+    productUrl: "https://example.test/social-recipe-product",
+    quantity: 1,
+    unit: match.unit,
+    unitCost: match.estimatedCost,
+    totalCost: match.estimatedCost,
+    isOnSpecial: false,
+    category: "social",
+  }));
+  activeBasket = {
+    ...basket,
+    name: `${imported.title} Shopping`,
+    items,
+    totalCost: items.reduce((sum, item) => sum + item.totalCost, 0),
+    totalCalories: imported.matches.reduce((sum, match) => sum + match.calories, 0),
+    totalProteinG: imported.matches.reduce((sum, match) => sum + match.proteinG, 0),
+    totalCarbsG: imported.matches.reduce((sum, match) => sum + match.carbsG, 0),
+    totalFatG: imported.matches.reduce((sum, match) => sum + match.fatG, 0),
+    totalServings: 2,
+    costPerServing: Math.round((items.reduce((sum, item) => sum + item.totalCost, 0) / 2) * 100) / 100,
+  };
+  return activeBasket;
 }
 
 const dashboard = {
@@ -300,7 +359,7 @@ const server = createServer((req, res) => {
       bodyFatTrend: [{ date: "2026-06-19", bodyFatPercent }],
     });
   }
-  if (req.method === "GET" && req.url === "/api/recipes/1") return send(res, 200, { ...recipe, isSaved: recipeSaved });
+  if (req.method === "GET" && req.url === "/api/recipes/1") return send(res, 200, { ...importedRecipe, isSaved: recipeSaved });
   if (req.method === "GET" && req.url === "/api/recipes/1/related") return send(res, 200, []);
   if (req.method === "GET" && req.url.startsWith("/api/recipes/meal-plan")) {
     return send(res, 200, {
@@ -360,8 +419,8 @@ const server = createServer((req, res) => {
     res.writeHead(204);
     return res.end();
   }
-  if (req.method === "POST" && req.url === "/api/baskets/from-recipes") return send(res, 201, basket);
-  if (req.method === "GET" && req.url === "/api/baskets/1") return send(res, 200, basket);
+  if (req.method === "POST" && req.url === "/api/baskets/from-recipes") return send(res, 201, activeBasket);
+  if (req.method === "GET" && req.url === "/api/baskets/1") return send(res, 200, activeBasket);
   if (req.method === "GET" && req.url === "/api/baskets") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/retailers") return send(res, 200, [{ id: 1, name: "Test Market", marketCode: "ZA", logoUrl: "", isActive: true }]);
   if (req.method === "GET" && req.url.startsWith("/api/products?")) {
@@ -401,6 +460,13 @@ const server = createServer((req, res) => {
   if (req.method === "GET" && req.url === "/api/social-recipes") return send(res, 200, socialRecipes);
   if (req.method === "POST" && req.url === "/api/social-recipes") {
     readJson(req).then((body) => {
+      const hasMedia = Array.isArray(body.mediaDataUrls) && body.mediaDataUrls.length > 0;
+      if (body.sourceUrl && !body.ingredientsText && !body.caption && !hasMedia) {
+        send(res, 422, {
+          error: "TikTok short links do not expose recipe ingredients in the local artifact. Paste the caption/ingredients or upload screenshots so the import does not create the wrong recipe.",
+        });
+        return;
+      }
       const imported = socialRecipeFixture(body);
       socialRecipes.push(imported);
       send(res, 201, imported);
@@ -408,7 +474,11 @@ const server = createServer((req, res) => {
     return;
   }
   const socialBasketMatch = req.url.match(/^\/api\/social-recipes\/(\d+)\/basket$/);
-  if (socialBasketMatch && req.method === "POST") return send(res, 201, { basketId: basket.id, basketName: basket.name, itemCount: basket.items.length, unmatchedIngredients: [] });
+  if (socialBasketMatch && req.method === "POST") {
+    const imported = socialRecipes.find((item) => item.id === Number(socialBasketMatch[1]));
+    const createdBasket = imported ? socialBasketFixture(imported) : activeBasket;
+    return send(res, 201, { basketId: createdBasket.id, basketName: createdBasket.name, itemCount: createdBasket.items.length, unmatchedIngredients: [] });
+  }
   if (req.method === "GET" && req.url === "/api/dashboard/today") return send(res, 200, dashboard);
   if (req.method === "GET" && req.url === "/api/dashboard/snack-suggestions") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/meal-suggestion") return send(res, 200, null);

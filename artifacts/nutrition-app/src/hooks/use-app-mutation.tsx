@@ -19,6 +19,7 @@ type AppMutationOptions<TData, TError, TVariables, TContext> = UseMutationOption
   operation: string;
   reference: string;
   successMessage?: string | false;
+  errorMessage?: string | ((error: TError) => string);
   invalidate?: QueryKey[];
 };
 
@@ -31,6 +32,7 @@ export function useAppMutation<
   operation,
   reference,
   successMessage = "Your changes were saved.",
+  errorMessage,
   invalidate = [],
   onSuccess,
   onError,
@@ -56,9 +58,12 @@ export function useAppMutation<
     },
     onError: (error, variables, onMutateResult, context) => {
       onError?.(error, variables, onMutateResult, context);
+      const description = typeof errorMessage === "function"
+        ? errorMessage(error)
+        : errorMessage ?? `Nothing was changed. Try again or contact support with reference ${reference}.`;
       toast({
         title: `Couldn't ${operation.toLowerCase()}`,
-        description: `Nothing was changed. Try again or contact support with reference ${reference}.`,
+        description,
         variant: "destructive",
         duration: 30_000,
         action: (

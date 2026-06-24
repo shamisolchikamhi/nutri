@@ -63,6 +63,7 @@ export function SocialRecipesPanel() {
     operation: "Import recipe",
     reference: "WRITE-RECIPE-IMPORT",
     successMessage: "The recipe was imported.",
+    errorMessage: (error) => error instanceof Error ? error.message : "Nothing was changed. Try again with visible recipe ingredients.",
     invalidate: [getListRecipesQueryKey()],
     mutationFn: () => apiJson<SocialRecipe>("/social-recipes", {
       method: "POST",
