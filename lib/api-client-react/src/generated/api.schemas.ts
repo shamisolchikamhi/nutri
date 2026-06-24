@@ -553,6 +553,17 @@ export interface ShoppingList {
   savingsFromSpecials: number;
 }
 
+export type SpecialPromotionType = typeof SpecialPromotionType[keyof typeof SpecialPromotionType];
+
+
+export const SpecialPromotionType = {
+  single_price: 'single_price',
+  percentage: 'percentage',
+  multibuy: 'multibuy',
+  bundle: 'bundle',
+  loyalty: 'loyalty',
+} as const;
+
 export interface Special {
   id: number;
   productId: number;
@@ -566,8 +577,29 @@ export interface Special {
   category: string;
   imageUrl?: string;
   goalFit: string[];
+  promotionType: SpecialPromotionType;
+  /** @nullable */
+  multibuyQuantity?: number | null;
+  /** @nullable */
+  multibuyPrice?: number | null;
+  loyaltyRequired: boolean;
+  stockStatus: string;
+  /** @nullable */
+  region?: string | null;
+  /** @nullable */
+  store?: string | null;
+  channel: string;
+  currency: string;
+  /** @nullable */
+  terms?: string | null;
+  /** @nullable */
+  sourceUrl?: string | null;
+  /** @nullable */
+  validFrom: string | null;
   /** @nullable */
   validUntil: string | null;
+  /** @nullable */
+  lastVerifiedAt?: string | null;
 }
 
 export interface DashboardToday {
@@ -705,6 +737,17 @@ category?: string;
  * Filter to specials that fit a specific goal
  */
 goalFit?: ListSpecialsGoalFit;
+/**
+ * Promotion validity window to return. Defaults to current promotions.
+ */
+status?: ListSpecialsStatus;
+region?: string;
+store?: string;
+channel?: ListSpecialsChannel;
+/**
+ * Return only promotions that require a loyalty card.
+ */
+loyaltyOnly?: boolean;
 };
 
 export type ListSpecialsGoalFit = typeof ListSpecialsGoalFit[keyof typeof ListSpecialsGoalFit];
@@ -718,5 +761,25 @@ export const ListSpecialsGoalFit = {
   budget: 'budget',
   vegan: 'vegan',
   low_carb: 'low_carb',
+} as const;
+
+export type ListSpecialsStatus = typeof ListSpecialsStatus[keyof typeof ListSpecialsStatus];
+
+
+export const ListSpecialsStatus = {
+  current: 'current',
+  expired: 'expired',
+  upcoming: 'upcoming',
+  all: 'all',
+} as const;
+
+export type ListSpecialsChannel = typeof ListSpecialsChannel[keyof typeof ListSpecialsChannel];
+
+
+export const ListSpecialsChannel = {
+  online: 'online',
+  store: 'store',
+  delivery: 'delivery',
+  pickup: 'pickup',
 } as const;
 

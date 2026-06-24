@@ -5,7 +5,9 @@
  * NutriBasket API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListSpecialsChannel } from './listSpecialsChannel';
 import type { ListSpecialsGoalFit } from './listSpecialsGoalFit';
+import type { ListSpecialsStatus } from './listSpecialsStatus';
 
 export type ListSpecialsParams = {
 retailerId?: number;
@@ -14,4 +16,15 @@ category?: string;
  * Filter to specials that fit a specific goal
  */
 goalFit?: ListSpecialsGoalFit;
+/**
+ * Promotion validity window to return. Defaults to current promotions.
+ */
+status?: ListSpecialsStatus;
+region?: string;
+store?: string;
+channel?: ListSpecialsChannel;
+/**
+ * Return only promotions that require a loyalty card.
+ */
+loyaltyOnly?: boolean;
 };

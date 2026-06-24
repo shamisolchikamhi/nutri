@@ -38,7 +38,7 @@ const demo = {
     { id: DEMO_ID + 52, date: today, mealType: "lunch", name: "Lemon Chicken Power Bowl", calories: 520, proteinG: 46, carbsG: 54, fatG: 14, servings: 1, recipeId: DEMO_ID + 21, productId: null, isFavourite: true },
   ],
   activities: [{ id: DEMO_ID + 61, date: today, steps: 6840, activeCalories: 180, workoutDurationMin: 35, workoutType: "strength", sleepHours: 7.5, notes: "Full-body session" }],
-  specials: [{ id: DEMO_ID + 71, productId: DEMO_ID + 11, retailerId: DEMO_ID + 1, regularPriceAud: 79.99, specialPriceAud: 64.99, savingsAud: 15, savingsPercent: 18.75, goalFit: ["high_protein", "budget"], validUntil: isoDate(7) }],
+  specials: [{ id: DEMO_ID + 71, productId: DEMO_ID + 11, retailerId: DEMO_ID + 1, regularPriceAud: 79.99, specialPriceAud: 64.99, savingsAud: 15, savingsPercent: 18.75, goalFit: ["high_protein", "budget"], validFrom: isoDate(-1), validUntil: isoDate(7), lastVerifiedAt: new Date() }],
   baskets: [{ id: DEMO_ID + 81, name: "Demo weekly essentials", mode: "cheapest" }],
   basketItems: [
     { id: DEMO_ID + 91, basketId: DEMO_ID + 81, productId: DEMO_ID + 11, quantity: 2, unit: "pack", isSubstitute: false, isEssential: true },

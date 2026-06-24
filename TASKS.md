@@ -105,7 +105,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Mark promotions stale when they disappear from a successful scrape.
   - Expire promotions automatically after `validUntil`.
   - Preserve price history instead of overwriting the only observed price.
-- [ ] Make the specials API return only currently valid promotions by default.
+- [x] Make the specials API return only currently valid promotions by default.
   - Filter using `validFrom <= now <= validUntil`.
   - Add explicit filters for expired, upcoming, region, store, channel, and
     loyalty-only promotions.

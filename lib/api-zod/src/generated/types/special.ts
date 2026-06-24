@@ -5,6 +5,7 @@
  * NutriBasket API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { SpecialPromotionType } from './specialPromotionType';
 
 export interface Special {
   id: number;
@@ -19,6 +20,27 @@ export interface Special {
   category: string;
   imageUrl?: string;
   goalFit: string[];
+  promotionType: SpecialPromotionType;
+  /** @nullable */
+  multibuyQuantity?: number | null;
+  /** @nullable */
+  multibuyPrice?: number | null;
+  loyaltyRequired: boolean;
+  stockStatus: string;
+  /** @nullable */
+  region?: string | null;
+  /** @nullable */
+  store?: string | null;
+  channel: string;
+  currency: string;
+  /** @nullable */
+  terms?: string | null;
+  /** @nullable */
+  sourceUrl?: string | null;
+  /** @nullable */
+  validFrom: Date | null;
   /** @nullable */
   validUntil: Date | null;
+  /** @nullable */
+  lastVerifiedAt?: Date | null;
 }

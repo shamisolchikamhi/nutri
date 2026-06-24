@@ -818,10 +818,17 @@ export const GetShoppingListResponse = zod.object({
 /**
  * @summary List current specials from all retailers
  */
+export const listSpecialsQueryStatusDefault = `current`;
+
 export const ListSpecialsQueryParams = zod.object({
   "retailerId": zod.coerce.number().optional(),
   "category": zod.coerce.string().optional(),
-  "goalFit": zod.enum(['high_protein', 'low_calorie', 'muscle_gain', 'fat_loss', 'budget', 'vegan', 'low_carb']).optional().describe('Filter to specials that fit a specific goal')
+  "goalFit": zod.enum(['high_protein', 'low_calorie', 'muscle_gain', 'fat_loss', 'budget', 'vegan', 'low_carb']).optional().describe('Filter to specials that fit a specific goal'),
+  "status": zod.enum(['current', 'expired', 'upcoming', 'all']).default(listSpecialsQueryStatusDefault).describe('Promotion validity window to return. Defaults to current promotions.'),
+  "region": zod.coerce.string().optional(),
+  "store": zod.coerce.string().optional(),
+  "channel": zod.enum(['online', 'store', 'delivery', 'pickup']).optional(),
+  "loyaltyOnly": zod.coerce.boolean().optional().describe('Return only promotions that require a loyalty card.')
 })
 
 export const ListSpecialsResponseItem = zod.object({
@@ -837,7 +844,20 @@ export const ListSpecialsResponseItem = zod.object({
   "category": zod.string(),
   "imageUrl": zod.string().optional(),
   "goalFit": zod.array(zod.string()),
-  "validUntil": zod.coerce.date().nullable()
+  "promotionType": zod.enum(['single_price', 'percentage', 'multibuy', 'bundle', 'loyalty']),
+  "multibuyQuantity": zod.number().nullish(),
+  "multibuyPrice": zod.number().nullish(),
+  "loyaltyRequired": zod.boolean(),
+  "stockStatus": zod.string(),
+  "region": zod.string().nullish(),
+  "store": zod.string().nullish(),
+  "channel": zod.string(),
+  "currency": zod.string(),
+  "terms": zod.string().nullish(),
+  "sourceUrl": zod.string().nullish(),
+  "validFrom": zod.coerce.date().nullable(),
+  "validUntil": zod.coerce.date().nullable(),
+  "lastVerifiedAt": zod.coerce.date().nullish()
 })
 export const ListSpecialsResponse = zod.array(ListSpecialsResponseItem)
 
@@ -858,7 +878,20 @@ export const GetBestValueSpecialsResponseItem = zod.object({
   "category": zod.string(),
   "imageUrl": zod.string().optional(),
   "goalFit": zod.array(zod.string()),
-  "validUntil": zod.coerce.date().nullable()
+  "promotionType": zod.enum(['single_price', 'percentage', 'multibuy', 'bundle', 'loyalty']),
+  "multibuyQuantity": zod.number().nullish(),
+  "multibuyPrice": zod.number().nullish(),
+  "loyaltyRequired": zod.boolean(),
+  "stockStatus": zod.string(),
+  "region": zod.string().nullish(),
+  "store": zod.string().nullish(),
+  "channel": zod.string(),
+  "currency": zod.string(),
+  "terms": zod.string().nullish(),
+  "sourceUrl": zod.string().nullish(),
+  "validFrom": zod.coerce.date().nullable(),
+  "validUntil": zod.coerce.date().nullable(),
+  "lastVerifiedAt": zod.coerce.date().nullish()
 })
 export const GetBestValueSpecialsResponse = zod.array(GetBestValueSpecialsResponseItem)
 
