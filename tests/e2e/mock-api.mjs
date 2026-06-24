@@ -19,6 +19,7 @@ let waterMl = 0;
 let weightKg = 86;
 let bodyFatPercent = 24;
 let activities = [];
+let socialRecipes = [];
 let recipeSaved = false;
 const recentlyVerifiedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
 
@@ -138,6 +139,31 @@ const special = {
   validUntil: "2026-06-30",
   lastVerifiedAt: recentlyVerifiedAt,
 };
+
+function socialRecipeFixture(body = {}) {
+  const sourceUrl = typeof body.sourceUrl === "string" && body.sourceUrl ? body.sourceUrl : "uploaded-media";
+  const title = typeof body.title === "string" && body.title ? body.title : "Imported Social Chicken Bowl";
+  const creatorHandle = typeof body.creatorHandle === "string" && body.creatorHandle ? body.creatorHandle : "@testcreator";
+  return {
+    id: socialRecipes.length + 1,
+    platform: body.platform || "tiktok",
+    sourceUrl,
+    creatorHandle,
+    title,
+    caption: body.caption || "Quick high-protein bowl imported from a social recipe.",
+    marketCode: body.marketCode || "ZA",
+    status: "imported",
+    importedRecipeId: recipe.id,
+    matchedCount: 2,
+    unmatchedIngredients: [],
+    recipe: { ...recipe, name: title, estimatedCost: 92 },
+    matches: [
+      { name: "Chicken breast", quantity: 500, unit: "g", productId: 10, estimatedCost: 70, calories: 825, proteinG: 155, carbsG: 0, fatG: 18 },
+      { name: "Brown rice", quantity: 1, unit: "pack", productId: null, estimatedCost: 22, calories: 375, proteinG: 7, carbsG: 78, fatG: 2 },
+    ],
+    aiExtractionUsed: false,
+  };
+}
 
 const dashboard = {
   date: "2026-06-19",
@@ -372,7 +398,17 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/saved/recipes") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/saved/snacks") return send(res, 200, []);
-  if (req.method === "GET" && req.url === "/api/social-recipes") return send(res, 200, []);
+  if (req.method === "GET" && req.url === "/api/social-recipes") return send(res, 200, socialRecipes);
+  if (req.method === "POST" && req.url === "/api/social-recipes") {
+    readJson(req).then((body) => {
+      const imported = socialRecipeFixture(body);
+      socialRecipes.push(imported);
+      send(res, 201, imported);
+    });
+    return;
+  }
+  const socialBasketMatch = req.url.match(/^\/api\/social-recipes\/(\d+)\/basket$/);
+  if (socialBasketMatch && req.method === "POST") return send(res, 201, { basketId: basket.id, basketName: basket.name, itemCount: basket.items.length, unmatchedIngredients: [] });
   if (req.method === "GET" && req.url === "/api/dashboard/today") return send(res, 200, dashboard);
   if (req.method === "GET" && req.url === "/api/dashboard/snack-suggestions") return send(res, 200, []);
   if (req.method === "GET" && req.url === "/api/dashboard/meal-suggestion") return send(res, 200, null);
