@@ -115,7 +115,7 @@ should not be shipped on top of unreliable health data or silent failures.
     requirement, multibuy conditions, stock caveats, and source link.
   - Display `Verified X hours ago` on every price and promotion.
   - Never label data `Live` when it is stale, generated, or unverified.
-- [ ] Add data-quality gates before publishing scraped records.
+- [x] Add data-quality gates before publishing scraped records.
   - Reject invalid prices, impossible savings, missing dates, mismatched currency,
     duplicate products, and ambiguous pack sizes.
   - Send uncertain product matches to a review queue.

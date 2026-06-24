@@ -10,12 +10,13 @@ type RetailerConfig = {
   urls: string[];
 };
 
-type ScrapedProduct = {
+export type ScrapedProduct = {
   externalId: string;
   sourceUrl: string;
   name: string;
   brand: string | null;
   category: string;
+  currency: string;
   priceAud: number;
   regularPriceAud: number | null;
   promotionType: "single_price" | "percentage" | "multibuy" | "loyalty" | null;
@@ -30,6 +31,18 @@ type ScrapedProduct = {
   fiberPer100g: number | null;
   sugarPer100g: number | null;
   imageUrl: string;
+};
+
+type RejectedScrapedProduct = {
+  retailer: string;
+  externalId: string;
+  name: string;
+  sourceUrl: string;
+  reasons: string[];
+};
+
+type ReviewQueueItem = RejectedScrapedProduct & {
+  queue: "retailer_product_match_review";
 };
 
 type NutritionEstimate = Pick<
@@ -199,6 +212,7 @@ function extractProductsFromHtml(html: string, retailer: RetailerConfig, sourceU
         name: listing.name,
         brand: listing.brand,
         category,
+        currency: listing.currency,
         priceAud: listing.price,
         regularPriceAud: listing.regularPrice,
         promotionType: listing.promotionType,
@@ -236,6 +250,7 @@ function extractProductsFromHtml(html: string, retailer: RetailerConfig, sourceU
       name,
       brand: name.split(" ")[0] || null,
       category,
+      currency: "ZAR",
       priceAud: price,
       regularPriceAud: null,
       promotionType: null,
@@ -280,6 +295,62 @@ async function scrapeRetailer(retailer: RetailerConfig, limit: number, render = 
     if (productsByKey.size >= limit) break;
   }
   return [...productsByKey.values()].slice(0, limit);
+}
+
+function isIsoDate(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const timestamp = Date.parse(`${value}T00:00:00.000Z`);
+  return Number.isFinite(timestamp);
+}
+
+function hasAmbiguousPack(product: ScrapedProduct) {
+  return product.packUnit === "unit" && product.packSize === 1 && !/\b(each|single|unit)\b/i.test(product.name);
+}
+
+function productReviewReasons(product: ScrapedProduct) {
+  const reasons: string[] = [];
+
+  if (!product.externalId.trim()) reasons.push("missing external id");
+  if (!product.sourceUrl.startsWith("https://")) reasons.push("missing secure source url");
+  if (!Number.isFinite(product.priceAud) || product.priceAud <= 0) reasons.push("invalid price");
+  if (product.regularPriceAud != null && (!Number.isFinite(product.regularPriceAud) || product.regularPriceAud <= product.priceAud)) reasons.push("impossible savings");
+  if (product.currency !== "ZAR") reasons.push(`mismatched currency ${product.currency}`);
+  if (product.regularPriceAud != null && (!isIsoDate(product.validFrom) || !isIsoDate(product.validUntil))) reasons.push("missing promotion dates");
+  if (product.validFrom && product.validUntil && product.validFrom > product.validUntil) reasons.push("promotion dates out of order");
+  if (!Number.isFinite(product.packSize) || product.packSize <= 0 || hasAmbiguousPack(product)) reasons.push("ambiguous pack size");
+
+  return reasons;
+}
+
+export function applyDataQualityGates(products: ScrapedProduct[], retailerName: string) {
+  const accepted: ScrapedProduct[] = [];
+  const rejected: RejectedScrapedProduct[] = [];
+  const reviewQueue: ReviewQueueItem[] = [];
+  const seen = new Set<string>();
+
+  for (const product of products) {
+    const reasons = productReviewReasons(product);
+    const duplicateKey = `${product.externalId.toLowerCase()}|${product.name.toLowerCase()}|${product.packSize}|${product.packUnit}`;
+    if (seen.has(duplicateKey)) reasons.push("duplicate product");
+    seen.add(duplicateKey);
+
+    if (reasons.length > 0) {
+      const rejectedProduct = {
+        retailer: retailerName,
+        externalId: product.externalId,
+        name: product.name,
+        sourceUrl: product.sourceUrl,
+        reasons,
+      };
+      rejected.push(rejectedProduct);
+      reviewQueue.push({ ...rejectedProduct, queue: "retailer_product_match_review" });
+      continue;
+    }
+
+    accepted.push(product);
+  }
+
+  return { accepted, rejected, reviewQueue };
 }
 
 async function getOrCreateRetailer(retailer: RetailerConfig) {
@@ -367,7 +438,7 @@ async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfi
       [productRow] = await db.insert(productsTable).values(values).returning();
       inserted += 1;
     }
-    await db.insert(productPriceHistoryTable).values({ productId: productRow.id, price: product.priceAud, regularPrice: product.regularPriceAud, currency: "ZAR", sourceUrl: product.sourceUrl });
+    await db.insert(productPriceHistoryTable).values({ productId: productRow.id, price: product.priceAud, regularPrice: product.regularPriceAud, currency: product.currency, sourceUrl: product.sourceUrl });
 
     if (product.regularPriceAud && product.regularPriceAud > product.priceAud) {
       const externalId = `${product.externalId}:offer`;
@@ -383,7 +454,7 @@ async function writeProducts(products: ScrapedProduct[], retailer: RetailerConfi
         savingsAud: savings,
         savingsPercent: Math.round((savings / product.regularPriceAud) * 1000) / 10,
         sourceUrl: product.sourceUrl,
-        currency: "ZAR",
+        currency: product.currency,
         validFrom: product.validFrom,
         validUntil: product.validUntil,
         isStale: false,
@@ -424,6 +495,7 @@ async function main() {
   const render = hasFlag("render");
   const fixturePath = getArg("from");
   const outPath = resolve(getArg("out", "scripts/out/za-retailers.json") ?? "");
+  const reviewOutPath = resolve(getArg("review-out", "scripts/out/retailer-review-queue.json") ?? "");
 
   let productsByRetailer: Record<string, ScrapedProduct[]> = {};
   if (fixturePath) {
@@ -435,6 +507,33 @@ async function main() {
       if (!retailer) throw new Error(`Unsupported retailer "${key}". Use all, woolworths, pick-n-pay, or checkers.`);
       productsByRetailer[retailer.name] = await scrapeRetailer(retailer, limit, render);
     }
+  }
+
+  const qualityByRetailer: Record<string, ReturnType<typeof applyDataQualityGates>> = {};
+  const acceptedProductsByRetailer: Record<string, ScrapedProduct[]> = {};
+  const reviewQueue: ReviewQueueItem[] = [];
+  for (const [retailerName, products] of Object.entries(productsByRetailer)) {
+    const quality = applyDataQualityGates(products, retailerName);
+    qualityByRetailer[retailerName] = quality;
+    acceptedProductsByRetailer[retailerName] = quality.accepted;
+    reviewQueue.push(...quality.reviewQueue);
+  }
+  productsByRetailer = acceptedProductsByRetailer;
+
+  if (reviewQueue.length > 0) {
+    await mkdir(dirname(reviewOutPath), { recursive: true });
+    await writeFile(
+      reviewOutPath,
+      JSON.stringify({
+        queue: "retailer_product_match_review",
+        marketCode: "ZA",
+        createdAt: new Date().toISOString(),
+        items: reviewQueue,
+      }, null, 2),
+    );
+  }
+
+  if (!fixturePath) {
     await mkdir(dirname(outPath), { recursive: true });
     await writeFile(
       outPath,
@@ -445,6 +544,12 @@ async function main() {
         note: "Prices and product names are scraped from public retailer pages. Nutrition is estimated from product/category heuristics until package nutrition labels are parsed.",
         scrapedAt: new Date().toISOString(),
         productsByRetailer,
+        quality: Object.fromEntries(Object.entries(qualityByRetailer).map(([retailer, quality]) => [retailer, {
+          accepted: quality.accepted.length,
+          rejected: quality.rejected.length,
+          reviewQueued: quality.reviewQueue.length,
+          rejectedProducts: quality.rejected,
+        }])),
       }, null, 2),
     );
   }
@@ -462,14 +567,22 @@ async function main() {
   console.log(JSON.stringify({
     marketCode: "ZA",
     output: fixturePath ? resolve(fixturePath) : outPath,
+    reviewQueue: reviewQueue.length > 0 ? reviewOutPath : null,
     wroteToDatabase: shouldWrite,
     counts: Object.fromEntries(Object.entries(productsByRetailer).map(([retailer, products]) => [retailer, products.length])),
+    quality: Object.fromEntries(Object.entries(qualityByRetailer).map(([retailer, quality]) => [retailer, {
+      accepted: quality.accepted.length,
+      rejected: quality.rejected.length,
+      reviewQueued: quality.reviewQueue.length,
+    }])),
     writeResults,
   }, null, 2));
 }
 
-main().catch(async (error) => {
-  console.error(error);
-  await closePool().catch(() => undefined);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === new URL(process.argv[1], "file:").href) {
+  main().catch(async (error) => {
+    console.error(error);
+    await closePool().catch(() => undefined);
+    process.exitCode = 1;
+  });
+}
