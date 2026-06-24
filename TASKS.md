@@ -166,7 +166,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Add an agent entry point focused on actions, not open-ended chat.
   - Example prompts: `Plan my week under R900`, `Use what is in my pantry`,
     `Swap tonight's dinner`, and `Make my basket cheaper without losing protein`.
-- [ ] Give the agent typed tools for profile, logs, recipes, meal plans, pantry,
+- [x] Give the agent typed tools for profile, logs, recipes, meal plans, pantry,
   retailer prices, specials, and baskets.
 - [ ] Use deterministic nutrition and pricing services for calculations; use the
   model to interpret intent, compare options, explain, and orchestrate tools.

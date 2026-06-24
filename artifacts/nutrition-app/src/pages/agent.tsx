@@ -3,9 +3,11 @@ import { Bot, CalendarDays, PackagePlus, ShoppingCart, Shuffle, ShieldCheck } fr
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AGENT_TOOLS, toolsForAction } from "@/lib/agent-tools";
 
 const ACTIONS = [
   {
+    id: "weekly_plan",
     title: "Plan my week under R900",
     description: "Build a weekly Goal-to-Cart plan using your budget, household size, pantry, and preferred retailers.",
     route: "/meal-plan",
@@ -13,6 +15,7 @@ const ACTIONS = [
     inputs: ["budget", "household", "retailers"],
   },
   {
+    id: "pantry_first",
     title: "Use what is in my pantry",
     description: "Prioritize meals that use confirmed pantry items and ingredients expiring soon.",
     route: "/pantry",
@@ -20,6 +23,7 @@ const ACTIONS = [
     inputs: ["pantry", "expiry", "recipes"],
   },
   {
+    id: "dinner_swap",
     title: "Swap tonight's dinner",
     description: "Find a similar recipe that fits remaining calories, protein, time, and budget.",
     route: "/meal-plan",
@@ -27,6 +31,7 @@ const ACTIONS = [
     inputs: ["logs", "recipes", "budget"],
   },
   {
+    id: "cheaper_basket",
     title: "Make my basket cheaper",
     description: "Compare retailer prices and specials before changing basket contents.",
     route: "/basket",
@@ -76,6 +81,11 @@ export default function AgentPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-1">
+                {toolsForAction(action.id).map((tool) => (
+                  <Badge key={tool.id} variant={tool.requiresConfirmation ? "outline" : "secondary"}>{tool.label}</Badge>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1">
                 {action.inputs.map((input) => (
                   <Badge key={input} variant="secondary">{input}</Badge>
                 ))}
@@ -87,6 +97,24 @@ export default function AgentPage() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Typed tool surface</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 md:grid-cols-2">
+          {AGENT_TOOLS.map((tool) => (
+            <div key={tool.id} className="rounded-lg border p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium">{tool.label}</p>
+                <Badge variant={tool.requiresConfirmation ? "outline" : "secondary"}>{tool.access.replace("_", " + ")}</Badge>
+              </div>
+              <p className="mt-1 text-muted-foreground">{tool.description}</p>
+              {tool.requiresConfirmation && <p className="mt-1 text-xs text-amber-700">Preview and confirmation required before writes.</p>}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }
