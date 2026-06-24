@@ -374,5 +374,5 @@ const server = createServer((req, res) => {
   return send(res, 404, { error: `No fixture for ${req.method} ${req.url}` });
 });
 
-server.listen(5999, "127.0.0.1");
+server.listen(Number(process.env.PORT ?? 5999), "127.0.0.1");
 process.on("SIGTERM", () => server.close());
