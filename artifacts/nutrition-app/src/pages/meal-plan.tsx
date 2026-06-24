@@ -7,6 +7,8 @@ import { createBasketFromRecipes } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/market";
@@ -30,6 +32,7 @@ type MealPlanDay = {
   items: Array<{
     slot: string;
     slotLabel: string;
+    explanation: string;
     recipe: PlanRecipe;
   }>;
   totals: {
@@ -38,6 +41,8 @@ type MealPlanDay = {
     carbsG: number;
     fatG: number;
     cost: number;
+    householdCost: number;
+    budgetRemaining: number | null;
     calorieTarget: number;
     proteinTargetG: number;
     calorieCoveragePercent: number;
@@ -48,12 +53,37 @@ type MealPlanDay = {
 type MealPlan = {
   calorieTarget: number;
   proteinTargetG: number;
+  householdSize: number;
+  budgetWeekly: number | null;
+  maxCookingTime: number;
+  dietaryRules: string[];
+  pantryItems: string[];
+  preferredRetailers: string[];
   savedRecipeCount: number;
   days: MealPlanDay[];
 };
 
-async function fetchMealPlan(days: number): Promise<MealPlan> {
-  const response = await fetch(`/api/recipes/meal-plan?days=${days}`);
+type GoalToCartInputs = {
+  householdSize: number;
+  budgetWeekly: string;
+  maxCookingTime: number;
+  dietaryRules: string;
+  pantryItems: string;
+  preferredRetailers: string;
+};
+
+async function fetchMealPlan(days: number, inputs: GoalToCartInputs): Promise<MealPlan> {
+  const params = new URLSearchParams({
+    days: String(days),
+    householdSize: String(inputs.householdSize),
+    maxCookingTime: String(inputs.maxCookingTime),
+  });
+  if (inputs.budgetWeekly) params.set("budgetWeekly", inputs.budgetWeekly);
+  if (inputs.dietaryRules) params.set("dietaryRules", inputs.dietaryRules);
+  if (inputs.pantryItems) params.set("pantryItems", inputs.pantryItems);
+  if (inputs.preferredRetailers) params.set("preferredRetailers", inputs.preferredRetailers);
+
+  const response = await fetch(`/api/recipes/meal-plan?${params}`);
   if (!response.ok) throw new Error(`Request failed with ${response.status}`);
   return response.json() as Promise<MealPlan>;
 }
@@ -61,9 +91,17 @@ async function fetchMealPlan(days: number): Promise<MealPlan> {
 export default function MealPlanPage() {
   const [, setLocation] = useLocation();
   const [days, setDays] = useState(7);
+  const [inputs, setInputs] = useState<GoalToCartInputs>({
+    householdSize: 1,
+    budgetWeekly: "900",
+    maxCookingTime: 45,
+    dietaryRules: "",
+    pantryItems: "",
+    preferredRetailers: "",
+  });
   const { data: plan, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ["meal-plan", days],
-    queryFn: () => fetchMealPlan(days),
+    queryKey: ["meal-plan", days, inputs],
+    queryFn: () => fetchMealPlan(days, inputs),
   });
 
   const basketMutation = useAppMutation({
@@ -95,7 +133,7 @@ export default function MealPlanPage() {
     return <PageError reference="DATA-MEAL-PLAN" title="We couldn't build your meal plan" description="Complete your profile, then try again. Your current plan has not been changed." onRetry={() => void refetch()} isRetrying={isFetching} />;
   }
 
-  const weeklyCost = plan.days.reduce((sum, day) => sum + day.totals.cost, 0);
+  const weeklyCost = plan.days.reduce((sum, day) => sum + day.totals.householdCost, 0);
 
   return (
     <div className="space-y-5">
@@ -105,7 +143,7 @@ export default function MealPlanPage() {
             <CalendarDays className="h-6 w-6 text-primary" />
             Meal Plan
           </h1>
-          <p className="text-sm text-muted-foreground">Daily recipe mixes matched to your protein and calorie goals.</p>
+          <p className="text-sm text-muted-foreground">Weekly Goal-to-Cart planning with nutrition, time, waste, and basket cost trade-offs.</p>
         </div>
         <div className="flex gap-2">
           {[1, 7].map((value) => (
@@ -115,6 +153,35 @@ export default function MealPlanPage() {
           ))}
         </div>
       </div>
+
+      <Card>
+        <CardContent className="grid gap-3 p-4 md:grid-cols-3">
+          <div className="space-y-1">
+            <Label htmlFor="household-size">Household size</Label>
+            <Input id="household-size" type="number" min={1} max={12} value={inputs.householdSize} onChange={(event) => setInputs((current) => ({ ...current, householdSize: Number(event.target.value) || 1 }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="weekly-budget">Weekly budget</Label>
+            <Input id="weekly-budget" inputMode="decimal" value={inputs.budgetWeekly} onChange={(event) => setInputs((current) => ({ ...current, budgetWeekly: event.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="cooking-time">Max cooking time</Label>
+            <Input id="cooking-time" type="number" min={5} max={240} value={inputs.maxCookingTime} onChange={(event) => setInputs((current) => ({ ...current, maxCookingTime: Number(event.target.value) || 45 }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="dietary-rules">Dietary rules</Label>
+            <Input id="dietary-rules" placeholder="vegan, high_protein" value={inputs.dietaryRules} onChange={(event) => setInputs((current) => ({ ...current, dietaryRules: event.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="pantry-items">Pantry items</Label>
+            <Input id="pantry-items" placeholder="rice, oats, yoghurt" value={inputs.pantryItems} onChange={(event) => setInputs((current) => ({ ...current, pantryItems: event.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="preferred-retailers">Preferred retailers</Label>
+            <Input id="preferred-retailers" placeholder="Checkers, Pick n Pay" value={inputs.preferredRetailers} onChange={(event) => setInputs((current) => ({ ...current, preferredRetailers: event.target.value }))} />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-4 grid grid-cols-3 gap-3 text-center">
@@ -144,7 +211,8 @@ export default function MealPlanPage() {
                 <div>
                   <h2 className="font-semibold">{day.label}</h2>
                   <p className="text-xs text-muted-foreground">
-                    {day.totals.calories} kcal, {day.totals.proteinG}g protein, {formatMoney(day.totals.cost)}
+                    {day.totals.calories} kcal, {day.totals.proteinG}g protein, {formatMoney(day.totals.householdCost)}
+                    {day.totals.budgetRemaining != null && `, ${formatMoney(day.totals.budgetRemaining)} budget left`}
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={() => basketMutation.mutate(day)} disabled={basketMutation.isPending}>
@@ -184,6 +252,7 @@ export default function MealPlanPage() {
                           {item.recipe.isSaved && <Badge variant="secondary">Saved</Badge>}
                         </div>
                         <p className="font-medium text-sm">{item.recipe.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{item.explanation}</p>
                       </div>
                       <div className="text-right text-xs text-muted-foreground">
                         <p>{item.recipe.caloriesPerServing} kcal</p>

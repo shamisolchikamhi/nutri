@@ -139,7 +139,7 @@ should not be shipped on top of unreliable health data or silent failures.
 
 ## P2 - Make the Product Stand Out
 
-- [ ] Build a weekly `Goal-to-Cart` experience.
+- [x] Build a weekly `Goal-to-Cart` experience.
   - Inputs: nutrition goal, budget, household size, schedule, cooking time,
     dietary rules, pantry items, and preferred retailers.
   - Output: an editable meal plan, nutrition forecast, and priced basket.

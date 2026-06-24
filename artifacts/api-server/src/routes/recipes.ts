@@ -61,7 +61,7 @@ async function buildRecipeResponse(recipe: typeof recipesTable.$inferSelect, sav
 
 type RecipeResponse = Awaited<ReturnType<typeof buildRecipeResponse>>;
 type MealPlanRecipe = RecipeResponse & { mealType: string; mealTypeLabel: string };
-type MealPlanItem = { slot: string; slotLabel: string; recipe: MealPlanRecipe };
+type MealPlanItem = { slot: string; slotLabel: string; explanation: string; recipe: MealPlanRecipe };
 type MealPlanDay = {
   day: number;
   label: string;
@@ -72,6 +72,8 @@ type MealPlanDay = {
     carbsG: number;
     fatG: number;
     cost: number;
+    householdCost: number;
+    budgetRemaining: number | null;
     calorieTarget: number;
     proteinTargetG: number;
     calorieCoveragePercent: number;
@@ -106,6 +108,33 @@ function pickPlanRecipe(
       scorePlanRecipe(a, targetCalories, targetProtein, savedIds, usedCounts) -
       scorePlanRecipe(b, targetCalories, targetProtein, savedIds, usedCounts),
   )[0];
+}
+
+function parseCsv(value: unknown) {
+  return String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function explainGoalToCartChoice(
+  recipe: typeof recipesTable.$inferSelect,
+  slot: (typeof PLAN_SLOTS)[number],
+  pantryItems: string[],
+  householdSize: number,
+) {
+  const cookTime = recipe.prepTimeMin + recipe.cookTimeMin;
+  const pantryOverlap = pantryItems.filter((item) => normalizeToken(recipe.name).includes(normalizeToken(item)));
+  const wasteNote = pantryOverlap.length > 0
+    ? `uses pantry item ${pantryOverlap[0]} to reduce waste`
+    : "keeps ingredients reusable across the weekly basket";
+
+  return [
+    `${slot.label}: balances ${recipe.proteinPerServingG}g protein with ${recipe.caloriesPerServing} kcal.`,
+    `Cost trade-off: about ${roundMoney(recipe.estimatedCost * householdSize)} for ${householdSize} household member${householdSize === 1 ? "" : "s"}.`,
+    `Time trade-off: ${cookTime} minutes prep/cook.`,
+    `Waste trade-off: ${wasteNote}.`,
+  ].join(" ");
 }
 
 router.get("/recipes/recommended", async (req, res): Promise<void> => {
@@ -163,13 +192,26 @@ router.get("/recipes", async (req, res): Promise<void> => {
 router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
   const requestedDays = parseInt(String(req.query.days ?? "7"), 10);
   const days = Number.isFinite(requestedDays) ? Math.min(14, Math.max(1, requestedDays)) : 7;
+  const requestedHouseholdSize = parseInt(String(req.query.householdSize ?? "1"), 10);
+  const householdSize = Number.isFinite(requestedHouseholdSize) ? Math.min(12, Math.max(1, requestedHouseholdSize)) : 1;
+  const requestedMaxCookingTime = parseInt(String(req.query.maxCookingTime ?? "90"), 10);
+  const maxCookingTime = Number.isFinite(requestedMaxCookingTime) ? Math.min(240, Math.max(5, requestedMaxCookingTime)) : 90;
+  const budgetWeekly = Number.parseFloat(String(req.query.budgetWeekly ?? "0"));
+  const dietaryRules = parseCsv(req.query.dietaryRules);
+  const pantryItems = parseCsv(req.query.pantryItems);
+  const preferredRetailers = parseCsv(req.query.preferredRetailers);
   const savedIds = await getSavedRecipeIds();
   const profiles = await db.select().from(userProfileTable).limit(1);
   const metrics = profiles[0] ? calcGoalMetrics(profiles[0]) : null;
   const calorieTarget = metrics?.dailyCalorieTarget ?? DEFAULT_NUTRITION_TARGETS.calories;
   const proteinTargetG = metrics?.proteinTargetG ?? DEFAULT_NUTRITION_TARGETS.proteinG;
 
-  const recipes = await db.select().from(recipesTable);
+  let recipes = await db.select().from(recipesTable);
+  recipes = recipes.filter((recipe) => {
+    if (recipe.prepTimeMin + recipe.cookTimeMin > maxCookingTime) return false;
+    if (dietaryRules.length > 0 && !dietaryRules.every((rule) => recipe.tags.includes(normalizeToken(rule).replace(/\s+/g, "_")))) return false;
+    return true;
+  });
   const enriched = await Promise.all(
     recipes.map(async (recipe) => {
       const ingredients = await db.select().from(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, recipe.id));
@@ -197,6 +239,7 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
       items.push({
         slot: slot.key,
         slotLabel: slot.label,
+        explanation: explainGoalToCartChoice(recipe, slot, pantryItems, householdSize),
         recipe: {
           ...(await buildRecipeResponse(recipe, savedIds)),
           mealType,
@@ -226,6 +269,8 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
         carbsG: roundNutrition(totals.carbsG),
         fatG: roundNutrition(totals.fatG),
         cost: roundMoney(totals.cost),
+        householdCost: roundMoney(totals.cost * householdSize),
+        budgetRemaining: Number.isFinite(budgetWeekly) && budgetWeekly > 0 ? roundMoney((budgetWeekly / days) - (totals.cost * householdSize)) : null,
         calorieTarget,
         proteinTargetG,
         calorieCoveragePercent: Math.round((totals.calories / calorieTarget) * 100),
@@ -237,6 +282,12 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
   res.json({
     calorieTarget,
     proteinTargetG,
+    householdSize,
+    budgetWeekly: Number.isFinite(budgetWeekly) && budgetWeekly > 0 ? budgetWeekly : null,
+    maxCookingTime,
+    dietaryRules,
+    pantryItems,
+    preferredRetailers,
     days: dayPlans,
     savedRecipeCount: savedIds.size,
   });

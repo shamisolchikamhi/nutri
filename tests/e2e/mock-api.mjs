@@ -270,6 +270,42 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/recipes/1") return send(res, 200, { ...recipe, isSaved: recipeSaved });
   if (req.method === "GET" && req.url === "/api/recipes/1/related") return send(res, 200, []);
+  if (req.method === "GET" && req.url.startsWith("/api/recipes/meal-plan")) {
+    return send(res, 200, {
+      calorieTarget: 2000,
+      proteinTargetG: 140,
+      householdSize: 2,
+      budgetWeekly: 900,
+      maxCookingTime: 45,
+      dietaryRules: [],
+      pantryItems: ["rice"],
+      preferredRetailers: ["Test Market"],
+      savedRecipeCount: 1,
+      days: [{
+        day: 1,
+        label: "Today",
+        items: [{
+          slot: "lunch",
+          slotLabel: "Lunch",
+          explanation: "Lunch: balances 48g protein with 520 kcal. Cost trade-off: about R 184 for 2 household members. Time trade-off: 30 minutes prep/cook. Waste trade-off: uses pantry item rice to reduce waste.",
+          recipe: { ...recipe, mealTypeLabel: "Lunch/Dinner", isSaved: true },
+        }],
+        totals: {
+          calories: 520,
+          proteinG: 48,
+          carbsG: 52,
+          fatG: 14,
+          cost: 92,
+          householdCost: 184,
+          budgetRemaining: 716,
+          calorieTarget: 2000,
+          proteinTargetG: 140,
+          calorieCoveragePercent: 26,
+          proteinCoveragePercent: 34,
+        },
+      }],
+    });
+  }
   if (req.method === "POST" && req.url === "/api/saved/recipes") {
     recipeSaved = true;
     res.writeHead(204);
