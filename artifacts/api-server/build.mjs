@@ -9,6 +9,22 @@ import { rm } from "node:fs/promises";
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+const workspaceDir = path.resolve(artifactDir, "../..");
+
+function workspaceAliasPlugin() {
+  const aliases = new Map([
+    ["@workspace/nutrition", path.resolve(workspaceDir, "lib/nutrition/src/index.ts")],
+  ]);
+
+  return {
+    name: "workspace-package-aliases",
+    setup(build) {
+      build.onResolve({ filter: /^@workspace\/nutrition$/ }, (args) => ({
+        path: aliases.get(args.path),
+      }));
+    },
+  };
+}
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
@@ -103,6 +119,7 @@ async function buildAll() {
     ],
     sourcemap: "linked",
     plugins: [
+      workspaceAliasPlugin(),
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it
       esbuildPluginPino({ transports: ["pino-pretty"] })
     ],
