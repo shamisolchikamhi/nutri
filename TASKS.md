@@ -127,7 +127,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Add a retailer-data status page for operators.
   - Show source health, last run, last successful extraction, current record count,
     stale records, blocked adapters, and recent parsing errors.
-- [ ] Define a lawful fallback for blocked sources.
+- [x] Define a lawful fallback for blocked sources.
   - Use retailer-approved feeds, affiliate/catalogue providers, or manual catalogue
     ingestion where direct scraping is not permitted or technically reliable.
   - Document source terms and permitted refresh frequency per retailer.

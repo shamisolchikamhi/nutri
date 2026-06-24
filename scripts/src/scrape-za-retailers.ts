@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { retailerAdapters, type RetailerKey } from "./retailers";
 import { fetchRenderedHtml } from "./retailers/browser-fetch";
+import { lawfulFallbackForBlockedSource, retailerSourcePolicies } from "./retailers/source-policies";
 
 type RetailerConfig = {
   key: RetailerKey;
@@ -646,8 +647,11 @@ async function main() {
     },
     retailers: Object.fromEntries(Object.entries(metricsByRetailer).map(([retailer, metrics]) => {
       const expectedMinimumExtractions = fixturePath ? Math.min(1, limit) : Math.min(5, limit);
+      const retailerKey = Object.values(RETAILERS).find((config) => config.name === retailer)?.key;
       return [retailer, {
         ...metrics,
+        sourcePolicy: retailerKey ? retailerSourcePolicies[retailerKey] : null,
+        fallback: retailerKey && metrics.blockedRequests > 0 ? lawfulFallbackForBlockedSource(retailerKey) : null,
         alerts: buildScraperAlerts(metrics, expectedMinimumExtractions),
       }];
     })),
