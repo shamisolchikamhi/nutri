@@ -34,6 +34,6 @@ test("does not invent a recipe for a TikTok URL without visible ingredients", as
   await page.getByLabel("Post URL").fill("https://vt.tiktok.com/ZSCNqrCLA/");
   await page.getByRole("button", { name: "Analyze recipe and match local products" }).click();
 
-  await expect(page.getByText("TikTok short links do not expose recipe ingredients in the local artifact.")).toBeVisible();
+  await expect(page.getByText("OpenAI analysis is not available in the local mock API.")).toBeVisible();
   await expect(page).toHaveURL(/\/recipes$/);
 });

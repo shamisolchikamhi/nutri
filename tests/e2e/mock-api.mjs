@@ -463,7 +463,7 @@ const server = createServer((req, res) => {
       const hasMedia = Array.isArray(body.mediaDataUrls) && body.mediaDataUrls.length > 0;
       if (body.sourceUrl && !body.ingredientsText && !body.caption && !hasMedia) {
         send(res, 422, {
-          error: "TikTok short links do not expose recipe ingredients in the local artifact. Paste the caption/ingredients or upload screenshots so the import does not create the wrong recipe.",
+          error: "OpenAI analysis is not available in the local mock API. Start the real API with OPENAI_API_KEY, or paste the caption/ingredients or upload screenshots so the import can use visible recipe details.",
         });
         return;
       }
