@@ -650,6 +650,16 @@ export interface Special {
   savingsAud: number;
   savingsPercent: number;
   category: string;
+  /** @nullable */
+  packSize?: number | null;
+  /** @nullable */
+  packUnit?: string | null;
+  /** @nullable */
+  caloriesPer100g?: number | null;
+  /** @nullable */
+  proteinPer100g?: number | null;
+  /** @nullable */
+  fiberPer100g?: number | null;
   imageUrl?: string;
   goalFit: string[];
   promotionType: SpecialPromotionType;

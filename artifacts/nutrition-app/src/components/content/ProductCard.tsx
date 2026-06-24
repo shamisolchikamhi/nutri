@@ -6,6 +6,7 @@ import { BarChart2, ExternalLink } from "lucide-react";
 import { ContentImage } from "./ContentImage";
 import { SaveControl } from "./SaveControl";
 import { formatMoney } from "@/lib/market";
+import { calculateValueScore } from "@/lib/value-score";
 
 export type ProductCardData = {
   id: number;
@@ -15,8 +16,12 @@ export type ProductCardData = {
   price: number;
   regularPrice?: number | null;
   isOnSpecial?: boolean;
-  calories?: number;
-  proteinG?: number;
+  calories?: number | null;
+  proteinG?: number | null;
+  fiberG?: number | null;
+  packSize?: number | null;
+  packUnit?: string | null;
+  category?: string | null;
   savings?: number;
   savingsPercent?: number;
   tags?: string[];
@@ -82,6 +87,8 @@ function promotionConditionLabels(product: ProductCardData) {
 }
 
 export function ProductCard({ product, variant = "grid", saved, onRemove, onCompare, action }: ProductCardProps) {
+  const valueScore = calculateValueScore(product);
+
   if (variant === "special") {
     const conditionLabels = promotionConditionLabels(product);
 
@@ -98,6 +105,7 @@ export function ProductCard({ product, variant = "grid", saved, onRemove, onComp
             <div className="mt-2 flex items-baseline gap-2"><span className="text-xl font-bold text-primary">{formatMoney(product.price)}</span>{product.regularPrice != null && <span className="text-sm text-muted-foreground line-through">{formatMoney(product.regularPrice)}</span>}</div>
             <p className="text-xs text-muted-foreground">{formatVerified(product.lastVerifiedAt)}</p>
             {product.savings != null && <p className="text-xs font-medium text-emerald-600">Save {formatMoney(product.savings)}</p>}
+            <ValueScoreBlock valueScore={valueScore} compact />
             <div className="mt-2 flex flex-wrap gap-1">{(product.tags ?? []).slice(0, 2).map((tag) => <Badge key={tag} variant="outline" className="py-0 text-xs capitalize">{tag.replace("_", " ")}</Badge>)}</div>
             <div className="mt-2 space-y-1 text-xs text-muted-foreground">
               {conditionLabels.map((label) => <p key={label}>{label}</p>)}
@@ -133,6 +141,7 @@ export function ProductCard({ product, variant = "grid", saved, onRemove, onComp
         )}
         {product.proteinG != null && <div className="flex justify-between text-xs"><span>Protein</span><span className="font-medium text-emerald-600">{product.proteinG}g/100g</span></div>}
         {product.calories != null && <div className="flex justify-between text-xs text-muted-foreground"><span>Calories</span><span>{product.calories} kcal</span></div>}
+        <ValueScoreBlock valueScore={valueScore} />
         {product.sourceUrl && (
           <a href={product.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
             Source <ExternalLink className="h-3 w-3" />
@@ -142,5 +151,23 @@ export function ProductCard({ product, variant = "grid", saved, onRemove, onComp
         {action}
       </CardContent>
     </Card>
+  );
+}
+
+function ValueScoreBlock({ valueScore, compact = false }: { valueScore: ReturnType<typeof calculateValueScore>; compact?: boolean }) {
+  return (
+    <details className={compact ? "mt-2 rounded-lg bg-muted/50 px-2 py-1" : "mt-2 rounded-lg bg-muted/50 p-2"}>
+      <summary className="cursor-pointer text-xs font-medium">
+        Value score {valueScore.score}/100
+      </summary>
+      <div className="mt-1 space-y-1 text-xs text-muted-foreground">
+        {valueScore.breakdown.map((item) => (
+          <div key={item.label} className="flex justify-between gap-2">
+            <span>{item.label}: {item.detail}</span>
+            <span className="font-medium">{item.points}</span>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }

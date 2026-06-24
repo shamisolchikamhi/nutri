@@ -151,7 +151,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Add receipt and pantry capture.
   - Scan a receipt or pantry photo, confirm extracted items, then update inventory.
   - Suggest meals using what will expire first.
-- [ ] Add a transparent value score for products and specials.
+- [x] Add a transparent value score for products and specials.
   - Combine normalized price, protein/fibre density, goal fit, pack size, and waste.
   - Show the calculation instead of presenting an unexplained AI score.
 - [ ] Add local-market intelligence.

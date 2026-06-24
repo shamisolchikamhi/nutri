@@ -1940,6 +1940,16 @@ components:
           type: number
         category:
           type: string
+        packSize:
+          type: ["number", "null"]
+        packUnit:
+          type: ["string", "null"]
+        caloriesPer100g:
+          type: ["integer", "null"]
+        proteinPer100g:
+          type: ["number", "null"]
+        fiberPer100g:
+          type: ["number", "null"]
         imageUrl:
           type: string
         goalFit:
