@@ -65,7 +65,7 @@ export default defineConfig(async ({ command }) => {
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
-    ...(command === "serve" ? [apiPreflightPlugin(resolvedApiTarget)] : []),
+    ...(command === "serve" && process.env.STRICT_API_PREFLIGHT === "true" ? [apiPreflightPlugin(resolvedApiTarget)] : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [

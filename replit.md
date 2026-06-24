@@ -15,9 +15,8 @@ NutriBasket helps people hit nutrition and body goals with meal tracking, goal-a
 - In another terminal, start the web app with
   `PORT=5173 BASE_PATH=/ VITE_API_TARGET=http://127.0.0.1:5000 pnpm --filter @workspace/nutrition-app run dev`.
   `VITE_API_TARGET` overrides the hosted default (`http://127.0.0.1:8080`):
-  startup warns when that service is unavailable before proxying. Set
-  `STRICT_API_PREFLIGHT=true` when you want local development or CI to fail fast
-  on an unhealthy API.
+  startup does not block on API availability. Set `STRICT_API_PREFLIGHT=true`
+  when you want local development or CI to fail fast on an unhealthy API.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
