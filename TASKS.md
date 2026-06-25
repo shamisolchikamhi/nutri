@@ -168,7 +168,7 @@ should not be shipped on top of unreliable health data or silent failures.
     `Swap tonight's dinner`, and `Make my basket cheaper without losing protein`.
 - [x] Give the agent typed tools for profile, logs, recipes, meal plans, pantry,
   retailer prices, specials, and baskets.
-- [ ] Use deterministic nutrition and pricing services for calculations; use the
+- [x] Use deterministic nutrition and pricing services for calculations; use the
   model to interpret intent, compare options, explain, and orchestrate tools.
 - [ ] Show a preview/diff before the agent changes a plan, log, profile, or basket.
 - [ ] Require confirmation for writes and make agent changes undoable.

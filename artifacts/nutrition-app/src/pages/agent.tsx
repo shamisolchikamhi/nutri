@@ -3,6 +3,7 @@ import { Bot, CalendarDays, PackagePlus, ShoppingCart, Shuffle, ShieldCheck } fr
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AGENT_CALCULATION_SERVICES, calculationServicesForAction } from "@/lib/agent-calculations";
 import { AGENT_TOOLS, toolsForAction } from "@/lib/agent-tools";
 
 const ACTIONS = [
@@ -85,6 +86,10 @@ export default function AgentPage() {
                   <Badge key={tool.id} variant={tool.requiresConfirmation ? "outline" : "secondary"}>{tool.label}</Badge>
                 ))}
               </div>
+              <div className="rounded-lg bg-muted/40 p-2 text-xs text-muted-foreground">
+                Service math: {calculationServicesForAction(action.id).filter((service) => service.owner === "deterministic_service").map((service) => service.label).join(", ")}.
+                {" "}Model: intent, comparison, explanation, and tool orchestration.
+              </div>
               <div className="flex flex-wrap gap-1">
                 {action.inputs.map((input) => (
                   <Badge key={input} variant="secondary">{input}</Badge>
@@ -111,6 +116,26 @@ export default function AgentPage() {
               </div>
               <p className="mt-1 text-muted-foreground">{tool.description}</p>
               {tool.requiresConfirmation && <p className="mt-1 text-xs text-amber-700">Preview and confirmation required before writes.</p>}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Deterministic calculation contract</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 md:grid-cols-2">
+          {AGENT_CALCULATION_SERVICES.map((service) => (
+            <div key={service.id} className="rounded-lg border p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium">{service.label}</p>
+                <Badge variant={service.owner === "model" ? "outline" : "secondary"}>
+                  {service.owner === "model" ? "model orchestrates" : "service calculates"}
+                </Badge>
+              </div>
+              <p className="mt-1 text-muted-foreground">{service.responsibility}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Source: {service.evidence}</p>
             </div>
           ))}
         </CardContent>
