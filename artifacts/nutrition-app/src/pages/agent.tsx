@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 import { AGENT_CALCULATION_SERVICES, calculationServicesForAction } from "@/lib/agent-calculations";
 import { previewForAction } from "@/lib/agent-previews";
+import { AGENT_SAFETY_BOUNDARIES } from "@/lib/agent-safety";
 import { AGENT_TOOLS, toolsForAction } from "@/lib/agent-tools";
 
 const ACTIONS = [
@@ -93,6 +94,21 @@ export default function AgentPage() {
           <p className="rounded-lg bg-muted/50 p-3">No open-ended medical advice or diagnosis.</p>
           <p className="rounded-lg bg-muted/50 p-3">Calculations use deterministic nutrition, basket, price, and pantry services.</p>
           <p className="rounded-lg bg-muted/50 p-3">Writes require preview and confirmation before they change plans or baskets.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Safety boundaries</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 md:grid-cols-2">
+          {AGENT_SAFETY_BOUNDARIES.map((boundary) => (
+            <div key={boundary.id} className="rounded-lg border p-3 text-sm">
+              <p className="font-medium">{boundary.title}</p>
+              <p className="mt-1 text-muted-foreground">{boundary.rule}</p>
+              <p className="mt-1 text-xs text-amber-700">{boundary.userMessage}</p>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
