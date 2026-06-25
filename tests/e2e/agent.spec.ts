@@ -22,4 +22,7 @@ test("opens an action-focused Nutri Agent entry point", async ({ page }) => {
   await expect(page.getByText("Current plan stays unchanged")).toBeVisible();
   await expect(page.getByText("7-day draft plan under R900")).toBeVisible();
   await expect(page.getByText("No plan changes are applied from this preview.")).toBeVisible();
+  await page.getByRole("button", { name: "Confirm write" }).click();
+  await expect(page.getByText("Agent change scheduled")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
 });

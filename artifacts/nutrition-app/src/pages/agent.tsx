@@ -4,7 +4,8 @@ import { Bot, CalendarDays, PackagePlus, ShoppingCart, Shuffle, ShieldCheck } fr
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useUndoableAction } from "@/hooks/use-undoable-action";
 import { AGENT_CALCULATION_SERVICES, calculationServicesForAction } from "@/lib/agent-calculations";
 import { previewForAction } from "@/lib/agent-previews";
 import { AGENT_TOOLS, toolsForAction } from "@/lib/agent-tools";
@@ -46,6 +47,7 @@ const ACTIONS = [
 
 export default function AgentPage() {
   const [, setLocation] = useLocation();
+  const scheduleUndoable = useUndoableAction();
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
   const selectedPreview = previewActionId ? previewForAction(previewActionId) : undefined;
 
@@ -176,6 +178,17 @@ export default function AgentPage() {
               <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
                 No {selectedPreview.changeType} changes are applied from this preview. Writes require confirmation in the next step.
               </p>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    scheduleUndoable({ label: "Agent change", onCommit: () => undefined });
+                    setPreviewActionId(null);
+                  }}
+                >
+                  Confirm write
+                </Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
