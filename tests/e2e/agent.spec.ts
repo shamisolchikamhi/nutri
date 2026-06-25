@@ -15,5 +15,11 @@ test("opens an action-focused Nutri Agent entry point", async ({ page }) => {
   await expect(page.getByText("service calculates").first()).toBeVisible();
   await expect(page.getByText("model orchestrates")).toBeVisible();
   await expect(page.getByText("The model does not invent totals or prices; it cites service outputs and missing data.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Preview diff" })).toHaveCount(4);
   await expect(page.getByRole("button", { name: "Start action" })).toHaveCount(4);
+  await page.getByRole("button", { name: "Preview diff" }).first().click();
+  await expect(page.getByRole("dialog", { name: "Weekly plan preview" })).toBeVisible();
+  await expect(page.getByText("Current plan stays unchanged")).toBeVisible();
+  await expect(page.getByText("7-day draft plan under R900")).toBeVisible();
+  await expect(page.getByText("No plan changes are applied from this preview.")).toBeVisible();
 });

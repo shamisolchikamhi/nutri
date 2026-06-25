@@ -170,7 +170,7 @@ should not be shipped on top of unreliable health data or silent failures.
   retailer prices, specials, and baskets.
 - [x] Use deterministic nutrition and pricing services for calculations; use the
   model to interpret intent, compare options, explain, and orchestrate tools.
-- [ ] Show a preview/diff before the agent changes a plan, log, profile, or basket.
+- [x] Show a preview/diff before the agent changes a plan, log, profile, or basket.
 - [ ] Require confirmation for writes and make agent changes undoable.
 - [ ] Include assumptions, missing data, confidence, price freshness, and the
   reason behind each recommendation.

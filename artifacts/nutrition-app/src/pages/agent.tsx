@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Bot, CalendarDays, PackagePlus, ShoppingCart, Shuffle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AGENT_CALCULATION_SERVICES, calculationServicesForAction } from "@/lib/agent-calculations";
+import { previewForAction } from "@/lib/agent-previews";
 import { AGENT_TOOLS, toolsForAction } from "@/lib/agent-tools";
 
 const ACTIONS = [
@@ -43,6 +46,8 @@ const ACTIONS = [
 
 export default function AgentPage() {
   const [, setLocation] = useLocation();
+  const [previewActionId, setPreviewActionId] = useState<string | null>(null);
+  const selectedPreview = previewActionId ? previewForAction(previewActionId) : undefined;
 
   return (
     <div className="space-y-5">
@@ -95,9 +100,14 @@ export default function AgentPage() {
                   <Badge key={input} variant="secondary">{input}</Badge>
                 ))}
               </div>
-              <Button variant="outline" onClick={() => setLocation(action.route)}>
-                Start action
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => setPreviewActionId(action.id)}>
+                  Preview diff
+                </Button>
+                <Button variant="ghost" onClick={() => setLocation(action.route)}>
+                  Start action
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -140,6 +150,36 @@ export default function AgentPage() {
           ))}
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(selectedPreview)} onOpenChange={(open) => !open && setPreviewActionId(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedPreview?.title ?? "Agent change preview"}</DialogTitle>
+          </DialogHeader>
+          {selectedPreview && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">{selectedPreview.summary}</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border p-3">
+                  <p className="text-sm font-semibold">Before</p>
+                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {selectedPreview.before.map((item) => <li key={item}>- {item}</li>)}
+                  </ul>
+                </div>
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-sm font-semibold">After preview</p>
+                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    {selectedPreview.after.map((item) => <li key={item}>- {item}</li>)}
+                  </ul>
+                </div>
+              </div>
+              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                No {selectedPreview.changeType} changes are applied from this preview. Writes require confirmation in the next step.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
