@@ -174,7 +174,7 @@ should not be shipped on top of unreliable health data or silent failures.
 - [x] Require confirmation for writes and make agent changes undoable.
 - [x] Include assumptions, missing data, confidence, price freshness, and the
   reason behind each recommendation.
-- [ ] Store a concise preference memory that users can inspect, edit, or clear.
+- [x] Store a concise preference memory that users can inspect, edit, or clear.
 - [ ] Add safety boundaries.
   - Do not diagnose or prescribe treatment.
   - Detect high-risk goals and direct users toward qualified medical guidance.

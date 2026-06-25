@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Bot, CalendarDays, PackagePlus, ShoppingCart, Shuffle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,11 +45,32 @@ const ACTIONS = [
   },
 ];
 
+const AGENT_MEMORY_KEY = "nutribasket.agent.preferenceMemory";
+const DEFAULT_MEMORY = "Prefers budget-aware, high-protein plans with pantry-first swaps and visible price trade-offs.";
+
 export default function AgentPage() {
   const [, setLocation] = useLocation();
   const scheduleUndoable = useUndoableAction();
   const [previewActionId, setPreviewActionId] = useState<string | null>(null);
+  const [memory, setMemory] = useState(DEFAULT_MEMORY);
+  const [memoryStatus, setMemoryStatus] = useState("Stored locally. Edit or clear this any time.");
   const selectedPreview = previewActionId ? previewForAction(previewActionId) : undefined;
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(AGENT_MEMORY_KEY);
+    if (stored != null) setMemory(stored);
+  }, []);
+
+  function saveMemory() {
+    window.localStorage.setItem(AGENT_MEMORY_KEY, memory.trim());
+    setMemoryStatus("Preference memory saved.");
+  }
+
+  function clearMemory() {
+    window.localStorage.removeItem(AGENT_MEMORY_KEY);
+    setMemory("");
+    setMemoryStatus("Preference memory cleared.");
+  }
 
   return (
     <div className="space-y-5">
@@ -130,6 +151,31 @@ export default function AgentPage() {
               {tool.requiresConfirmation && <p className="mt-1 text-xs text-amber-700">Preview and confirmation required before writes.</p>}
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Preference memory</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Concise memory the agent can use for future suggestions. You can inspect, edit, or clear it before it influences recommendations.
+          </p>
+          <textarea
+            aria-label="Preference memory"
+            className="min-h-24 w-full rounded-md border bg-background p-3 text-sm"
+            value={memory}
+            onChange={(event) => {
+              setMemory(event.target.value);
+              setMemoryStatus("Unsaved local edits.");
+            }}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={saveMemory}>Save memory</Button>
+            <Button variant="ghost" onClick={clearMemory}>Clear memory</Button>
+            <p className="text-sm text-muted-foreground">{memoryStatus}</p>
+          </div>
         </CardContent>
       </Card>
 

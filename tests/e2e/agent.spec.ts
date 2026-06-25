@@ -15,6 +15,14 @@ test("opens an action-focused Nutri Agent entry point", async ({ page }) => {
   await expect(page.getByText("service calculates").first()).toBeVisible();
   await expect(page.getByText("model orchestrates")).toBeVisible();
   await expect(page.getByText("The model does not invent totals or prices; it cites service outputs and missing data.")).toBeVisible();
+  await expect(page.getByText("Preference memory")).toBeVisible();
+  await expect(page.getByLabel("Preference memory")).toHaveValue(/budget-aware/);
+  await page.getByLabel("Preference memory").fill("Likes quick dinners, high protein, and Checkers-first baskets.");
+  await page.getByRole("button", { name: "Save memory" }).click();
+  await expect(page.getByText("Preference memory saved.")).toBeVisible();
+  await page.getByRole("button", { name: "Clear memory" }).click();
+  await expect(page.getByLabel("Preference memory")).toHaveValue("");
+  await expect(page.getByText("Preference memory cleared.")).toBeVisible();
   await expect(page.getByRole("button", { name: "Preview diff" })).toHaveCount(4);
   await expect(page.getByRole("button", { name: "Start action" })).toHaveCount(4);
   await page.getByRole("button", { name: "Preview diff" }).first().click();
