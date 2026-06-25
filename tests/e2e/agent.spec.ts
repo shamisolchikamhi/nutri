@@ -22,6 +22,11 @@ test("opens an action-focused Nutri Agent entry point", async ({ page }) => {
   await expect(page.getByText("Current plan stays unchanged")).toBeVisible();
   await expect(page.getByText("7-day draft plan under R900")).toBeVisible();
   await expect(page.getByText("No plan changes are applied from this preview.")).toBeVisible();
+  await expect(page.getByText("Reason")).toBeVisible();
+  await expect(page.getByText("Confidence")).toBeVisible();
+  await expect(page.getByText("Price freshness")).toBeVisible();
+  await expect(page.getByText("Missing data", { exact: true })).toBeVisible();
+  await expect(page.getByText("Household size and retailer preferences come from the active profile")).toBeVisible();
   await page.getByRole("button", { name: "Confirm write" }).click();
   await expect(page.getByText("Agent change scheduled")).toBeVisible();
   await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();

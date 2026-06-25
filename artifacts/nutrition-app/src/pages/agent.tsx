@@ -178,6 +178,32 @@ export default function AgentPage() {
               <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
                 No {selectedPreview.changeType} changes are applied from this preview. Writes require confirmation in the next step.
               </p>
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="font-semibold">Reason</p>
+                  <p className="mt-1 text-muted-foreground">{selectedPreview.reason}</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="font-semibold">Confidence</p>
+                  <p className="mt-1 capitalize text-muted-foreground">{selectedPreview.confidence}</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="font-semibold">Price freshness</p>
+                  <p className="mt-1 text-muted-foreground">{selectedPreview.priceFreshness}</p>
+                </div>
+                <div className="rounded-lg bg-muted/40 p-3">
+                  <p className="font-semibold">Missing data</p>
+                  <ul className="mt-1 space-y-1 text-muted-foreground">
+                    {selectedPreview.missingData.map((item) => <li key={item}>- {item}</li>)}
+                  </ul>
+                </div>
+              </div>
+              <div className="rounded-lg bg-muted/40 p-3 text-sm">
+                <p className="font-semibold">Assumptions</p>
+                <ul className="mt-1 space-y-1 text-muted-foreground">
+                  {selectedPreview.assumptions.map((item) => <li key={item}>- {item}</li>)}
+                </ul>
+              </div>
               <DialogFooter>
                 <Button
                   variant="outline"

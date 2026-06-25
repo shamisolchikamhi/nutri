@@ -172,7 +172,7 @@ should not be shipped on top of unreliable health data or silent failures.
   model to interpret intent, compare options, explain, and orchestrate tools.
 - [x] Show a preview/diff before the agent changes a plan, log, profile, or basket.
 - [x] Require confirmation for writes and make agent changes undoable.
-- [ ] Include assumptions, missing data, confidence, price freshness, and the
+- [x] Include assumptions, missing data, confidence, price freshness, and the
   reason behind each recommendation.
 - [ ] Store a concise preference memory that users can inspect, edit, or clear.
 - [ ] Add safety boundaries.
