@@ -179,7 +179,7 @@ should not be shipped on top of unreliable health data or silent failures.
   - Do not diagnose or prescribe treatment.
   - Detect high-risk goals and direct users toward qualified medical guidance.
   - Avoid aggressive deficits and clearly label estimates.
-- [ ] Evaluate the agent with repeatable scenarios for nutrition correctness,
+- [x] Evaluate the agent with repeatable scenarios for nutrition correctness,
   budget adherence, dietary constraints, tool-call safety, and hallucinations.
 
 ## P2 - Cravings and Cycle-Aware Support

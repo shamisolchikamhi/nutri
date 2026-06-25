@@ -19,6 +19,11 @@ test("opens an action-focused Nutri Agent entry point", async ({ page }) => {
   await expect(page.getByText("service calculates").first()).toBeVisible();
   await expect(page.getByText("model orchestrates")).toBeVisible();
   await expect(page.getByText("The model does not invent totals or prices; it cites service outputs and missing data.")).toBeVisible();
+  await expect(page.getByText("Repeatable agent evaluations")).toBeVisible();
+  await expect(page.getByText("Nutrition correctness")).toBeVisible();
+  await expect(page.getByText("Budget adherence")).toBeVisible();
+  await expect(page.getByText("Tool-call safety")).toBeVisible();
+  await expect(page.getByText("No fabricated ingredients are created")).toBeVisible();
   await expect(page.getByText("Preference memory")).toBeVisible();
   await expect(page.getByLabel("Preference memory")).toHaveValue(/budget-aware/);
   await page.getByLabel("Preference memory").fill("Likes quick dinners, high protein, and Checkers-first baskets.");

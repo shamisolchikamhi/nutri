@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useUndoableAction } from "@/hooks/use-undoable-action";
 import { AGENT_CALCULATION_SERVICES, calculationServicesForAction } from "@/lib/agent-calculations";
+import { AGENT_EVALUATION_SCENARIOS } from "@/lib/agent-evaluation";
 import { previewForAction } from "@/lib/agent-previews";
 import { AGENT_SAFETY_BOUNDARIES } from "@/lib/agent-safety";
 import { AGENT_TOOLS, toolsForAction } from "@/lib/agent-tools";
@@ -210,6 +211,27 @@ export default function AgentPage() {
               </div>
               <p className="mt-1 text-muted-foreground">{service.responsibility}</p>
               <p className="mt-1 text-xs text-muted-foreground">Source: {service.evidence}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Repeatable agent evaluations</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-2 md:grid-cols-2">
+          {AGENT_EVALUATION_SCENARIOS.map((scenario) => (
+            <div key={scenario.id} className="rounded-lg border p-3 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium">{scenario.name}</p>
+                <Badge variant="outline">{scenario.focus.replace("_", " ")}</Badge>
+              </div>
+              <p className="mt-2 text-muted-foreground">Prompt: {scenario.prompt}</p>
+              <p className="mt-2 text-muted-foreground">Expected: {scenario.expectedOutcome}</p>
+              <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                {scenario.passCriteria.map((criterion) => <li key={criterion}>- {criterion}</li>)}
+              </ul>
             </div>
           ))}
         </CardContent>
