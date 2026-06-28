@@ -11,6 +11,7 @@ import {
 import {
   basketQuantityForIngredient,
   ingredientAmountInPackUnit,
+  pantryItemMatchesIngredient,
   productPackGrams,
   scoreProductForIngredient,
 } from "./ingredient-matching";
@@ -267,7 +268,10 @@ export async function buildBasketDetail(id: number) {
   };
 }
 
-export async function createBasketFromRecipes(input: { recipeIds: number[]; name?: string; mode?: string }) {
+export async function createBasketFromRecipes(
+  input: { recipeIds: number[]; name?: string; mode?: string },
+  options: { excludePantryItems?: string[] } = {},
+) {
   const { recipeIds, name, mode } = input;
   const [basket] = await db.insert(basketsTable).values({ name: name ?? "Recipe Basket", mode: mode ?? "cheapest" }).returning();
   const ingredientMap = new Map<number, { productId: number; needed: number; product: typeof productsTable.$inferSelect }>();
@@ -276,6 +280,7 @@ export async function createBasketFromRecipes(input: { recipeIds: number[]; name
   for (const recipeId of recipeIds) {
     const ingredients = await db.select().from(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, recipeId));
     for (const ingredient of ingredients) {
+      if ((options.excludePantryItems ?? []).some((item) => pantryItemMatchesIngredient(item, ingredient.name))) continue;
       const matchedProducts = await Promise.all(targetRetailers.map((retailer) => findBestProductForRetailer(ingredient, retailer.id, products)));
       const fallbackProduct = ingredient.productId ? products.find((product) => product.id === ingredient.productId) ?? null : null;
       const product = [...matchedProducts, fallbackProduct]

@@ -401,6 +401,16 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && req.url === "/api/recipes/1") return send(res, 200, { ...importedRecipe, isSaved: recipeSaved });
   if (req.method === "GET" && req.url === "/api/recipes/1/related") return send(res, 200, []);
+  if (req.method === "GET" && req.url.startsWith("/api/recipes/meal-plan/swap")) {
+    return send(res, 200, {
+      slot: "lunch",
+      slotLabel: "Lunch",
+      explanation: "Lunch: uses Brown rice and Baby spinach from your pantry first.",
+      pantryMatches: ["Brown rice", "Baby spinach"],
+      missingIngredients: ["Firm tofu"],
+      recipe: { ...recipe, id: 2, name: "Tofu Rice Bowl", proteinPerServingG: 32, mealTypeLabel: "Lunch/Dinner", isSaved: false },
+    });
+  }
   if (req.method === "GET" && req.url.startsWith("/api/recipes/meal-plan")) {
     return send(res, 200, {
       calorieTarget: 2000,
@@ -409,7 +419,8 @@ const server = createServer((req, res) => {
       budgetWeekly: 900,
       maxCookingTime: 45,
       dietaryRules: [],
-      pantryItems: ["rice"],
+      pantryItems: ["Brown rice"],
+      pantryInventory: [{ name: "Brown rice", quantity: 1, unit: "kg", expiresOn: "2026-08-01" }],
       preferredRetailers: ["Test Market"],
       savedRecipeCount: 1,
       days: [{
@@ -419,6 +430,8 @@ const server = createServer((req, res) => {
           slot: "lunch",
           slotLabel: "Lunch",
           explanation: "Lunch: balances 48g protein with 520 kcal. Cost trade-off: about R 184 for 2 household members. Time trade-off: 30 minutes prep/cook. Waste trade-off: uses pantry item rice to reduce waste.",
+          pantryMatches: ["Brown rice"],
+          missingIngredients: ["Chicken breast"],
           recipe: { ...recipe, mealTypeLabel: "Lunch/Dinner", isSaved: true },
         }],
         totals: {
@@ -436,6 +449,9 @@ const server = createServer((req, res) => {
         },
       }],
     });
+  }
+  if (req.method === "POST" && req.url === "/api/recipes/meal-plan/accept") {
+    return send(res, 201, { basket: activeBasket, pantryItemsUsed: ["Brown rice"] });
   }
   if (req.method === "GET" && req.url.startsWith("/api/recipes/adaptive-replan")) {
     return send(res, 200, {

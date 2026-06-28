@@ -9,6 +9,15 @@ export function normalizeIngredientTokens(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/).filter((token) => token.length > 2 && !STOP_WORDS.has(token));
 }
 
+export function pantryItemMatchesIngredient(pantryItemName: string, ingredientName: string) {
+  const pantryTokens = normalizeIngredientTokens(pantryItemName);
+  const ingredientTokens = normalizeIngredientTokens(ingredientName);
+  if (pantryTokens.length === 0 || ingredientTokens.length === 0) return false;
+  return ingredientTokens.some((ingredientToken) =>
+    pantryTokens.some((pantryToken) => pantryToken === ingredientToken || pantryToken.includes(ingredientToken) || ingredientToken.includes(pantryToken)),
+  );
+}
+
 export function productPackGrams(product: Product) {
   if (product.packUnit === "kg" || product.packUnit === "l") return product.packSize * 1000;
   if (product.packUnit === "g" || product.packUnit === "ml") return product.packSize;

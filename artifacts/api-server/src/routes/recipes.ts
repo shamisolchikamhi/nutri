@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, sql } from "drizzle-orm";
-import { db, recipesTable, recipeIngredientsTable, savedRecipesTable, userProfileTable, mealEntriesTable, activityLogsTable } from "@workspace/db";
+import { db, recipesTable, recipeIngredientsTable, savedRecipesTable, userProfileTable, mealEntriesTable, activityLogsTable, pantryItemsTable } from "@workspace/db";
 import {
   GetRecipeParams,
   ListRecipesQueryParams,
@@ -8,6 +8,8 @@ import {
 import { calcGoalMetrics } from "./profile";
 import { DEFAULT_NUTRITION_TARGETS, roundMoney, roundNutrition } from "@workspace/nutrition";
 import { parseId } from "../lib/request";
+import { createBasketFromRecipes } from "../services/basket-service";
+import { pantryItemMatchesIngredient } from "../services/ingredient-matching";
 
 const router: IRouter = Router();
 
@@ -61,7 +63,14 @@ async function buildRecipeResponse(recipe: typeof recipesTable.$inferSelect, sav
 
 type RecipeResponse = Awaited<ReturnType<typeof buildRecipeResponse>>;
 type MealPlanRecipe = RecipeResponse & { mealType: string; mealTypeLabel: string };
-type MealPlanItem = { slot: string; slotLabel: string; explanation: string; recipe: MealPlanRecipe };
+type MealPlanItem = {
+  slot: string;
+  slotLabel: string;
+  explanation: string;
+  recipe: MealPlanRecipe;
+  pantryMatches: string[];
+  missingIngredients: string[];
+};
 type MealPlanDay = {
   day: number;
   label: string;
@@ -87,13 +96,17 @@ function scorePlanRecipe(
   targetProtein: number,
   savedIds: Set<number>,
   usedCounts: Map<number, number>,
+  pantryStats: Map<number, { matches: number; total: number; expiringMatches: number }> = new Map(),
 ) {
   const calorieGap = Math.abs(recipe.caloriesPerServing - targetCalories);
   const proteinShortfall = Math.max(0, targetProtein - recipe.proteinPerServingG) * 8;
   const repeatPenalty = (usedCounts.get(recipe.id) ?? 0) * 80;
   const savedBoost = savedIds.has(recipe.id) ? -40 : 0;
   const costPenalty = Math.max(0, recipe.estimatedCost - 75) * 0.25;
-  return calorieGap + proteinShortfall + repeatPenalty + costPenalty + savedBoost;
+  const pantry = pantryStats.get(recipe.id);
+  const pantryCoverageBoost = pantry && pantry.total > 0 ? (pantry.matches / pantry.total) * -320 : 0;
+  const expiringSoonBoost = (pantry?.expiringMatches ?? 0) * -90;
+  return calorieGap + proteinShortfall + repeatPenalty + costPenalty + savedBoost + pantryCoverageBoost + expiringSoonBoost;
 }
 
 function pickPlanRecipe(
@@ -102,11 +115,12 @@ function pickPlanRecipe(
   targetProtein: number,
   savedIds: Set<number>,
   usedCounts: Map<number, number>,
+  pantryStats: Map<number, { matches: number; total: number; expiringMatches: number }> = new Map(),
 ) {
   return [...candidates].sort(
     (a, b) =>
-      scorePlanRecipe(a, targetCalories, targetProtein, savedIds, usedCounts) -
-      scorePlanRecipe(b, targetCalories, targetProtein, savedIds, usedCounts),
+      scorePlanRecipe(a, targetCalories, targetProtein, savedIds, usedCounts, pantryStats) -
+      scorePlanRecipe(b, targetCalories, targetProtein, savedIds, usedCounts, pantryStats),
   )[0];
 }
 
@@ -120,13 +134,12 @@ function parseCsv(value: unknown) {
 function explainGoalToCartChoice(
   recipe: typeof recipesTable.$inferSelect,
   slot: (typeof PLAN_SLOTS)[number],
-  pantryItems: string[],
+  pantryMatches: string[],
   householdSize: number,
 ) {
   const cookTime = recipe.prepTimeMin + recipe.cookTimeMin;
-  const pantryOverlap = pantryItems.filter((item) => normalizeToken(recipe.name).includes(normalizeToken(item)));
-  const wasteNote = pantryOverlap.length > 0
-    ? `uses pantry item ${pantryOverlap[0]} to reduce waste`
+  const wasteNote = pantryMatches.length > 0
+    ? `uses ${pantryMatches.slice(0, 3).join(", ")} from your pantry first`
     : "keeps ingredients reusable across the weekly basket";
 
   return [
@@ -198,10 +211,14 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
   const maxCookingTime = Number.isFinite(requestedMaxCookingTime) ? Math.min(240, Math.max(5, requestedMaxCookingTime)) : 90;
   const budgetWeekly = Number.parseFloat(String(req.query.budgetWeekly ?? "0"));
   const dietaryRules = parseCsv(req.query.dietaryRules);
-  const pantryItems = parseCsv(req.query.pantryItems);
+  const extraPantryItems = parseCsv(req.query.pantryItems);
   const preferredRetailers = parseCsv(req.query.preferredRetailers);
-  const savedIds = await getSavedRecipeIds();
-  const profiles = await db.select().from(userProfileTable).limit(1);
+  const [savedIds, profiles, confirmedPantry] = await Promise.all([
+    getSavedRecipeIds(),
+    db.select().from(userProfileTable).limit(1),
+    db.select().from(pantryItemsTable).where(eq(pantryItemsTable.confirmed, true)),
+  ]);
+  const pantryItems = [...new Set([...confirmedPantry.map((item) => item.name), ...extraPantryItems])];
   const metrics = profiles[0] ? calcGoalMetrics(profiles[0]) : null;
   const calorieTarget = metrics?.dailyCalorieTarget ?? DEFAULT_NUTRITION_TARGETS.calories;
   const proteinTargetG = metrics?.proteinTargetG ?? DEFAULT_NUTRITION_TARGETS.proteinG;
@@ -215,9 +232,17 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
   const enriched = await Promise.all(
     recipes.map(async (recipe) => {
       const ingredients = await db.select().from(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, recipe.id));
-      return { recipe, mealType: inferMealType(recipe, ingredients) };
+      const pantryMatches = pantryItems.filter((pantryItem) => ingredients.some((ingredient) => pantryItemMatchesIngredient(pantryItem, ingredient.name)));
+      const missingIngredients = ingredients.filter((ingredient) => !pantryItems.some((pantryItem) => pantryItemMatchesIngredient(pantryItem, ingredient.name))).map((ingredient) => ingredient.name);
+      const expiringMatches = confirmedPantry.filter((pantryItem) => {
+        if (!pantryItem.expiresOn) return false;
+        const days = Math.ceil((new Date(`${pantryItem.expiresOn}T00:00:00`).getTime() - Date.now()) / 86_400_000);
+        return days <= 3 && ingredients.some((ingredient) => pantryItemMatchesIngredient(pantryItem.name, ingredient.name));
+      }).length;
+      return { recipe, ingredients, mealType: inferMealType(recipe, ingredients), pantryMatches, missingIngredients, expiringMatches };
     }),
   );
+  const pantryStats = new Map(enriched.map((item) => [item.recipe.id, { matches: item.pantryMatches.length, total: item.ingredients.length, expiringMatches: item.expiringMatches }]));
 
   const usedCounts = new Map<number, number>();
   const dayPlans: MealPlanDay[] = [];
@@ -232,14 +257,18 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
         proteinTargetG * slot.proteinShare,
         savedIds,
         usedCounts,
+        pantryStats,
       );
       if (!recipe) continue;
       usedCounts.set(recipe.id, (usedCounts.get(recipe.id) ?? 0) + 1);
-      const mealType = enriched.find((item) => item.recipe.id === recipe.id)?.mealType ?? "lunch_dinner";
+      const selected = enriched.find((item) => item.recipe.id === recipe.id);
+      const mealType = selected?.mealType ?? "lunch_dinner";
       items.push({
         slot: slot.key,
         slotLabel: slot.label,
-        explanation: explainGoalToCartChoice(recipe, slot, pantryItems, householdSize),
+        explanation: explainGoalToCartChoice(recipe, slot, selected?.pantryMatches ?? [], householdSize),
+        pantryMatches: selected?.pantryMatches ?? [],
+        missingIngredients: selected?.missingIngredients ?? [],
         recipe: {
           ...(await buildRecipeResponse(recipe, savedIds)),
           mealType,
@@ -287,10 +316,60 @@ router.get("/recipes/meal-plan", async (req, res): Promise<void> => {
     maxCookingTime,
     dietaryRules,
     pantryItems,
+    pantryInventory: confirmedPantry.map((item) => ({ name: item.name, quantity: item.quantity, unit: item.unit, expiresOn: item.expiresOn })),
     preferredRetailers,
     days: dayPlans,
     savedRecipeCount: savedIds.size,
   });
+});
+
+router.get("/recipes/meal-plan/swap", async (req, res): Promise<void> => {
+  const currentRecipeId = Number.parseInt(String(req.query.currentRecipeId ?? "0"), 10);
+  const slotKey = String(req.query.slot ?? "lunch");
+  const slot = PLAN_SLOTS.find((candidate) => candidate.key === slotKey) ?? PLAN_SLOTS[1];
+  const [recipes, confirmedPantry, savedIds] = await Promise.all([
+    db.select().from(recipesTable),
+    db.select().from(pantryItemsTable).where(eq(pantryItemsTable.confirmed, true)),
+    getSavedRecipeIds(),
+  ]);
+  const pantryNames = confirmedPantry.map((item) => item.name);
+  const enriched = await Promise.all(recipes.filter((recipe) => recipe.id !== currentRecipeId).map(async (recipe) => {
+    const ingredients = await db.select().from(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, recipe.id));
+    const pantryMatches = pantryNames.filter((item) => ingredients.some((ingredient) => pantryItemMatchesIngredient(item, ingredient.name)));
+    const missingIngredients = ingredients.filter((ingredient) => !pantryNames.some((item) => pantryItemMatchesIngredient(item, ingredient.name))).map((ingredient) => ingredient.name);
+    return { recipe, ingredients, mealType: inferMealType(recipe, ingredients), pantryMatches, missingIngredients };
+  }));
+  const candidates = enriched.filter((item) => item.mealType === slot.mealType);
+  const pool = candidates.length > 0 ? candidates : enriched;
+  const stats = new Map(pool.map((item) => [item.recipe.id, { matches: item.pantryMatches.length, total: item.ingredients.length, expiringMatches: 0 }]));
+  const recipe = pickPlanRecipe(pool.map((item) => item.recipe), 500, 35, savedIds, new Map(), stats);
+  const selected = pool.find((item) => item.recipe.id === recipe?.id);
+  if (!recipe || !selected) {
+    res.status(404).json({ error: "No alternative meal is available for this slot." });
+    return;
+  }
+  res.json({
+    slot: slot.key,
+    slotLabel: slot.label,
+    explanation: explainGoalToCartChoice(recipe, slot, selected.pantryMatches, 1),
+    pantryMatches: selected.pantryMatches,
+    missingIngredients: selected.missingIngredients,
+    recipe: { ...(await buildRecipeResponse(recipe, savedIds)), mealType: selected.mealType, mealTypeLabel: MEAL_TYPE_LABELS[selected.mealType] ?? MEAL_TYPE_LABELS.lunch_dinner },
+  });
+});
+
+router.post("/recipes/meal-plan/accept", async (req, res): Promise<void> => {
+  const recipeIds = Array.isArray(req.body?.recipeIds)
+    ? req.body.recipeIds.filter((value: unknown): value is number => typeof value === "number" && Number.isInteger(value) && value > 0)
+    : [];
+  if (recipeIds.length === 0) {
+    res.status(400).json({ error: "Choose at least one planned meal before accepting the plan." });
+    return;
+  }
+  const pantry = await db.select().from(pantryItemsTable).where(eq(pantryItemsTable.confirmed, true));
+  const requestedName = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  const basket = await createBasketFromRecipes({ recipeIds, name: requestedName || "Accepted Meal Plan Shopping List", mode: "cheapest" }, { excludePantryItems: pantry.map((item) => item.name) });
+  res.status(201).json({ basket, pantryItemsUsed: pantry.map((item) => item.name) });
 });
 
 router.get("/recipes/adaptive-replan", async (req, res): Promise<void> => {
