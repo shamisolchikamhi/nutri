@@ -16,6 +16,8 @@ for (const viewport of viewports) {
 
     const dashboardLink = page.getByRole("link", { name: "Dashboard" });
     if (viewport.mobileNavigation) {
+      await expect(page.getByRole("navigation", { name: "Primary mobile navigation" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
       await expect(dashboardLink).toBeHidden();
       await page.getByRole("button", { name: "Toggle Sidebar" }).click();
     }
