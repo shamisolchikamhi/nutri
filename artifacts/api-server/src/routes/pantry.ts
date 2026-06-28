@@ -52,11 +52,13 @@ function parseCaptureText(rawText: string, source = "receipt") {
     .map((line) => line.trim())
     .filter((line) => line.length > 2)
     .map((line) => {
+      const structured = line.split("\t").map((value) => value.trim());
       const explicitDate = line.match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1] ?? null;
       const quantityMatch = line.match(/\b(\d+(?:[.,]\d+)?)\s?(x|kg|g|ml|l|pack|packs|item|items)?\b/i);
-      const quantity = quantityMatch ? Number(quantityMatch[1].replace(",", ".")) : 1;
-      const unit = quantityMatch?.[2]?.toLowerCase() ?? "item";
-      const name = normalizeName(line);
+      const structuredQuantity = structured.length >= 3 ? Number(structured[0].replace(",", ".")) : Number.NaN;
+      const quantity = Number.isFinite(structuredQuantity) ? structuredQuantity : quantityMatch ? Number(quantityMatch[1].replace(",", ".")) : 1;
+      const unit = structured.length >= 3 ? structured[1].toLowerCase() : quantityMatch?.[2]?.toLowerCase() ?? "item";
+      const name = normalizeName(structured.length >= 3 ? structured.slice(2).join(" ") : line);
       if (!name || name.length < 3) return null;
       const category = inferCategory(name);
       return {
@@ -71,6 +73,27 @@ function parseCaptureText(rawText: string, source = "receipt") {
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
     .slice(0, 30);
+}
+
+function outputTextFromResponse(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+  const direct = (data as { output_text?: unknown }).output_text;
+  if (typeof direct === "string") return direct;
+
+  const output = (data as { output?: unknown }).output;
+  if (!Array.isArray(output)) return "";
+  const chunks: string[] = [];
+  for (const item of output) {
+    if (!item || typeof item !== "object") continue;
+    const content = (item as { content?: unknown }).content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (!part || typeof part !== "object") continue;
+      const text = (part as { text?: unknown }).text;
+      if (typeof text === "string") chunks.push(text);
+    }
+  }
+  return chunks.join("\n");
 }
 
 function buildPantryItem(item: typeof pantryItemsTable.$inferSelect) {
@@ -95,7 +118,11 @@ async function extractPantryWithAi(mediaDataUrls: string[]) {
       input: [
         {
           role: "system",
-          content: "Extract grocery pantry or receipt line items from images. Return one item per line with quantity if visible. Do not invent items.",
+          content:
+            "Extract only purchased grocery or pantry line items visible in the images. " +
+            "Exclude retailer names, totals, tax, payments, discounts, loyalty messages, and non-food goods. " +
+            "Return plain tab-separated rows with no heading or markdown: quantity<TAB>unit<TAB>item name. " +
+            "Use quantity 1 and unit item when they are not visible. Do not invent items.",
         },
         {
           role: "user",
@@ -104,9 +131,14 @@ async function extractPantryWithAi(mediaDataUrls: string[]) {
       ],
     }),
   });
-  const data = await response.json().catch(() => null) as { output_text?: string } | null;
-  if (!response.ok) throw new Error("OpenAI pantry capture failed");
-  return getString(data?.output_text);
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = data && typeof data === "object"
+      ? getString((data as { error?: { message?: unknown } }).error?.message)
+      : "";
+    throw new Error(`Receipt analysis failed${message ? `: ${message}` : ""}`);
+  }
+  return outputTextFromResponse(data);
 }
 
 router.get("/pantry/items", async (_req, res): Promise<void> => {
@@ -115,7 +147,8 @@ router.get("/pantry/items", async (_req, res): Promise<void> => {
 });
 
 router.post("/pantry/capture", async (req, res): Promise<void> => {
-  const source = getString(req.body?.source) || "receipt";
+  const requestedSource = getString(req.body?.source);
+  const source = requestedSource === "pantry_photo" ? "pantry_photo" : "receipt";
   const mediaDataUrls = Array.isArray(req.body?.mediaDataUrls)
     ? req.body.mediaDataUrls.filter((value: unknown): value is string => typeof value === "string" && value.startsWith("data:image/"))
     : [];

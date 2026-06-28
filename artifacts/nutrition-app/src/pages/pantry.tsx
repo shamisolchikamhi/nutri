@@ -62,6 +62,7 @@ export default function PantryPage() {
   const [rawText, setRawText] = useState("");
   const [mediaDataUrls, setMediaDataUrls] = useState<string[]>([]);
   const [mediaStatus, setMediaStatus] = useState("");
+  const [captureSource, setCaptureSource] = useState<"receipt" | "pantry_photo">("receipt");
   const itemsQuery = useQuery({ queryKey: ["pantry-items"], queryFn: () => apiJson<PantryItem[]>("/pantry/items") });
   const suggestionsQuery = useQuery({ queryKey: ["pantry-suggestions"], queryFn: () => apiJson<PantrySuggestion[]>("/pantry/suggestions") });
 
@@ -79,7 +80,7 @@ export default function PantryPage() {
     errorMessage: (error) => error instanceof Error ? error.message : "No pantry items were captured.",
     mutationFn: () => apiJson<{ items: PantryItem[] }>("/pantry/capture", {
       method: "POST",
-      body: JSON.stringify({ rawText, mediaDataUrls, source: mediaDataUrls.length ? "pantry_photo" : "receipt" }),
+      body: JSON.stringify({ rawText, mediaDataUrls, source: captureSource }),
     }),
     onSuccess: async () => {
       setRawText("");
@@ -131,6 +132,10 @@ export default function PantryPage() {
           <CardTitle className="text-base">Receipt or pantry capture</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2" aria-label="Capture type">
+            <Button type="button" variant={captureSource === "receipt" ? "default" : "outline"} onClick={() => setCaptureSource("receipt")}>Receipt</Button>
+            <Button type="button" variant={captureSource === "pantry_photo" ? "default" : "outline"} onClick={() => setCaptureSource("pantry_photo")}>Pantry shelf</Button>
+          </div>
           <div className="space-y-1">
             <Label htmlFor="pantry-capture">Receipt or pantry text</Label>
             <Textarea
@@ -142,11 +147,12 @@ export default function PantryPage() {
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="pantry-photo">Receipt or pantry photo</Label>
+            <Label htmlFor="pantry-photo">{captureSource === "receipt" ? "Receipt photo" : "Pantry photo"}</Label>
             <Input
               id="pantry-photo"
               type="file"
-              accept="image/*,.txt"
+              accept="image/*"
+              capture="environment"
               multiple
               onChange={async (event) => {
                 const files = Array.from(event.target.files ?? []);
@@ -156,18 +162,19 @@ export default function PantryPage() {
                   reader.onerror = () => reject(new Error("Could not read image"));
                   reader.readAsDataURL(file);
                 })));
-                const textFiles = await Promise.all(files.filter((file) => file.type === "text/plain").map((file) => file.text()));
                 setMediaDataUrls(dataUrls);
-                if (textFiles.length) setRawText((current) => [current, ...textFiles].filter(Boolean).join("\n"));
-                setMediaStatus(dataUrls.length ? `${dataUrls.length} image(s) ready for real API analysis` : textFiles.length ? "Text receipt loaded" : "No readable files selected");
+                setMediaStatus(dataUrls.length
+                  ? `${dataUrls.length} ${captureSource === "receipt" ? "receipt" : "pantry"} image(s) ready to analyse`
+                  : "No readable image selected");
                 event.target.value = "";
               }}
             />
-            <p className="flex items-center gap-1 text-xs text-muted-foreground"><Camera className="h-3.5 w-3.5" /> {mediaStatus || "Images require the real API with OPENAI_API_KEY; pasted text works locally."}</p>
+            <p className="flex items-center gap-1 text-xs text-muted-foreground"><Camera className="h-3.5 w-3.5" /> {mediaStatus || "On a phone, this opens the rear camera. Photo analysis requires OPENAI_API_KEY."}</p>
           </div>
           <Button onClick={() => captureMutation.mutate()} disabled={captureMutation.isPending || (!rawText.trim() && mediaDataUrls.length === 0)}>
-            {captureMutation.isPending ? "Capturing..." : "Capture items"}
+            {captureMutation.isPending ? "Analysing..." : mediaDataUrls.length ? `Analyse ${captureSource === "receipt" ? "receipt" : "pantry photo"}` : "Capture items"}
           </Button>
+          {mediaDataUrls.length > 0 && <p className="text-xs text-muted-foreground">Extracted items will wait for your review. Confirm them before they join your inventory.</p>}
         </CardContent>
       </Card>
 

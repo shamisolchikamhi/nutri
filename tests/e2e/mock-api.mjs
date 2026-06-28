@@ -518,11 +518,12 @@ const server = createServer((req, res) => {
   if (req.method === "GET" && req.url === "/api/pantry/suggestions") return send(res, 200, mockPantrySuggestions());
   if (req.method === "POST" && req.url === "/api/pantry/capture") {
     readJson(req).then((body) => {
-      if (!body.rawText) {
+      const hasMedia = Array.isArray(body.mediaDataUrls) && body.mediaDataUrls.length > 0;
+      if (!body.rawText && !hasMedia) {
         send(res, 400, { error: "Paste receipt or pantry text, or start the real API with OPENAI_API_KEY to analyze uploaded photos." });
         return;
       }
-      const items = parseMockPantryItems(body.rawText);
+      const items = parseMockPantryItems(body.rawText || "Greek yoghurt 500g\nBananas x6");
       pantryItems = [...pantryItems, ...items];
       send(res, 201, { items, suggestedMeals: mockPantrySuggestions() });
     });
