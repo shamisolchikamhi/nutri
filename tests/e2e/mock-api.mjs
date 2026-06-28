@@ -21,8 +21,50 @@ let bodyFatPercent = 24;
 let activities = [];
 let socialRecipes = [];
 let pantryItems = [];
+let nextAgentActionId = 1;
+const agentActions = new Map();
 let recipeSaved = false;
 const recentlyVerifiedAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+
+function pendingAgentAction(kind, summary, payload) {
+  const action = { id: nextAgentActionId++, kind, summary, payload, status: "pending", expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), result: null };
+  agentActions.set(action.id, action);
+  return action;
+}
+
+function mockAgentChat(text) {
+  const water = text.match(/(\d+(?:\.\d+)?)\s*(ml|l)\b/i);
+  if (/water|drink|drank/i.test(text) && water) {
+    const amountMl = Number(water[1]) * (water[2].toLowerCase() === "l" ? 1000 : 1);
+    return { message: "I’ve prepared a water entry. Check the amount, then confirm it.", followUpQuestions: [], proposals: [pendingAgentAction("water.add", `Add ${amountMl} ml water to today's total`, { date: "2026-06-24", amountMl })], source: "deterministic" };
+  }
+  const pantry = text.match(/add\s+(.+?)\s+to\s+(?:my\s+)?pantry/i);
+  if (pantry) {
+    const match = pantry[1].match(/^(\d+)\s+(.+)$/);
+    const quantity = match ? Number(match[1]) : 1;
+    const name = match?.[2] ?? pantry[1];
+    return { message: "I’ve prepared a pantry item. You can edit it before confirming.", followUpQuestions: [], proposals: [pendingAgentAction("pantry.add", `Add ${quantity} item ${name} to pantry`, { name, quantity, unit: "item" })], source: "deterministic" };
+  }
+  if (/high protein chicken bowl/i.test(text) && /log|ate|had/i.test(text)) {
+    return { message: "I found a trusted nutrition match. Review the source and serving assumption before confirming.", followUpQuestions: [], proposals: [pendingAgentAction("meal.add", "Log High Protein Chicken Bowl as dinner (520 kcal)", { date: "2026-06-24", mealType: "dinner", name: recipe.name, calories: 520, proteinG: 48, carbsG: 52, fatG: 14, servings: 1, recipeId: 1, nutritionSource: "recipe", servingAssumption: "1 recipe serving" })], source: "deterministic" };
+  }
+  const weight = text.match(/weight[^\d]*(\d+(?:\.\d+)?)\s*kg/i);
+  if (weight) return { message: "I’ve prepared the weight entry for review.", followUpQuestions: [], proposals: [pendingAgentAction("daily.update", `Set today's weight to ${weight[1]} kg`, { date: "2026-06-24", weightKg: Number(weight[1]) })], source: "deterministic" };
+  const bodyFat = text.match(/body\s*fat[^\d]*(\d+(?:\.\d+)?)\s*%/i);
+  if (bodyFat) return { message: "I’ve prepared the body-fat entry.", followUpQuestions: [], proposals: [pendingAgentAction("daily.update", `Set today's body fat to ${bodyFat[1]}%`, { date: "2026-06-24", bodyFatPercent: Number(bodyFat[1]) })], source: "deterministic" };
+  const note = text.match(/note\s+(?:that\s+)?(.+)/i);
+  if (note) return { message: "I’ve prepared that note.", followUpQuestions: [], proposals: [pendingAgentAction("daily.update", "Add a note to today's log", { date: "2026-06-24", notes: note[1] })], source: "deterministic" };
+  const activity = text.match(/walked\s+(\d+)\s*min/i);
+  if (activity) return { message: "I’ve prepared the activity entry.", followUpQuestions: [], proposals: [pendingAgentAction("activity.add", `Log ${activity[1]} minutes of walking`, { date: "2026-06-24", workoutType: "walking", workoutDurationMin: Number(activity[1]), steps: 0, activeCalories: 0, sleepHours: 0 })], source: "deterministic" };
+  const budget = text.match(/budget[^\d]*(\d+)/i);
+  if (budget) return { message: "I’ve prepared the budget update.", followUpQuestions: [], proposals: [pendingAgentAction("profile.update", `Set weekly budget to R${budget[1]}`, { budgetWeekly: Number(budget[1]) })], source: "deterministic" };
+  if (/favorite.*high protein chicken bowl/i.test(text)) return { message: "I found that recipe.", followUpQuestions: [], proposals: [pendingAgentAction("favorite.add", `Add ${recipe.name} to Favorites`, { recipeId: 1, recipeName: recipe.name })], source: "deterministic" };
+  if (/create.*shop/i.test(text)) return { message: "I’ve prepared a new retailer shop.", followUpQuestions: [], proposals: [pendingAgentAction("basket.create", "Create retailer shop “Agent Shop”", { name: "Agent Shop", mode: "cheapest" })], source: "deterministic" };
+  if (/accept.*meal plan/i.test(text)) return { message: "I’ve prepared the meal-plan acceptance.", followUpQuestions: [], proposals: [pendingAgentAction("plan.accept", "Accept meal plan with 1 recipe", { recipeIds: [1], name: "Accepted Meal Plan Shopping List" })], source: "deterministic" };
+  if (/add.*chicken breast.*shop/i.test(text)) return { message: "I found the product.", followUpQuestions: [], proposals: [pendingAgentAction("basket_item.add", "Add Chicken Breast 500g to Agent Shop", { basketId: 1, productId: 10, productName: product.name, quantity: 1, unit: "pack" })], source: "deterministic" };
+  if (/ate|meal|food/i.test(text)) return { message: "I couldn’t find a trustworthy nutrition match, so I won’t invent calories or macros.", followUpQuestions: ["What was the exact food or recipe name and portion size?"], proposals: [], source: "deterministic" };
+  return { message: "OpenAI is unavailable, but I can still log common app data.", followUpQuestions: ["What would you like to add, and what amount should I use?"], proposals: [], source: "deterministic" };
+}
 
 const recipe = {
   id: 1,
@@ -530,6 +572,80 @@ const server = createServer((req, res) => {
       seasonalNotes: ["Soups, stews, legumes, citrus, oats, and frozen vegetables usually support budget and nutrition goals."],
       updatedAt: "2026-06-24T12:00:00.000Z",
     });
+  }
+  if (req.method === "POST" && req.url === "/api/agent/chat") {
+    readJson(req).then((body) => {
+      const latest = [...(body.messages ?? [])].reverse().find((message) => message.role === "user")?.content ?? "";
+      send(res, 200, mockAgentChat(latest));
+    });
+    return;
+  }
+  const agentActionMatch = req.url.match(/^\/api\/agent\/actions\/(\d+)(?:\/(confirm|dismiss|undo))?$/);
+  if (agentActionMatch && req.method === "PUT" && !agentActionMatch[2]) {
+    readJson(req).then((body) => {
+      const action = agentActions.get(Number(agentActionMatch[1]));
+      if (!action || action.status !== "pending") return send(res, 400, { error: "Only pending actions can be edited" });
+      action.payload = body.payload;
+      send(res, 200, action);
+    });
+    return;
+  }
+  if (agentActionMatch && req.method === "POST" && agentActionMatch[2] === "confirm") {
+    const action = agentActions.get(Number(agentActionMatch[1]));
+    if (!action) return send(res, 404, { error: "Agent action not found" });
+    if (action.status === "confirmed") return send(res, 200, { status: "confirmed", result: action.result, duplicate: true });
+    if (action.kind === "water.add") {
+      const before = waterMl;
+      waterMl += action.payload.amountMl;
+      action.result = { resource: "daily_log", id: 1, route: "/tracker", before: { waterMl: before }, after: { waterMl } };
+    } else if (action.kind === "pantry.add") {
+      const item = { id: pantryItems.length + 1, ...action.payload, category: "other", source: "manual", expiresOn: null, confirmed: true, capturedAt: "2026-06-24T12:00:00.000Z", createdAt: "2026-06-24T12:00:00.000Z", updatedAt: "2026-06-24T12:00:00.000Z" };
+      pantryItems.push(item);
+      action.result = { resource: "pantry_item", id: item.id, route: "/pantry", after: item };
+    } else if (action.kind === "meal.add") {
+      const meal = { id: meals.length + 1, ...action.payload };
+      meals.push(meal);
+      action.result = { resource: "meal", id: meal.id, route: "/tracker", after: meal };
+    } else if (action.kind === "daily.update") {
+      const before = { weightKg, bodyFatPercent };
+      if (typeof action.payload.weightKg === "number") weightKg = action.payload.weightKg;
+      if (typeof action.payload.bodyFatPercent === "number") bodyFatPercent = action.payload.bodyFatPercent;
+      action.result = { resource: "daily_log", id: 1, route: "/progress", before, after: { weightKg, bodyFatPercent } };
+    } else if (action.kind === "activity.add") {
+      const activity = { id: activities.length + 1, ...action.payload };
+      activities.push(activity);
+      action.result = { resource: "activity", id: activity.id, route: "/tracker/activity", after: activity };
+    } else if (action.kind === "profile.update") {
+      const before = { ...profile };
+      profile = { ...profile, ...action.payload };
+      action.result = { resource: "profile", id: 1, route: "/settings", before, after: profile };
+    } else if (action.kind === "favorite.add") {
+      recipeSaved = true;
+      action.result = { resource: "favorite", id: 1, route: "/recipes", after: { recipeId: 1 } };
+    } else if (action.kind === "basket.create") {
+      action.result = { resource: "basket", id: 1, route: "/basket/1", after: { id: 1, ...action.payload } };
+    } else if (action.kind === "basket_item.add") {
+      action.result = { resource: "basket_item", id: 2, route: "/basket/1", after: action.payload };
+    } else if (action.kind === "plan.accept") {
+      action.result = { resource: "basket", id: 1, route: "/basket/1", after: activeBasket };
+    }
+    action.status = "confirmed";
+    return send(res, 200, { status: "confirmed", result: action.result, duplicate: false });
+  }
+  if (agentActionMatch && req.method === "POST" && agentActionMatch[2] === "dismiss") {
+    const action = agentActions.get(Number(agentActionMatch[1]));
+    if (!action || action.status !== "pending") return send(res, 400, { error: "Only pending actions can be dismissed" });
+    action.status = "dismissed";
+    return send(res, 200, { status: "dismissed", action });
+  }
+  if (agentActionMatch && req.method === "POST" && agentActionMatch[2] === "undo") {
+    const action = agentActions.get(Number(agentActionMatch[1]));
+    if (!action || action.status !== "confirmed") return send(res, 400, { error: "This action cannot be undone" });
+    if (action.kind === "water.add") waterMl = action.result.before.waterMl;
+    if (action.kind === "pantry.add") pantryItems = pantryItems.filter((item) => item.id !== action.result.id);
+    if (action.kind === "meal.add") meals = meals.filter((item) => item.id !== action.result.id);
+    action.status = "undone";
+    return send(res, 200, { status: "undone", actionId: action.id });
   }
   if (req.method === "GET" && req.url === "/api/pantry/items") return send(res, 200, pantryItems);
   if (req.method === "GET" && req.url === "/api/pantry/suggestions") return send(res, 200, mockPantrySuggestions());

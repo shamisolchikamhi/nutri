@@ -22,6 +22,11 @@ import type {
 import type {
   ActivityLog,
   ActivityLogInput,
+  AgentActionResult,
+  AgentActionUpdateInput,
+  AgentChatInput,
+  AgentChatResponse,
+  AgentProposal,
   Basket,
   BasketDetail,
   BasketFromRecipesInput,
@@ -2103,6 +2108,359 @@ export function useListPantrySuggestions<TData = Awaited<ReturnType<typeof listP
 
 
 
+
+export const getChatWithAgentUrl = () => {
+
+
+
+
+  return `/api/agent/chat`
+}
+
+/**
+ * @summary Interpret a chat request and return zero or more confirmable app actions
+ */
+export const chatWithAgent = async (agentChatInput: AgentChatInput, options?: RequestInit): Promise<AgentChatResponse> => {
+
+  return customFetch<AgentChatResponse>(getChatWithAgentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      agentChatInput,)
+  }
+);}
+
+
+
+
+export const getChatWithAgentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatWithAgent>>, TError,{data: BodyType<AgentChatInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof chatWithAgent>>, TError,{data: BodyType<AgentChatInput>}, TContext> => {
+
+const mutationKey = ['chatWithAgent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chatWithAgent>>, {data: BodyType<AgentChatInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  chatWithAgent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChatWithAgentMutationResult = NonNullable<Awaited<ReturnType<typeof chatWithAgent>>>
+    export type ChatWithAgentMutationBody = BodyType<AgentChatInput>
+    export type ChatWithAgentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Interpret a chat request and return zero or more confirmable app actions
+ */
+export const useChatWithAgent = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chatWithAgent>>, TError,{data: BodyType<AgentChatInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof chatWithAgent>>,
+        TError,
+        {data: BodyType<AgentChatInput>},
+        TContext
+      > => {
+      return useMutation(getChatWithAgentMutationOptions(options));
+    }
+
+export const getUpdateAgentActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/agent/actions/${id}`
+}
+
+/**
+ * @summary Edit a pending agent action
+ */
+export const updateAgentAction = async (id: number,
+    agentActionUpdateInput: AgentActionUpdateInput, options?: RequestInit): Promise<AgentProposal> => {
+
+  return customFetch<AgentProposal>(getUpdateAgentActionUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      agentActionUpdateInput,)
+  }
+);}
+
+
+
+
+export const getUpdateAgentActionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAgentAction>>, TError,{id: number;data: BodyType<AgentActionUpdateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAgentAction>>, TError,{id: number;data: BodyType<AgentActionUpdateInput>}, TContext> => {
+
+const mutationKey = ['updateAgentAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAgentAction>>, {id: number;data: BodyType<AgentActionUpdateInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAgentAction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAgentActionMutationResult = NonNullable<Awaited<ReturnType<typeof updateAgentAction>>>
+    export type UpdateAgentActionMutationBody = BodyType<AgentActionUpdateInput>
+    export type UpdateAgentActionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Edit a pending agent action
+ */
+export const useUpdateAgentAction = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAgentAction>>, TError,{id: number;data: BodyType<AgentActionUpdateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAgentAction>>,
+        TError,
+        {id: number;data: BodyType<AgentActionUpdateInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateAgentActionMutationOptions(options));
+    }
+
+export const getConfirmAgentActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/agent/actions/${id}/confirm`
+}
+
+/**
+ * @summary Confirm and execute a pending agent action exactly once
+ */
+export const confirmAgentAction = async (id: number, options?: RequestInit): Promise<AgentActionResult> => {
+
+  return customFetch<AgentActionResult>(getConfirmAgentActionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getConfirmAgentActionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAgentAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAgentAction>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['confirmAgentAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAgentAction>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmAgentAction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAgentActionMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAgentAction>>>
+
+    export type ConfirmAgentActionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Confirm and execute a pending agent action exactly once
+ */
+export const useConfirmAgentAction = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAgentAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAgentAction>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getConfirmAgentActionMutationOptions(options));
+    }
+
+export const getDismissAgentActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/agent/actions/${id}/dismiss`
+}
+
+/**
+ * @summary Dismiss a pending agent action without changing app data
+ */
+export const dismissAgentAction = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDismissAgentActionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDismissAgentActionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissAgentAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof dismissAgentAction>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['dismissAgentAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof dismissAgentAction>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  dismissAgentAction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DismissAgentActionMutationResult = NonNullable<Awaited<ReturnType<typeof dismissAgentAction>>>
+
+    export type DismissAgentActionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Dismiss a pending agent action without changing app data
+ */
+export const useDismissAgentAction = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof dismissAgentAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof dismissAgentAction>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDismissAgentActionMutationOptions(options));
+    }
+
+export const getUndoAgentActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/agent/actions/${id}/undo`
+}
+
+/**
+ * @summary Undo a confirmed reversible agent action
+ */
+export const undoAgentAction = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getUndoAgentActionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getUndoAgentActionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof undoAgentAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof undoAgentAction>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['undoAgentAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof undoAgentAction>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  undoAgentAction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UndoAgentActionMutationResult = NonNullable<Awaited<ReturnType<typeof undoAgentAction>>>
+
+    export type UndoAgentActionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Undo a confirmed reversible agent action
+ */
+export const useUndoAgentAction = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof undoAgentAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof undoAgentAction>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getUndoAgentActionMutationOptions(options));
+    }
 
 export const getGetMarketIntelligenceUrl = (params?: GetMarketIntelligenceParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -595,6 +595,83 @@ export const ListPantrySuggestionsResponse = zod.array(ListPantrySuggestionsResp
 
 
 /**
+ * @summary Interpret a chat request and return zero or more confirmable app actions
+ */
+
+
+
+export const ChatWithAgentBody = zod.object({
+  "messages": zod.array(zod.object({
+  "role": zod.enum(['user', 'assistant']),
+  "content": zod.string()
+})).min(1)
+})
+
+export const ChatWithAgentResponse = zod.object({
+  "message": zod.string(),
+  "followUpQuestions": zod.array(zod.string()),
+  "proposals": zod.array(zod.object({
+  "id": zod.number(),
+  "kind": zod.string(),
+  "summary": zod.string(),
+  "payload": zod.record(zod.string(), zod.unknown()),
+  "expiresAt": zod.coerce.date()
+})),
+  "source": zod.enum(['deterministic', 'openai'])
+})
+
+
+/**
+ * @summary Edit a pending agent action
+ */
+export const UpdateAgentActionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateAgentActionBody = zod.object({
+  "payload": zod.record(zod.string(), zod.unknown())
+})
+
+export const UpdateAgentActionResponse = zod.object({
+  "id": zod.number(),
+  "kind": zod.string(),
+  "summary": zod.string(),
+  "payload": zod.record(zod.string(), zod.unknown()),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Confirm and execute a pending agent action exactly once
+ */
+export const ConfirmAgentActionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ConfirmAgentActionResponse = zod.object({
+  "status": zod.string(),
+  "duplicate": zod.boolean(),
+  "result": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+
+/**
+ * @summary Dismiss a pending agent action without changing app data
+ */
+export const DismissAgentActionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Undo a confirmed reversible agent action
+ */
+export const UndoAgentActionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary Get local-market staples, retailer strengths, pack-size notes, and seasonal shopping context
  */
 export const GetMarketIntelligenceQueryParams = zod.object({

@@ -12,6 +12,7 @@ import socialRecipesRouter from "./social-recipes";
 import retailerStatusRouter from "./retailer-status";
 import pantryRouter from "./pantry";
 import marketIntelligenceRouter from "./market-intelligence";
+import agentRouter from "./agent";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(socialRecipesRouter);
 router.use(retailerStatusRouter);
 router.use(pantryRouter);
 router.use(marketIntelligenceRouter);
+router.use(agentRouter);
 
 export default router;

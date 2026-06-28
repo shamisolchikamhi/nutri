@@ -5,6 +5,63 @@
  * NutriBasket API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AgentMessageRole = typeof AgentMessageRole[keyof typeof AgentMessageRole];
+
+
+export const AgentMessageRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export interface AgentMessage {
+  role: AgentMessageRole;
+  content: string;
+}
+
+export interface AgentChatInput {
+  /** @minItems 1 */
+  messages: AgentMessage[];
+}
+
+export type AgentProposalPayload = { [key: string]: unknown };
+
+export interface AgentProposal {
+  id: number;
+  kind: string;
+  summary: string;
+  payload: AgentProposalPayload;
+  expiresAt: string;
+}
+
+export type AgentChatResponseSource = typeof AgentChatResponseSource[keyof typeof AgentChatResponseSource];
+
+
+export const AgentChatResponseSource = {
+  deterministic: 'deterministic',
+  openai: 'openai',
+} as const;
+
+export interface AgentChatResponse {
+  message: string;
+  followUpQuestions: string[];
+  proposals: AgentProposal[];
+  source: AgentChatResponseSource;
+}
+
+export type AgentActionResultResult = { [key: string]: unknown };
+
+export interface AgentActionResult {
+  status: string;
+  duplicate: boolean;
+  result?: AgentActionResultResult;
+}
+
+export type AgentActionUpdateInputPayload = { [key: string]: unknown };
+
+export interface AgentActionUpdateInput {
+  payload: AgentActionUpdateInputPayload;
+}
+
 export type HealthStatusService = typeof HealthStatusService[keyof typeof HealthStatusService];
 
 

@@ -8,6 +8,17 @@
 
 export * from './activityLog';
 export * from './activityLogInput';
+export * from './agentActionResult';
+export * from './agentActionResultResult';
+export * from './agentActionUpdateInput';
+export * from './agentActionUpdateInputPayload';
+export * from './agentChatInput';
+export * from './agentChatResponse';
+export * from './agentChatResponseSource';
+export * from './agentMessage';
+export * from './agentMessageRole';
+export * from './agentProposal';
+export * from './agentProposalPayload';
 export * from './basket';
 export * from './basketDetail';
 export * from './basketDetailMode';

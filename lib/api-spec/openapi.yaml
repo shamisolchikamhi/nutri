@@ -578,6 +578,99 @@ paths:
                 items:
                   $ref: "#/components/schemas/PantrySuggestion"
 
+  /agent/chat:
+    post:
+      operationId: chatWithAgent
+      tags: [agent]
+      summary: Interpret a chat request and return zero or more confirmable app actions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentChatInput"
+      responses:
+        "200":
+          description: Agent response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentChatResponse"
+
+  /agent/actions/{id}:
+    put:
+      operationId: updateAgentAction
+      tags: [agent]
+      summary: Edit a pending agent action
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentActionUpdateInput"
+      responses:
+        "200":
+          description: Updated proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentProposal"
+
+  /agent/actions/{id}/confirm:
+    post:
+      operationId: confirmAgentAction
+      tags: [agent]
+      summary: Confirm and execute a pending agent action exactly once
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Confirmation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentActionResult"
+
+  /agent/actions/{id}/dismiss:
+    post:
+      operationId: dismissAgentAction
+      tags: [agent]
+      summary: Dismiss a pending agent action without changing app data
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dismissed action
+
+  /agent/actions/{id}/undo:
+    post:
+      operationId: undoAgentAction
+      tags: [agent]
+      summary: Undo a confirmed reversible agent action
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Undo result
+
   # ---- Products ----
   /market-intelligence:
     get:
@@ -1139,6 +1232,81 @@ paths:
 
 components:
   schemas:
+    AgentMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+
+    AgentChatInput:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/AgentMessage"
+
+    AgentProposal:
+      type: object
+      required: [id, kind, summary, payload, expiresAt]
+      properties:
+        id:
+          type: integer
+        kind:
+          type: string
+        summary:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        expiresAt:
+          type: string
+          format: date-time
+
+    AgentChatResponse:
+      type: object
+      required: [message, followUpQuestions, proposals, source]
+      properties:
+        message:
+          type: string
+        followUpQuestions:
+          type: array
+          items:
+            type: string
+        proposals:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentProposal"
+        source:
+          type: string
+          enum: [deterministic, openai]
+
+    AgentActionResult:
+      type: object
+      required: [status, duplicate]
+      properties:
+        status:
+          type: string
+        duplicate:
+          type: boolean
+        result:
+          type: object
+          additionalProperties: true
+
+    AgentActionUpdateInput:
+      type: object
+      required: [payload]
+      properties:
+        payload:
+          type: object
+          additionalProperties: true
+
     HealthStatus:
       type: object
       required: [status, service]
