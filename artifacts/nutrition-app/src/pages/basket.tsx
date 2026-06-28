@@ -35,7 +35,7 @@ export default function BasketPage() {
     reference: "WRITE-BASKET-CREATE",
     successMessage: "Your basket was created.",
     invalidate: [getListBasketsQueryKey()],
-    mutationFn: () => createBasket({ name: name || "My Basket", mode }),
+    mutationFn: () => createBasket({ name: name || "My Shop", mode }),
     onSuccess: (basket) => {
       setOpen(false);
       setName("");
@@ -58,19 +58,19 @@ export default function BasketPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">My Baskets</h1>
-          <p className="text-muted-foreground text-sm">Smart grocery planning across retailers</p>
+          <h1 className="text-2xl font-bold">Retailer Shops</h1>
+          <p className="text-muted-foreground text-sm">Build a grocery shop, then compare the total across retailers.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-1" /> New Basket</Button>
+            <Button><Plus className="h-4 w-4 mr-1" /> New Shop</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Create Basket</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Create Retailer Shop</DialogTitle></DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1">
-                <Label>Basket Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Weekly Shop" />
+                <Label>Shop Name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Weekly Grocery Shop" />
               </div>
               <div className="space-y-1">
                 <Label>Shopping Mode</Label>
@@ -82,12 +82,11 @@ export default function BasketPage() {
                     <SelectItem value="highest_protein">Highest Protein</SelectItem>
                     <SelectItem value="lowest_calorie">Lowest Calorie</SelectItem>
                     <SelectItem value="budget">Budget</SelectItem>
-                    <SelectItem value="single_retailer">Single Retailer</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button className="w-full" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating..." : "Create Basket"}
+                {createMutation.isPending ? "Creating..." : "Create Shop"}
               </Button>
             </div>
           </DialogContent>
@@ -95,7 +94,7 @@ export default function BasketPage() {
       </div>
 
       {(baskets ?? []).length === 0 ? (
-        <PageEmpty title="No baskets yet" description="Create a basket before comparing your grocery shop." action={<Button onClick={() => setOpen(true)}>Create your first basket</Button>} />
+        <PageEmpty title="No retailer shops yet" description="Create a shop to compare your grocery list across retailers." action={<Button onClick={() => setOpen(true)}>Create your first shop</Button>} />
       ) : (
         <div className="space-y-3">
           {(baskets ?? []).map((basket) => (
@@ -136,7 +135,7 @@ export default function BasketPage() {
       {/* Tips */}
       <Card className="bg-emerald-50 border-emerald-200">
         <CardContent className="p-4">
-          <p className="text-sm font-medium text-emerald-800 mb-1">💡 Pro Tips</p>
+          <p className="text-sm font-medium text-emerald-800 mb-1">Shopping tips</p>
           <ul className="text-xs text-emerald-700 space-y-1">
             <li>• Use "Cheapest Overall" to compare prices across supported retailers in your market</li>
             <li>• Create a basket from a recipe to automatically add all ingredients</li>

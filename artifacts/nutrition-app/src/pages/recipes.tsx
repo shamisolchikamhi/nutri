@@ -4,6 +4,7 @@ import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useListRecipes,
   useGetRecommendedRecipes,
+  useListSavedRecipes,
   saveRecipe,
   unsaveRecipe,
   getListSavedRecipesQueryKey,
@@ -49,7 +50,7 @@ export default function RecipesPage() {
   const [goal, setGoal] = useState("all");
   const [difficulty, setDifficulty] = useState("all");
   const [mealCategory, setMealCategory] = useState("all");
-  const [viewMode, setViewMode] = useState<"all" | "recommended" | "social">("all");
+  const [viewMode, setViewMode] = useState<"all" | "recommended" | "favorites" | "social">("all");
 
   const recipesQuery = useListRecipes(
     {
@@ -60,20 +61,22 @@ export default function RecipesPage() {
     { query: { enabled: viewMode === "all" } as any }
   );
   const recommendedQuery = useGetRecommendedRecipes({ query: { enabled: viewMode === "recommended" } as any });
+  const favoritesQuery = useListSavedRecipes({ query: { enabled: viewMode === "favorites" } as any });
   const { data: recipes, isLoading } = recipesQuery;
   const { data: recommended, isLoading: recLoading } = recommendedQuery;
 
-  const displayRecipes = (viewMode === "recommended" ? recommended : recipes)?.filter((recipe) => {
+  const sourceRecipes = viewMode === "recommended" ? recommended : viewMode === "favorites" ? favoritesQuery.data : recipes;
+  const displayRecipes = sourceRecipes?.filter((recipe) => {
     if (mealCategory === "all") return true;
     return ((recipe as any).mealType ?? "lunch_dinner") === mealCategory || recipe.tags?.includes(mealCategory);
   });
-  const loading = viewMode === "recommended" ? recLoading : isLoading;
-  const activeQuery = viewMode === "recommended" ? recommendedQuery : recipesQuery;
+  const loading = viewMode === "recommended" ? recLoading : viewMode === "favorites" ? favoritesQuery.isLoading : isLoading;
+  const activeQuery = viewMode === "recommended" ? recommendedQuery : viewMode === "favorites" ? favoritesQuery : recipesQuery;
 
   const saveMutation = useAppMutation({
     operation: "Save recipe",
     reference: "WRITE-RECIPE-SAVE",
-    successMessage: "The recipe was added to Saved.",
+    successMessage: "The recipe was added to Favorites.",
     invalidate: [getListSavedRecipesQueryKey(), getListRecipesQueryKey()],
     mutationFn: (recipeId: number) => saveRecipe({ itemId: recipeId }),
   });
@@ -81,7 +84,7 @@ export default function RecipesPage() {
   const unsaveMutation = useAppMutation({
     operation: "Remove saved recipe",
     reference: "WRITE-RECIPE-UNSAVE",
-    successMessage: "The recipe was removed from Saved.",
+    successMessage: "The recipe was removed from Favorites.",
     invalidate: [getListSavedRecipesQueryKey(), getListRecipesQueryKey()],
     mutationFn: (recipeId: number) => unsaveRecipe(recipeId),
   });
@@ -127,6 +130,11 @@ export default function RecipesPage() {
             onClick={() => setViewMode("recommended")}
           >Recommended</Button>
           <Button
+            variant={viewMode === "favorites" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("favorites")}
+          >Favorites</Button>
+          <Button
             variant={viewMode === "social" ? "default" : "outline"}
             size="sm"
             onClick={() => setViewMode("social")}
@@ -160,7 +168,11 @@ export default function RecipesPage() {
       ) : activeQuery.isError ? (
         <PageError reference="DATA-RECIPES" onRetry={() => void activeQuery.refetch()} isRetrying={activeQuery.isFetching} />
       ) : (displayRecipes ?? []).length === 0 ? (
-        <PageEmpty title="No recipes match" description="Clear the search and meal filters to return to all recipes." action={<Button onClick={() => { setQuery(""); setGoal("all"); setDifficulty("all"); setMealCategory("all"); setViewMode("all"); }}>Clear filters</Button>} />
+        <PageEmpty
+          title={viewMode === "favorites" ? "No favorite recipes yet" : "No recipes match"}
+          description={viewMode === "favorites" ? "Save a recipe to keep it in this Favorites tab." : "Clear the search and meal filters to return to all recipes."}
+          action={<Button onClick={() => { setQuery(""); setGoal("all"); setDifficulty("all"); setMealCategory("all"); setViewMode("all"); }}>{viewMode === "favorites" ? "Browse recipes" : "Clear filters"}</Button>}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {(displayRecipes ?? []).map((recipe) => (

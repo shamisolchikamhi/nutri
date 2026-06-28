@@ -322,7 +322,7 @@ export default function DashboardPage() {
           View Specials
         </Button>
         <Button variant="outline" className="h-12" onClick={() => setLocation("/basket")}>
-          My Basket
+          Retailer Shops
         </Button>
       </div>
     </div>

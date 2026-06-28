@@ -3,6 +3,7 @@ import {
   db,
   basketsTable,
   basketItemsTable,
+  basketItemRecipesTable,
   productsTable,
   retailersTable,
   recipesTable,
@@ -171,11 +172,13 @@ async function buildStoreComparisons(items: NonNullable<Awaited<ReturnType<typeo
 }
 
 export async function buildBasketItemResponse(item: typeof basketItemsTable.$inferSelect) {
-  const products = await db
-    .select()
-    .from(productsTable)
-    .where(eq(productsTable.id, item.productId))
-    .limit(1);
+  const [products, recipeContributions] = await Promise.all([
+    db.select().from(productsTable).where(eq(productsTable.id, item.productId)).limit(1),
+    db.select({ id: recipesTable.id, name: recipesTable.name })
+      .from(basketItemRecipesTable)
+      .innerJoin(recipesTable, eq(basketItemRecipesTable.recipeId, recipesTable.id))
+      .where(eq(basketItemRecipesTable.basketItemId, item.id)),
+  ]);
   const product = products[0];
   if (!product) return null;
 
@@ -201,6 +204,7 @@ export async function buildBasketItemResponse(item: typeof basketItemsTable.$inf
     category: product.category,
     isSubstitute: item.isSubstitute,
     isEssential: item.isEssential,
+    recipeContributions,
   };
 }
 
@@ -274,7 +278,7 @@ export async function createBasketFromRecipes(
 ) {
   const { recipeIds, name, mode } = input;
   const [basket] = await db.insert(basketsTable).values({ name: name ?? "Recipe Basket", mode: mode ?? "cheapest" }).returning();
-  const ingredientMap = new Map<number, { productId: number; needed: number; product: typeof productsTable.$inferSelect }>();
+  const ingredientMap = new Map<number, { productId: number; needed: number; product: typeof productsTable.$inferSelect; recipeIds: Set<number> }>();
   const [targetRetailers, products] = await Promise.all([getTargetRetailers(), db.select().from(productsTable)]);
 
   for (const recipeId of recipeIds) {
@@ -291,14 +295,21 @@ export async function createBasketFromRecipes(
 
       const needed = ingredientAmountInPackUnit(ingredient, product);
       const existing = ingredientMap.get(product.id);
-      if (existing) existing.needed += needed;
-      else ingredientMap.set(product.id, { productId: product.id, needed, product });
+      if (existing) {
+        existing.needed += needed;
+        existing.recipeIds.add(recipeId);
+      } else {
+        ingredientMap.set(product.id, { productId: product.id, needed, product, recipeIds: new Set([recipeId]) });
+      }
     }
   }
 
   for (const item of ingredientMap.values()) {
     const quantity = Math.max(1, Math.ceil(item.needed / Math.max(item.product.packSize, 0.001)));
-    await db.insert(basketItemsTable).values({ basketId: basket.id, productId: item.productId, quantity, unit: "pack" });
+    const [basketItem] = await db.insert(basketItemsTable).values({ basketId: basket.id, productId: item.productId, quantity, unit: "pack" }).returning();
+    if (basketItem && item.recipeIds.size > 0) {
+      await db.insert(basketItemRecipesTable).values([...item.recipeIds].map((recipeId) => ({ basketItemId: basketItem.id, recipeId })));
+    }
   }
   return buildBasketDetail(basket.id);
 }

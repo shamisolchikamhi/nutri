@@ -80,15 +80,15 @@ export default function RecipeDetailPage() {
   const saveMutation = useAppMutation({
     operation: "Save recipe",
     reference: "WRITE-RECIPE-SAVE",
-    successMessage: "The recipe was added to Saved.",
+    successMessage: "The recipe was added to Favorites.",
     invalidate: [getListSavedRecipesQueryKey(), getGetRecipeQueryKey(id)],
     mutationFn: () => saveRecipe({ itemId: id }),
   });
 
   const unsaveMutation = useAppMutation({
-    operation: "Remove saved recipe",
+    operation: "Remove favorite recipe",
     reference: "WRITE-RECIPE-UNSAVE",
-    successMessage: "The recipe was removed from Saved.",
+    successMessage: "The recipe was removed from Favorites.",
     invalidate: [getListSavedRecipesQueryKey(), getGetRecipeQueryKey(id)],
     mutationFn: () => unsaveRecipe(id),
   });
@@ -159,7 +159,7 @@ export default function RecipeDetailPage() {
         />
         {recipe.isSaved ? (
           <ConfirmAction
-            title="Remove this recipe from Saved?"
+            title="Remove this recipe from Favorites?"
             description="You can save this recipe again later."
             onConfirm={() => scheduleUndoable({ label: "Saved recipe removal", onCommit: () => unsaveMutation.mutate() })}
           >

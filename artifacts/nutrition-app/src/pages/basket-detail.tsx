@@ -77,8 +77,8 @@ export default function BasketDetailPage() {
 
   if (!basket) return (
     <div className="text-center py-12">
-      <p className="text-muted-foreground">Basket not found</p>
-      <Button variant="ghost" onClick={() => setLocation("/basket")}>Back to baskets</Button>
+      <p className="text-muted-foreground">Retailer shop not found</p>
+      <Button variant="ghost" onClick={() => setLocation("/basket")}>Back to shops</Button>
     </div>
   );
 
@@ -149,7 +149,7 @@ export default function BasketDetailPage() {
       {storeComparisons.length > 0 && (
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm font-medium mb-3">Basket price by store</p>
+            <p className="text-sm font-medium mb-3">Shop price by retailer</p>
             <div className="grid gap-2 md:grid-cols-3">
               {storeComparisons.map((store, index) => (
                 <div
@@ -226,6 +226,13 @@ export default function BasketDetailPage() {
                         {(item as any).priceIsEstimated && <span className="text-amber-600">estimated</span>}
                         {item.isOnSpecial && <Badge variant="secondary" className="py-0 text-xs">SPECIAL</Badge>}
                       </div>
+                      {item.recipeContributions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {item.recipeContributions.map((recipe) => (
+                            <Badge key={recipe.id} variant="outline">For: {recipe.name}</Badge>
+                          ))}
+                        </div>
+                      )}
                       {(item as any).priceIsEstimated && (item as any).listedUnitCost != null && (
                         <p className="mt-1 text-xs text-muted-foreground">
                           Basket price corrected from test price {formatMoney((item as any).listedUnitCost)}
@@ -309,9 +316,10 @@ export default function BasketDetailPage() {
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       ) : (
-                        <span className="text-sm">{item.productName}</span>
+                          <span className="text-sm">{item.productName}</span>
                       )}
                       <span className="text-xs text-muted-foreground">×{item.quantity} pack{item.quantity === 1 ? "" : "s"}</span>
+                      {item.recipeContributions.map((recipe) => <Badge key={recipe.id} variant="outline" className="text-xs">{recipe.name}</Badge>)}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatMoney(item.totalCost)}</p>

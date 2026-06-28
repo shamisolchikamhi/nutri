@@ -810,7 +810,11 @@ export const GetBasketResponse = zod.object({
   "isOnSpecial": zod.boolean(),
   "category": zod.string(),
   "isSubstitute": zod.boolean().optional(),
-  "isEssential": zod.boolean().optional()
+  "isEssential": zod.boolean().optional(),
+  "recipeContributions": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string()
+}))
 })),
   "totalCost": zod.number(),
   "totalCalories": zod.number(),
@@ -901,7 +905,11 @@ export const UpdateBasketItemResponse = zod.object({
   "isOnSpecial": zod.boolean(),
   "category": zod.string(),
   "isSubstitute": zod.boolean().optional(),
-  "isEssential": zod.boolean().optional()
+  "isEssential": zod.boolean().optional(),
+  "recipeContributions": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string()
+}))
 })
 
 
@@ -950,7 +958,11 @@ export const GetShoppingListResponse = zod.object({
   "isOnSpecial": zod.boolean(),
   "category": zod.string(),
   "isSubstitute": zod.boolean().optional(),
-  "isEssential": zod.boolean().optional()
+  "isEssential": zod.boolean().optional(),
+  "recipeContributions": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string()
+}))
 }))
 })),
   "totalCost": zod.number(),

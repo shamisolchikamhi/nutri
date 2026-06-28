@@ -1897,7 +1897,7 @@ components:
 
     BasketItem:
       type: object
-      required: [id, basketId, productId, productName, retailerName, quantity, unitCost, totalCost, isOnSpecial, category]
+      required: [id, basketId, productId, productName, retailerName, quantity, unitCost, totalCost, isOnSpecial, category, recipeContributions]
       properties:
         id:
           type: integer
@@ -1927,6 +1927,16 @@ components:
           type: boolean
         isEssential:
           type: boolean
+        recipeContributions:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
 
     BasketItemInput:
       type: object

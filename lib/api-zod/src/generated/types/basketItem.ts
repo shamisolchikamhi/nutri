@@ -5,6 +5,7 @@
  * NutriBasket API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BasketItemRecipeContributionsItem } from './basketItemRecipeContributionsItem';
 
 export interface BasketItem {
   id: number;
@@ -21,4 +22,5 @@ export interface BasketItem {
   category: string;
   isSubstitute?: boolean;
   isEssential?: boolean;
+  recipeContributions: BasketItemRecipeContributionsItem[];
 }

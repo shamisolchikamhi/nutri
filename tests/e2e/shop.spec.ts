@@ -42,7 +42,8 @@ test("filters products, views specials, and compares a basket", async ({ page })
   await expect(page.getByText("Best Value Chicken", { exact: true })).toBeVisible();
 
   await page.goto("/basket/1");
-  await expect(page.getByText("Basket price by store", { exact: true })).toBeVisible();
+  await expect(page.getByText("Shop price by retailer", { exact: true })).toBeVisible();
+  await expect(page.getByText("For: High Protein Chicken Bowl")).toBeVisible();
   await expect(page.getByText("Test Market", { exact: true })).toHaveCount(2);
   await expect(page.getByText("Value Mart", { exact: true })).toBeVisible();
   await expect(page.getByText("Best", { exact: true })).toBeVisible();

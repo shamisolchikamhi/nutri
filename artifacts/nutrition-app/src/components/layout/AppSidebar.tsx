@@ -9,7 +9,6 @@ import {
   Tag, 
   Settings, 
   Search,
-  Library,
   Database
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -63,25 +62,16 @@ const navItems = [
     icon: Bot,
   },
   {
-    title: "Basket",
+    title: "Shop",
     url: "/basket",
     icon: ShoppingCart,
-  },
-  {
-    title: "Shop",
-    url: "/products",
-    icon: Search,
-    routes: ["/products", "/specials", "/retailer-status"],
+    routes: ["/basket", "/products", "/specials", "/retailer-status"],
     children: [
+      { title: "Retailer shops", url: "/basket", icon: ShoppingCart },
       { title: "Products", url: "/products", icon: Search },
       { title: "Specials", url: "/specials", icon: Tag },
       { title: "Data status", url: "/retailer-status", icon: Database },
     ],
-  },
-  {
-    title: "Library",
-    url: "/saved",
-    icon: Library,
   },
 ];
 

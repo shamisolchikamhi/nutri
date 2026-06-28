@@ -65,6 +65,7 @@ const basket = {
       totalCost: 70,
       isOnSpecial: false,
       category: "protein",
+      recipeContributions: [{ id: 1, name: "High Protein Chicken Bowl" }],
     },
   ],
   totalCost: 70,
@@ -511,7 +512,7 @@ const server = createServer((req, res) => {
       }],
     });
   }
-  if (req.method === "GET" && req.url === "/api/saved/recipes") return send(res, 200, []);
+  if (req.method === "GET" && req.url === "/api/saved/recipes") return send(res, 200, recipeSaved ? [{ ...recipe, isSaved: true }] : []);
   if (req.method === "GET" && req.url === "/api/saved/snacks") return send(res, 200, []);
   if (req.method === "GET" && req.url.startsWith("/api/market-intelligence")) {
     return send(res, 200, {

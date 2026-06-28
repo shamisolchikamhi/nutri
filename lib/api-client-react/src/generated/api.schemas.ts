@@ -567,6 +567,11 @@ export const BasketDetailMode = {
   budget: 'budget',
 } as const;
 
+export type BasketItemRecipeContributionsItem = {
+  id: number;
+  name: string;
+};
+
 export interface BasketItem {
   id: number;
   basketId: number;
@@ -582,6 +587,7 @@ export interface BasketItem {
   category: string;
   isSubstitute?: boolean;
   isEssential?: boolean;
+  recipeContributions: BasketItemRecipeContributionsItem[];
 }
 
 export interface BasketDetail {

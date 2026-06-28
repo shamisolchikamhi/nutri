@@ -13,7 +13,7 @@ test("empty states explain prerequisites and provide one recovery action", async
   await expect(page).toHaveURL(/\/tracker$/);
 
   await page.goto("/basket");
-  await expect(page.getByText("No baskets yet", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Create your first basket" }).click();
-  await expect(page.getByRole("heading", { name: "Create Basket" })).toBeVisible();
+  await expect(page.getByText("No retailer shops yet", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Create your first shop" }).click();
+  await expect(page.getByRole("heading", { name: "Create Retailer Shop" })).toBeVisible();
 });
