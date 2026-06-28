@@ -226,9 +226,9 @@ export default function BasketDetailPage() {
                         {(item as any).priceIsEstimated && <span className="text-amber-600">estimated</span>}
                         {item.isOnSpecial && <Badge variant="secondary" className="py-0 text-xs">SPECIAL</Badge>}
                       </div>
-                      {item.recipeContributions.length > 0 && (
+                      {(item.recipeContributions ?? []).length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
-                          {item.recipeContributions.map((recipe) => (
+                          {(item.recipeContributions ?? []).map((recipe) => (
                             <Badge key={recipe.id} variant="outline">For: {recipe.name}</Badge>
                           ))}
                         </div>
@@ -319,7 +319,7 @@ export default function BasketDetailPage() {
                           <span className="text-sm">{item.productName}</span>
                       )}
                       <span className="text-xs text-muted-foreground">×{item.quantity} pack{item.quantity === 1 ? "" : "s"}</span>
-                      {item.recipeContributions.map((recipe) => <Badge key={recipe.id} variant="outline" className="text-xs">{recipe.name}</Badge>)}
+                      {(item.recipeContributions ?? []).map((recipe) => <Badge key={recipe.id} variant="outline" className="text-xs">{recipe.name}</Badge>)}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{formatMoney(item.totalCost)}</p>

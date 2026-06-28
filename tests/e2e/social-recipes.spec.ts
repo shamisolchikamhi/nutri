@@ -6,7 +6,9 @@ test("opens the social recipe importer and guides an empty library", async ({ pa
 
   await expect(page.getByRole("heading", { name: "Import social recipe" })).toBeVisible();
   await expect(page.getByLabel("Post URL")).toBeVisible();
-  await expect(page.getByLabel("Recipe screenshots or video")).toBeVisible();
+  const mediaInput = page.getByLabel("Take a photo or choose recipe media");
+  await expect(mediaInput).toBeVisible();
+  await expect(mediaInput).toHaveAttribute("capture", "environment");
   await expect(page.getByText("No social recipes imported yet", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Add recipe source" }).click();

@@ -101,8 +101,8 @@ export function SocialRecipesPanel() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="space-y-1 md:col-span-2"><Label htmlFor="social-url">Post URL</Label><Input id="social-url" placeholder="https://www.tiktok.com/@creator/video/..." value={form.sourceUrl} onChange={(event) => update("sourceUrl", event.target.value)} /></div>
             <div className="space-y-1 md:col-span-2">
-              <Label htmlFor="social-media">Recipe screenshots or video</Label>
-              <Input id="social-media" type="file" accept="image/*,video/*" multiple onChange={async (event) => {
+              <Label htmlFor="social-media">Take a photo or choose recipe media</Label>
+              <Input id="social-media" type="file" accept="image/*,video/*" capture="environment" multiple onChange={async (event) => {
                 setMediaStatus("Processing uploaded media...");
                 try {
                   const frames = await processRecipeMediaFiles(event.target.files);
@@ -113,7 +113,7 @@ export function SocialRecipesPanel() {
                   setMediaStatus(error instanceof Error ? error.message : "Could not process uploaded media");
                 } finally { event.target.value = ""; }
               }} />
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Upload className="h-3.5 w-3.5" /><span>{mediaStatus || "Upload screenshots or a saved recipe video when the post hides caption text."}</span></div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Upload className="h-3.5 w-3.5" /><span>{mediaStatus || "On a phone, open the camera or choose screenshots and saved recipe video."}</span></div>
             </div>
             <div className="space-y-1"><Label htmlFor="social-title">Title</Label><Input id="social-title" placeholder="High protein chicken bowl" value={form.title} onChange={(event) => update("title", event.target.value)} /></div>
             <div className="space-y-1"><Label htmlFor="social-creator">Creator</Label><Input id="social-creator" placeholder="@creator" value={form.creatorHandle} onChange={(event) => update("creatorHandle", event.target.value)} /></div>
