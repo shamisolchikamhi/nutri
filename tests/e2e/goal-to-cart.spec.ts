@@ -31,3 +31,26 @@ test("builds a pantry-first plan, swaps meals, and accepts missing items as a sh
   await page.getByRole("button", { name: "Open shopping list" }).click();
   await expect(page).toHaveURL(/\/basket\/1$/);
 });
+
+test("opens legacy meal-plan responses without pantry extension fields", async ({ page }) => {
+  await page.route("**/api/recipes/meal-plan?**", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    delete body.pantryInventory;
+    for (const day of body.days) for (const item of day.items) {
+      delete item.pantryMatches;
+      delete item.missingIngredients;
+    }
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/meal-plan");
+  await expect(page.getByRole("heading", { name: "Meal Plan" })).toBeVisible();
+  await expect(page.getByText("No confirmed pantry items yet")).toBeVisible();
+});
+
+test("shows a retry state for malformed meal-plan responses", async ({ page }) => {
+  await page.route("**/api/recipes/meal-plan?**", (route) => route.fulfill({ status: 200, json: { days: "invalid" } }));
+  await page.goto("/meal-plan");
+  await expect(page.getByText("We couldn't build your meal plan")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+});

@@ -112,7 +112,35 @@ async function fetchMealPlan(days: number, inputs: GoalToCartInputs): Promise<Me
 
   const response = await fetch(`/api/recipes/meal-plan?${params}`);
   if (!response.ok) throw new Error(`Request failed with ${response.status}`);
-  return response.json() as Promise<MealPlan>;
+  return normalizeMealPlan(await response.json());
+}
+
+export function normalizeMealPlan(value: unknown): MealPlan {
+  if (!value || typeof value !== "object") throw new Error("Meal plan response is invalid");
+  const raw = value as Partial<MealPlan>;
+  if (!Array.isArray(raw.days) || typeof raw.calorieTarget !== "number" || typeof raw.proteinTargetG !== "number") {
+    throw new Error("Meal plan response is incomplete");
+  }
+  return {
+    calorieTarget: raw.calorieTarget,
+    proteinTargetG: raw.proteinTargetG,
+    householdSize: typeof raw.householdSize === "number" ? raw.householdSize : 1,
+    budgetWeekly: typeof raw.budgetWeekly === "number" ? raw.budgetWeekly : null,
+    maxCookingTime: typeof raw.maxCookingTime === "number" ? raw.maxCookingTime : 45,
+    dietaryRules: Array.isArray(raw.dietaryRules) ? raw.dietaryRules : [],
+    pantryItems: Array.isArray(raw.pantryItems) ? raw.pantryItems : [],
+    pantryInventory: Array.isArray(raw.pantryInventory) ? raw.pantryInventory : [],
+    preferredRetailers: Array.isArray(raw.preferredRetailers) ? raw.preferredRetailers : [],
+    savedRecipeCount: typeof raw.savedRecipeCount === "number" ? raw.savedRecipeCount : 0,
+    days: raw.days.map((day) => ({
+      ...day,
+      items: Array.isArray(day.items) ? day.items.map((item) => ({
+        ...item,
+        pantryMatches: Array.isArray(item.pantryMatches) ? item.pantryMatches : [],
+        missingIngredients: Array.isArray(item.missingIngredients) ? item.missingIngredients : [],
+      })) : [],
+    })),
+  };
 }
 
 async function fetchAdaptiveReplan(): Promise<AdaptiveReplan> {
