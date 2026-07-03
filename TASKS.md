@@ -184,7 +184,7 @@ should not be shipped on top of unreliable health data or silent failures.
 
 ## P2 - Cravings and Cycle-Aware Support
 
-- [ ] Add a craving assistant that starts with what the user actually wants.
+- [x] Add a craving assistant that starts with what the user actually wants.
   - Support craving profiles such as sweet, salty, chocolate, creamy, crunchy,
     warm/comforting, and high-volume.
   - Ask about intensity, hunger, available ingredients, budget, allergies, and

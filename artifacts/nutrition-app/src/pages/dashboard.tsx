@@ -84,7 +84,7 @@ export default function DashboardPage() {
   }
 
   const failedQuery = [todayQuery, snacksQuery, mealQuery, goalQuery, weeklyReviewQuery].find((query) => query.isError);
-  if (failedQuery) return <PageError reference="DATA-DASHBOARD" onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
+  if (failedQuery) return <PageError reference="DATA-DASHBOARD" description="We couldn't fetch today's nutrition, meal, and shopping summary. Your saved data is still safe—check your connection and try again." onRetry={() => void failedQuery.refetch()} isRetrying={failedQuery.isFetching} />;
 
   const calorieTarget = today?.calorieTarget && today.calorieTarget > 0
     ? today.calorieTarget

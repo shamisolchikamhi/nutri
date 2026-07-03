@@ -13,6 +13,7 @@ import RecipeDetailPage from "@/pages/recipe-detail";
 import MealPlanPage from "@/pages/meal-plan";
 import PantryPage from "@/pages/pantry";
 import AgentPage from "@/pages/agent";
+import CravingsPage from "@/pages/cravings";
 import BasketPage from "@/pages/basket";
 import BasketDetailPage from "@/pages/basket-detail";
 import SpecialsPage from "@/pages/specials";
@@ -63,6 +64,9 @@ function Router() {
       </Route>
       <Route path="/agent">
         <AppLayout><AgentPage /></AppLayout>
+      </Route>
+      <Route path="/cravings">
+        <AppLayout><CravingsPage /></AppLayout>
       </Route>
       <Route path="/basket/:id">
         <AppLayout><BasketDetailPage /></AppLayout>

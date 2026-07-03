@@ -2,6 +2,7 @@ import {
   Home, 
   Activity, 
   Bot,
+  Heart,
   Utensils, 
   CalendarDays,
   PackagePlus,
@@ -60,6 +61,11 @@ const navItems = [
     title: "Agent",
     url: "/agent",
     icon: Bot,
+  },
+  {
+    title: "Cravings",
+    url: "/cravings",
+    icon: Heart,
   },
   {
     title: "Shop",

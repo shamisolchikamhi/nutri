@@ -110,7 +110,9 @@ export default function OnboardingPage() {
                     {(["male", "female", "other"] as const).map((s) => (
                       <button
                         key={s}
+                        type="button"
                         onClick={() => set("sex", s)}
+                        aria-pressed={form.sex === s}
                         className={cn(
                           "flex-1 py-2.5 rounded-lg border-2 text-sm font-medium capitalize transition-all",
                           form.sex === s ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/50"
@@ -123,7 +125,8 @@ export default function OnboardingPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="onboarding-age">Age</Label>
-                  <Input id="onboarding-age" type="number" placeholder="30" value={form.ageYears} onChange={(e) => set("ageYears", e.target.value)} aria-invalid={Boolean(errors.ageYears)} aria-describedby={errors.ageYears ? "onboarding-age-error" : undefined} />
+                  <Input id="onboarding-age" type="number" placeholder="30" min="13" max="120" value={form.ageYears} onChange={(e) => set("ageYears", e.target.value)} aria-invalid={Boolean(errors.ageYears)} aria-describedby={errors.ageYears ? "onboarding-age-error" : "onboarding-age-help"} />
+                  {!errors.ageYears && <p id="onboarding-age-help" className="text-xs text-muted-foreground">For people aged 13–120. Used to estimate your daily energy needs.</p>}
                   {errors.ageYears && <p id="onboarding-age-error" className="text-xs text-destructive" role="alert">{errors.ageYears}</p>}
                 </div>
                 <Button className="w-full" onClick={() => validateStep(["ageYears"], 1)}>Continue →</Button>
@@ -139,17 +142,20 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-2">
                     <Label htmlFor="onboarding-height">Height (cm)</Label>
-                    <Input id="onboarding-height" autoFocus type="number" placeholder="170" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} aria-invalid={Boolean(errors.heightCm)} />
+                    <Input id="onboarding-height" autoFocus type="number" placeholder="170" min="100" max="250" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} aria-invalid={Boolean(errors.heightCm)} aria-describedby="onboarding-height-help" />
+                    {!errors.heightCm && <p id="onboarding-height-help" className="text-xs text-muted-foreground">100–250 cm</p>}
                     {errors.heightCm && <p className="text-xs text-destructive" role="alert">{errors.heightCm}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="onboarding-weight">Current weight (kg)</Label>
-                    <Input id="onboarding-weight" type="number" placeholder="75" value={form.currentWeightKg} onChange={(e) => set("currentWeightKg", e.target.value)} aria-invalid={Boolean(errors.currentWeightKg)} />
+                    <Input id="onboarding-weight" type="number" placeholder="75" min="25" max="350" step="0.1" value={form.currentWeightKg} onChange={(e) => set("currentWeightKg", e.target.value)} aria-invalid={Boolean(errors.currentWeightKg)} aria-describedby="onboarding-weight-help" />
+                    {!errors.currentWeightKg && <p id="onboarding-weight-help" className="text-xs text-muted-foreground">25–350 kg</p>}
                     {errors.currentWeightKg && <p className="text-xs text-destructive" role="alert">{errors.currentWeightKg}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="onboarding-target">Target weight (kg)</Label>
-                    <Input id="onboarding-target" type="number" placeholder="70" value={form.targetWeightKg} onChange={(e) => set("targetWeightKg", e.target.value)} aria-invalid={Boolean(errors.targetWeightKg)} />
+                    <Input id="onboarding-target" type="number" placeholder="70" min="25" max="350" step="0.1" value={form.targetWeightKg} onChange={(e) => set("targetWeightKg", e.target.value)} aria-invalid={Boolean(errors.targetWeightKg)} aria-describedby="onboarding-target-help" />
+                    {!errors.targetWeightKg && <p id="onboarding-target-help" className="text-xs text-muted-foreground">Used to tailor a realistic calorie target.</p>}
                     {errors.targetWeightKg && <p className="text-xs text-destructive" role="alert">{errors.targetWeightKg}</p>}
                   </div>
                 </div>
@@ -172,7 +178,9 @@ export default function OnboardingPage() {
                     {DIET_OPTIONS.map((d) => (
                       <button
                         key={d.value}
+                        type="button"
                         onClick={() => setForm((current) => toggleDiet(current, d.value))}
+                        aria-pressed={form.dietPreferences.includes(d.value)}
                         className={cn(
                           "p-3 rounded-xl border-2 text-left text-sm transition-all",
                           form.dietPreferences.includes(d.value) ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
@@ -191,7 +199,9 @@ export default function OnboardingPage() {
                     {ACTIVITY_OPTIONS.map((a) => (
                       <button
                         key={a.value}
+                        type="button"
                         onClick={() => set("activityLevel", a.value)}
+                        aria-pressed={form.activityLevel === a.value}
                         className={cn(
                           "w-full p-2.5 rounded-lg border-2 text-left text-sm transition-all",
                           form.activityLevel === a.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
@@ -206,12 +216,14 @@ export default function OnboardingPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="onboarding-budget">{getBudgetLabel()}</Label>
-                    <Input id="onboarding-budget" type="number" placeholder="150" value={form.budgetWeekly} onChange={(e) => set("budgetWeekly", e.target.value)} aria-invalid={Boolean(errors.budgetWeekly)} />
+                    <Input id="onboarding-budget" type="number" placeholder="150" min="0" value={form.budgetWeekly} onChange={(e) => set("budgetWeekly", e.target.value)} aria-invalid={Boolean(errors.budgetWeekly)} aria-describedby="onboarding-budget-help" />
+                    {!errors.budgetWeekly && <p id="onboarding-budget-help" className="text-xs text-muted-foreground">Helps prioritise recipes and shops within your spend.</p>}
                     {errors.budgetWeekly && <p className="text-xs text-destructive" role="alert">{errors.budgetWeekly}</p>}
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="onboarding-meals">Meals per day</Label>
-                    <Input id="onboarding-meals" type="number" placeholder="3" min="1" max="6" value={form.mealFrequency} onChange={(e) => set("mealFrequency", e.target.value)} aria-invalid={Boolean(errors.mealFrequency)} />
+                    <Input id="onboarding-meals" type="number" placeholder="3" min="1" max="6" value={form.mealFrequency} onChange={(e) => set("mealFrequency", e.target.value)} aria-invalid={Boolean(errors.mealFrequency)} aria-describedby="onboarding-meals-help" />
+                    {!errors.mealFrequency && <p id="onboarding-meals-help" className="text-xs text-muted-foreground">Choose 1–6 meals to shape your daily plan.</p>}
                     {errors.mealFrequency && <p className="text-xs text-destructive" role="alert">{errors.mealFrequency}</p>}
                   </div>
                 </div>
