@@ -1,5 +1,17 @@
 import { Router, type IRouter } from "express";
-import { db, userProfileTable } from "@workspace/db";
+import {
+  activityLogsTable,
+  agentActionsTable,
+  basketItemsTable,
+  basketsTable,
+  dailyLogsTable,
+  db,
+  mealEntriesTable,
+  pantryItemsTable,
+  savedRecipesTable,
+  savedSnacksTable,
+  userProfileTable,
+} from "@workspace/db";
 import {
   UpsertProfileBody,
   GetProfileResponse,
@@ -108,6 +120,24 @@ router.put("/profile", async (req, res): Promise<void> => {
     retailerPreferences: (profile.retailerPreferences ?? []).map(Number),
   };
   res.json(UpsertProfileResponse.parse(data));
+});
+
+router.delete("/profile", async (_req, res): Promise<void> => {
+  await db.transaction(async (tx) => {
+    // Basket recipe links cascade when their parent basket items are removed.
+    await tx.delete(basketItemsTable);
+    await tx.delete(basketsTable);
+    await tx.delete(savedRecipesTable);
+    await tx.delete(savedSnacksTable);
+    await tx.delete(mealEntriesTable);
+    await tx.delete(activityLogsTable);
+    await tx.delete(dailyLogsTable);
+    await tx.delete(pantryItemsTable);
+    await tx.delete(agentActionsTable);
+    await tx.delete(userProfileTable);
+  });
+
+  res.status(204).send();
 });
 
 router.get("/profile/goal-summary", async (req, res): Promise<void> => {

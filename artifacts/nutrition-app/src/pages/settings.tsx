@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAppMutation } from "@/hooks/use-app-mutation";
 import {
   useGetProfile,
   useListRetailers,
   upsertProfile,
+  deleteProfile,
   getGetProfileQueryKey,
   getGetGoalSummaryQueryKey,
   type UserProfileInput,
@@ -14,10 +17,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Scale, Target, ShoppingBag, Save, User } from "lucide-react";
+import { Scale, Target, ShoppingBag, Save, Trash2, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MARKETS, type MarketCode, getBudgetLabel, getActiveMarket, setActiveMarket } from "@/lib/market";
 import { PageError } from "@/components/PageState";
+import { ConfirmAction } from "@/components/ConfirmAction";
 import {
   ACTIVITY_OPTIONS,
   DIET_OPTIONS,
@@ -32,6 +36,8 @@ import {
 } from "@/lib/profile-form";
 
 export default function SettingsPage() {
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const profileQuery = useGetProfile();
   const retailersQuery = useListRetailers();
   const { data: profile, isLoading } = profileQuery;
@@ -55,6 +61,17 @@ export default function SettingsPage() {
     mutationFn: (input: UserProfileInput) => upsertProfile(input),
     onSuccess: () => {
       setActiveMarket(marketCode);
+    },
+  });
+
+  const deleteMutation = useAppMutation({
+    operation: "Delete account",
+    reference: "DELETE-ACCOUNT",
+    successMessage: false,
+    mutationFn: () => deleteProfile(),
+    onSuccess: () => {
+      queryClient.clear();
+      setLocation("/onboarding");
     },
   });
 
@@ -227,6 +244,29 @@ export default function SettingsPage() {
         <Save className="h-4 w-4 mr-2" />
         {saveMutation.isPending ? "Saving..." : "Save Settings"}
       </Button>
+
+      <Card className="border-destructive/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-destructive flex items-center gap-2">
+            <Trash2 className="h-4 w-4" /> Delete account
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Permanently delete your profile, logs, saved items, pantry, and baskets. This cannot be undone.
+          </p>
+          <ConfirmAction
+            title="Delete your account?"
+            description="This permanently deletes your profile and all of your NutriBasket data. This action cannot be undone."
+            onConfirm={() => deleteMutation.mutate()}
+          >
+            <Button variant="destructive" disabled={deleteMutation.isPending}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              {deleteMutation.isPending ? "Deleting..." : "Delete account"}
+            </Button>
+          </ConfirmAction>
+        </CardContent>
+      </Card>
     </div>
   );
 }
