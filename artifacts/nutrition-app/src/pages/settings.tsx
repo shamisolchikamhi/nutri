@@ -68,6 +68,9 @@ export default function SettingsPage() {
     operation: "Delete account",
     reference: "DELETE-ACCOUNT",
     successMessage: false,
+    errorMessage: (error) => error instanceof Error
+      ? `${error.message} Reference DELETE-ACCOUNT.`
+      : "Nothing was changed. Contact support with reference DELETE-ACCOUNT.",
     mutationFn: () => deleteProfile(),
     onSuccess: () => {
       queryClient.clear();

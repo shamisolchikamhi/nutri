@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import {
   activityLogsTable,
   agentActionsTable,
+  basketItemRecipesTable,
   basketItemsTable,
   basketsTable,
   dailyLogsTable,
@@ -124,7 +125,9 @@ router.put("/profile", async (req, res): Promise<void> => {
 
 router.delete("/profile", async (_req, res): Promise<void> => {
   await db.transaction(async (tx) => {
-    // Basket recipe links cascade when their parent basket items are removed.
+    // Delete links explicitly so account deletion also works against databases
+    // created before the cascade constraint was introduced.
+    await tx.delete(basketItemRecipesTable);
     await tx.delete(basketItemsTable);
     await tx.delete(basketsTable);
     await tx.delete(savedRecipesTable);
